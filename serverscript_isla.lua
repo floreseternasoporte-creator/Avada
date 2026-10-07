@@ -785,18 +785,27 @@ do
     )
     wedge(
       "GargWingA",
-      Vector3.new(4.0, 2.9, 0.35),
-      CFrame.new(PX + sd * 2.5, GY + 5.2, PZ + 1.05) * CFrame.Angles(0, 0, math.rad(sd * 26)),
-      Color3.fromRGB(11, 10, 18),
+      Vector3.new(4.4, 3.4, 0.4),
+      CFrame.new(PX + sd * 2.6, GY + 5.6, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 24)),
+      Color3.fromRGB(10, 9, 16),
       false
     )
     wedge(
       "GargWingB",
-      Vector3.new(2.8, 2.0, 0.3),
-      CFrame.new(PX + sd * 4.6, GY + 6.1, PZ + 1.05) * CFrame.Angles(0, 0, math.rad(sd * 50)),
-      Color3.fromRGB(11, 10, 18),
+      Vector3.new(3.0, 2.2, 0.35),
+      CFrame.new(PX + sd * 5.1, GY + 6.7, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 44)),
+      Color3.fromRGB(10, 9, 16),
       false
     )
+    local wingArm = MP(
+      "GargWingArm",
+      Vector3.new(4.9, 0.55, 0.55),
+      CFrame.new(PX + sd * 2.75, GY + 7.05, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 24)),
+      "Dark stone grey",
+      nil,
+      false
+    )
+    wingArm.Color = Color3.fromRGB(24, 22, 34)
 
     -- Varita apoyada junto al pilar
     local wandCol = flameCol
