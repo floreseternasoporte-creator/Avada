@@ -472,7 +472,139 @@ local function darEnMano(player, tipo)
   sincronizaUI(player)
 end
 
--- El saco del mago: marron con banda purpura y estrella dorada, guarda 5
+-- El saco de tela del dueno (Burlap): panza abultada y arrugada, boca
+-- acampanada, cuerda crema con nudo y puntas colgando, asa curva.
+-- Es el "Saco magico" que el jugador lleva en la mano.
+local SC_ALTURA = 10.3
+local SC_PERFIL = {
+  { 0.00, 1.70 }, { 0.35, 2.90 }, { 1.20, 3.30 }, { 2.50, 3.55 },
+  { 3.70, 3.70 }, { 5.00, 3.35 }, { 6.20, 3.00 }, { 7.00, 2.50 },
+  { 7.60, 1.85 }, { 8.00, 1.65 }, { 8.50, 1.70 }, { 9.20, 2.00 },
+  { 10.0, 2.30 }, { 10.3, 2.42 },
+}
+local SC_ASA = {
+  Vector3.new(-1.5, 7.9, 0), Vector3.new(-2.1, 8.3, 0), Vector3.new(-2.6, 8.85, 0),
+  Vector3.new(-3.3, 9.0, 0), Vector3.new(-3.9, 8.95, 0), Vector3.new(-4.4, 8.5, 0),
+  Vector3.new(-4.8, 7.5, 0), Vector3.new(-5.1, 5.4, 0), Vector3.new(-5.0, 4.1, 0),
+  Vector3.new(-4.7, 2.8, 0), Vector3.new(-4.1, 2.0, 0), Vector3.new(-3.0, 1.5, 0),
+}
+local SC_ARRIBA = Color3.fromRGB(176, 124, 92)
+local SC_ABAJO = Color3.fromRGB(138, 90, 63)
+local SC_ASA_C = Color3.fromRGB(122, 80, 55)
+local SC_BOCA = Color3.fromRGB(88, 58, 41)
+local SC_CUERDA_A = Color3.fromRGB(228, 208, 162)
+local SC_CUERDA_B = Color3.fromRGB(204, 180, 134)
+
+local function scRadio(y)
+  for i = 1, #SC_PERFIL - 1 do
+    local p0, p1 = SC_PERFIL[i], SC_PERFIL[i + 1]
+    if y <= p1[1] then
+      local k = math.clamp((y - p0[1]) / (p1[1] - p0[1]), 0, 1)
+      return p0[2] + (p1[2] - p0[2]) * (k * k * (3 - 2 * k))
+    end
+  end
+  return SC_PERFIL[#SC_PERFIL][2]
+end
+local function scVariar(color, v)
+  return Color3.new(
+    math.clamp(color.R + v, 0, 1),
+    math.clamp(color.G + v * 0.85, 0, 1),
+    math.clamp(color.B + v * 0.7, 0, 1)
+  )
+end
+local function curvaSuaveSaco(puntos, sub)
+  local salida = {}
+  for i = 1, #puntos - 1 do
+    local p0 = puntos[math.max(i - 1, 1)]
+    local p1 = puntos[i]
+    local p2 = puntos[i + 1]
+    local p3 = puntos[math.min(i + 2, #puntos)]
+    for t0 = 0, sub - 1 do
+      local t = t0 / sub
+      table.insert(salida, 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t ^ 2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t ^ 3))
+    end
+  end
+  table.insert(salida, puntos[#puntos])
+  return salida
+end
+
+-- piezas { nombre, size, cf (local), color, material } del saco
+local function piezasSaco(escala, semilla)
+  local azar = Random.new(semilla)
+  local piezas = {}
+  local function disco(nombre, y, altura, radio, color, material, dx, dz, incl)
+    local c = CFrame.new((dx or 0) * escala, y * escala, (dz or 0) * escala)
+    if incl then
+      c = c * CFrame.Angles(incl.X, 0, incl.Z)
+    end
+    c = c * CFrame.Angles(0, 0, math.rad(90))
+    table.insert(piezas, { nombre = nombre, size = Vector3.new(altura, radio * 2, radio * 2) * escala, cf = c, color = color, material = material })
+  end
+  local function segmento(nombre, a, b, grosor, color, material)
+    local A, B = a * escala, b * escala
+    local largo = (B - A).Magnitude
+    table.insert(piezas, {
+      nombre = nombre,
+      size = Vector3.new(largo + 0.05 * escala, grosor * 2 * escala, grosor * 2 * escala),
+      cf = CFrame.lookAt((A + B) / 2, B) * CFrame.Angles(0, math.rad(90), 0),
+      color = color,
+      material = material,
+    })
+  end
+  -- cuerpo arrugado
+  local n = 26
+  for i = 1, n do
+    local y0, y1 = (i - 1) / n * SC_ALTURA, i / n * SC_ALTURA
+    local ym = (y0 + y1) / 2
+    local radio = scRadio(ym)
+    local peso = math.clamp(1 - (ym - 6) / 2, 0, 1)
+    local dx = azar:NextNumber(-0.14, 0.14) * peso
+    local dz = azar:NextNumber(-0.14, 0.14) * peso
+    radio = radio * (1 + azar:NextNumber(-0.035, 0.035) * peso)
+    local color = SC_ABAJO:Lerp(SC_ARRIBA, math.clamp(ym / SC_ALTURA * 1.2, 0, 1))
+    disco("SacoCuerpo" .. i, ym, SC_ALTURA / n + 0.06, radio, scVariar(color, azar:NextNumber(-0.035, 0.035)), Enum.Material.Fabric, dx, dz)
+  end
+  disco("SacoBordeBoca", SC_ALTURA - 0.1, 0.22, 2.44, scVariar(SC_ARRIBA, 0.03), Enum.Material.Fabric)
+  disco("SacoInterior", SC_ALTURA + 0.02, 0.08, 1.95, SC_BOCA, Enum.Material.Fabric)
+  -- cuerda del cuello con nudo y puntas colgando
+  for i, y in ipairs({ 7.75, 8.0, 8.25 }) do
+    disco("SacoCuerda" .. i, y, 0.26, scRadio(y) + 0.14, (i % 2 == 0) and SC_CUERDA_B or SC_CUERDA_A, Enum.Material.Fabric, 0, 0,
+      Vector3.new(math.rad(azar:NextNumber(-4, 4)), 0, math.rad(azar:NextNumber(-4, 4))))
+  end
+  local angNudo = math.rad(20)
+  local rNudo = (scRadio(8.05) + 0.2) * escala
+  table.insert(piezas, {
+    nombre = "SacoNudo",
+    size = Vector3.new(0.85, 0.75, 0.85) * escala,
+    cf = CFrame.new(math.sin(angNudo) * rNudo, 8.05 * escala, math.cos(angNudo) * rNudo),
+    color = SC_CUERDA_A,
+    material = Enum.Material.Fabric,
+    bola = true,
+  })
+  local function punta(nombre, yIni, yFin, aIni, aFin, grosor, pasos)
+    local anterior
+    for j = 0, pasos do
+      local k = j / pasos
+      local y = yIni + (yFin - yIni) * k
+      local ang = math.rad(aIni + (aFin - aIni) * k) + math.sin(j * 0.9) * 0.04
+      local r = scRadio(y) + 0.16
+      local punto = Vector3.new(math.sin(ang) * r, y, math.cos(ang) * r)
+      if anterior then
+        segmento(nombre .. j, anterior, punto, grosor, (j % 2 == 0) and SC_CUERDA_A or SC_CUERDA_B, Enum.Material.Fabric)
+      end
+      anterior = punto
+    end
+  end
+  punta("SacoPuntaA", 7.9, 4.3, 16, 40, 0.13, 9)
+  punta("SacoPuntaB", 7.9, 3.4, 24, 30, 0.13, 10)
+  -- el asa curva
+  local curva = curvaSuaveSaco(SC_ASA, 3)
+  for i = 1, #curva - 1 do
+    segmento("SacoAsa" .. i, curva[i], curva[i + 1], 0.32, scVariar(SC_ASA_C, azar:NextNumber(-0.025, 0.025)), Enum.Material.Fabric)
+  end
+  return piezas
+end
+
 local function darSacoMago(player)
   local d = SE.players[player]
   if not d or d.toolSaco then
@@ -480,16 +612,24 @@ local function darSacoMago(player)
   end
   local tool = Instance.new("Tool")
   tool.Name = "Saco mágico"
-  tool.ToolTip = "Tu saco de mago: guarda hasta " .. SACO_MAX .. " cosas"
+  tool.ToolTip = "Tu saco de tela: guarda hasta " .. SACO_MAX .. " cosas"
   tool.CanBeDropped = false
-  local h = parteDeTool("Handle", Vector3.new(1.05, 1.2, 1.05), CFrame.new(0, 3, 0), Color3.fromRGB(156, 108, 62))
-  h.Shape = Enum.PartType.Ball
+  local piezas = piezasSaco(0.19, 7674 + (player.UserId % 97))
+  local pz0 = piezas[1]
+  local h = parteDeTool("Handle", pz0.size, pz0.cf, pz0.color, pz0.material)
+  h.Shape = Enum.PartType.Cylinder
   h.Parent = tool
-  soldarA(tool, h, parteDeTool("SackBand", Vector3.new(0.78, 0.3, 0.78), CFrame.new(), Color3.fromRGB(96, 52, 140)), Vector3.new(0, 0.48, 0))
-  local nudo = soldarA(tool, h, parteDeTool("SackKnot", Vector3.new(0.42, 0.42, 0.42), CFrame.new(), Color3.fromRGB(120, 80, 44)), Vector3.new(0, 0.78, 0))
-  nudo.Shape = Enum.PartType.Ball
-  local estrella = soldarA(tool, h, parteDeTool("SackStar", Vector3.new(0.4, 0.4, 0.12), CFrame.new(), Color3.fromRGB(255, 196, 48), Enum.Material.Neon), Vector3.new(0, -0.05, -0.52))
-  estrella.CFrame = h.CFrame * CFrame.new(0, -0.05, -0.52) * CFrame.Angles(0, 0, math.rad(45))
+  for i = 2, #piezas do
+    local pz = piezas[i]
+    local extra = parteDeTool(pz.nombre, pz.size, pz.cf, pz.color, pz.material)
+    extra.Shape = pz.bola and Enum.PartType.Ball or Enum.PartType.Cylinder
+    extra.Parent = tool
+    local w = Instance.new("WeldConstraint")
+    w.Part0 = h
+    w.Part1 = extra
+    w.Parent = extra
+  end
+  tool.GripPos = Vector3.new(0, -0.55, 0)
   tool.Parent = player:FindFirstChildOfClass("Backpack")
   d.toolSaco = tool
   tool.Equipped:Connect(function()
