@@ -315,6 +315,16 @@ local function sincronizaUI(player)
   if not (player and player.Parent) then
     return
   end
+  -- el saco en la mano se comprueba mirando al personaje directamente:
+  -- asi el contador X/5 nunca depende de que un aviso llegue o no
+  local sacoEnLaMano = false
+  local chS = player.Character
+  if chS and chS:FindFirstChild("Saco mágico") then
+    sacoEnLaMano = true
+  end
+  if d then
+    d.sacoEnMano = sacoEnLaMano
+  end
   pcall(function()
     RE_UI:FireClient(player, {
       enPartida = SE.on and d ~= nil,
@@ -322,7 +332,7 @@ local function sincronizaUI(player)
       mano = (d and d.enMano ~= nil) or false,
       saco = d and #(d.saco or {}) or 0,
       sacoMax = SACO_MAX,
-      sacoEnMano = (d and d.sacoEnMano) or false,
+      sacoEnMano = sacoEnLaMano,
       noche = SE.noche,
       fase = SE.fase,
     })

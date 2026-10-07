@@ -36,7 +36,13 @@ local function clasicoEn(modelo)
   local INL = Enum.SurfaceType.Inlet
   for _, p in ipairs(modelo:GetDescendants()) do
     if p:IsA("BasePart") and p.Transparency < 1 then
-      p.Material = Enum.Material.Plastic
+      -- el suelo del bosque NO va clasico: hierba oscura con textura,
+      -- como en 99 Noches (la referencia del dueno)
+      if p.Name == "BosqueGrass" then
+        p.Material = Enum.Material.Grass
+      else
+        p.Material = Enum.Material.Plastic
+      end
       p.Reflectance = 0
       -- una Texture en una cara tapa los studs de esa cara: se apaga
       for _, t in ipairs(p:GetChildren()) do
@@ -67,6 +73,10 @@ local function clasicoEn(modelo)
         p.RightSurface = p.LeftSurface
       else
         -- esferas y mallas: lisas (en el Roblox clasico eran mallas, sin studs)
+        p.TopSurface, p.BottomSurface = SM, SM
+        p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
+      end
+      if p.Name == "BosqueGrass" then
         p.TopSurface, p.BottomSurface = SM, SM
         p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
       end
@@ -184,7 +194,7 @@ local function bball(name, d, cf, col, collide)
 end
 
 -- Suelo por capas (igual que la isla: cesped, tierra, piedra, punta)
-bcyl("BosqueGrass", 2.0, 470, CFrame.new(FC.X, 1.0, FC.Z), Color3.fromRGB(74, 148, 60), true)
+bcyl("BosqueGrass", 2.0, 470, CFrame.new(FC.X, 1.0, FC.Z), Color3.fromRGB(56, 120, 42), true)
 bcyl("BosqueDirt", 2.2, 458, CFrame.new(FC.X, -0.6, FC.Z), Color3.fromRGB(112, 76, 45), false)
 bcyl("BosqueStone", 2.4, 440, CFrame.new(FC.X, -2.4, FC.Z), Color3.fromRGB(74, 74, 86), false)
 bcyl("BosqueTip", 5.0, 240, CFrame.new(FC.X, -6.0, FC.Z), Color3.fromRGB(62, 62, 74), false)
@@ -536,7 +546,7 @@ for hi = 1, 14 do
   local r = rngBosque:NextNumber(36, 208)
   local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
   if lejosDeJaulas(x, z) then
-    crearHongoDelBosque(Vector3.new(x, 2.0, z), 0.3, 7665 + hi * 131, hi)
+    crearHongoDelBosque(Vector3.new(x, 1.58, z), 0.3, 7665 + hi * 131, hi) -- enterrado un poco, pegado a la tierra
   end
 end
 

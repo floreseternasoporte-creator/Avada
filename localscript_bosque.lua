@@ -198,7 +198,7 @@ RE_UI.OnClientEvent:Connect(function(st)
     comerBtn.Visible = false
   end
   desgarrarBtn.Visible = st.mano == true
-  tiendaBtn.Visible = st.mano == true
+  tiendaBtn.Visible = st.mano == true and (st.sacoEnMano == true or sacoEnManoLocal == true) -- Tienda solo con el saco puesto
   revisaContador()
 end)
 
