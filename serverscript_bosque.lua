@@ -479,6 +479,11 @@ end
 
 -- Todo el bosque en estilo clasico (studs), de una pasada
 clasicoEn(Bosque)
+-- y el lobby tambien, por si el archivo ISLA muere antes de su pasada:
+-- asi el estilo clasico nunca depende de un solo archivo
+if LobbyModel then
+  clasicoEn(LobbyModel)
+end
 
 --===========================================================
 

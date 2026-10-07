@@ -1094,5 +1094,6 @@ end
 
 
 clasicoEn(LobbyModel)
+print("[Avada] ISLA lista: lobby clasico y tabla")
 
 -- FIN ISLA (lobby visual: isla flotante + tabla TOP SORCERERS)

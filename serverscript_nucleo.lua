@@ -1603,10 +1603,12 @@ task.spawn(function()
   while true do
     task.wait(60)
     for _, plr in ipairs(Players:GetPlayers()) do
-      saveKills(plr)
+      pcall(saveKills, plr)
     end
   end
 end)
+
+print("[Avada] NUCLEO cargado: hechizos, combate y datos")
 
 -- FIN NUCLEO
 end

@@ -89,7 +89,7 @@ end
 --===========================================================
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
-local Bosque, fuegoPos, deposito, llamaParts, llamaBases, llamaLight, anilloSeguro
+local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro
 local jaulas, jaulasPos, lenaNodos, bayas, cofres, fireStatus
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
@@ -103,7 +103,7 @@ local function escanearBosque()
   if Bosque then
     -- fuego y deposito
     llamaParts = {}
-    llamaBases = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
+    llamaBase = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
     anilloSeguro = {}
     lenaNodos, bayas, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}
     local bayasPorGrupo = {}
@@ -189,6 +189,9 @@ local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 -- CARTELES
 --===========================================================
 local function updateCircleBoard()
+  if not (circleTitle and circleStatus and circleSub) then
+    return -- el cartel aun no aparece: el hilo del circulo sigue vivo
+  end
   if SE.on then
     circleTitle.Text = "PARTIDA EN CURSO"
     circleStatus.Text = "Noche " .. math.max(SE.noche, 1) .. " de " .. NOCHES_META .. " - Llama al " .. math.floor(SE.llama) .. "%"
@@ -209,7 +212,11 @@ local function updateCircleBoard()
 end
 
 local function updateFireBoard()
-  fireStatus.Text = "Llama "
+  if not (llamaParts and llamaBase and fuegoPos) then
+    return -- el bosque aun no se descubre: nada que actualizar
+  end
+  if fireStatus then
+    fireStatus.Text = "Llama "
     .. math.floor(SE.llama)
     .. "% - Noche "
     .. math.max(SE.noche, 1)
@@ -218,6 +225,7 @@ local function updateFireBoard()
     .. " - Aprendices "
     .. SE.aprendices
     .. "/4"
+  end
   -- la llama crece y el anillo seguro respira con ella
   local f = 0.35 + (SE.llama / 100) * 0.85
   for i, fp in ipairs(llamaParts) do
@@ -225,7 +233,9 @@ local function updateFireBoard()
     fp.Size = Vector3.new(b.X * f, b.Y * f, b.Z * f)
     fp.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.7 + (i - 1) * 1.4 * f, fuegoPos.Z)
   end
-  llamaLight.Range = 16 + SE.llama * 0.2
+  if llamaLight then
+    llamaLight.Range = 16 + SE.llama * 0.2
+  end
   local radio = 9 + SE.llama * 0.11
   for _, sd in ipairs(anilloSeguro) do
     sd.part.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -sd.ang, 0) * CFrame.new(0, 0, radio)
