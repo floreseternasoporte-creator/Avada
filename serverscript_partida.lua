@@ -352,7 +352,77 @@ local function soldarA(tool, handle, parte, off)
   return parte
 end
 
--- La comida en la mano: una fresa roja con coronita, o un hongo mini
+-- El Boletus del dueno en miniatura: mismas piezas (tallo por segmentos
+-- y cupula de anillos) para la mano y para cuando cae al suelo
+local HB = {
+  ALT_T = 9, RAD_S = 7.6, ALT_S = 4.6,
+  PERFIL = {
+    { 0.00, 1.90 }, { 0.03, 2.55 }, { 0.08, 3.05 },
+    { 0.16, 2.80 }, { 0.40, 2.70 }, { 0.70, 2.55 }, { 1.00, 2.15 },
+  },
+  ARRIBA = Color3.fromRGB(226, 202, 148),
+  ABAJO = Color3.fromRGB(188, 150, 98),
+  TOPE = Color3.fromRGB(140, 82, 52),
+  BORDE = Color3.fromRGB(190, 135, 92),
+  POROS = Color3.fromRGB(228, 208, 152),
+}
+local function radioTalloH(t)
+  local pf = HB.PERFIL
+  for i = 1, #pf - 1 do
+    local p0, p1 = pf[i], pf[i + 1]
+    if t <= p1[1] then
+      local k = math.clamp((t - p0[1]) / (p1[1] - p0[1]), 0, 1)
+      return p0[2] + (p1[2] - p0[2]) * (k * k * (3 - 2 * k))
+    end
+  end
+  return pf[#pf][2]
+end
+-- devuelve piezas { nombre, size, y (local), color, material } del Boletus
+local function piezasBoletus(escala, segmentos, anillos)
+  local piezas = {}
+  local n = segmentos or 10
+  for i = 1, n do
+    local tm = ((i - 1) / n + i / n) / 2
+    local radio = radioTalloH(tm)
+    table.insert(piezas, {
+      nombre = "TalloSeg" .. i,
+      size = Vector3.new(HB.ALT_T / n + 0.05, radio * 2, radio * 2) * escala,
+      y = tm * HB.ALT_T * escala,
+      color = HB.ABAJO:Lerp(HB.ARRIBA, math.clamp(tm * 1.4, 0, 1)),
+      material = Enum.Material.Fabric,
+    })
+  end
+  local base = HB.ALT_T * 0.88
+  table.insert(piezas, { nombre = "Labio", size = Vector3.new(0.5, HB.RAD_S * 2, HB.RAD_S * 2) * escala, y = (base + 0.25) * escala, color = HB.BORDE, material = Enum.Material.Fabric })
+  table.insert(piezas, { nombre = "Poros", size = Vector3.new(0.3, HB.RAD_S * 1.9, HB.RAD_S * 1.9) * escala, y = (base + 0.05) * escala, color = HB.POROS, material = Enum.Material.Sand })
+  local an = anillos or 8
+  local angMax = math.rad(86)
+  for i = 1, an do
+    local a0 = (i - 1) / an * angMax
+    local a1 = i / an * angMax
+    local y0 = HB.ALT_S * math.sin(a0)
+    local y1 = HB.ALT_S * math.sin(a1)
+    local hAnillo = math.max(y1 - y0, 0.2) + 0.08
+    local radio = HB.RAD_S * math.cos((a0 + a1) / 2) ^ 0.85
+    local color = HB.BORDE:Lerp(HB.TOPE, ((i - 1) / (an - 1)) ^ 0.6)
+    table.insert(piezas, {
+      nombre = "Cupula" .. i,
+      size = Vector3.new(hAnillo, radio * 2, radio * 2) * escala,
+      y = (base + 0.5 + (y0 + y1) / 2) * escala,
+      color = color,
+      material = Enum.Material.Fabric,
+    })
+  end
+  return piezas
+end
+local function discoEn(parent, pieza, cfBase)
+  local pt = parteDeTool(pieza.nombre, pieza.size, cfBase * CFrame.new(0, pieza.y, 0) * CFrame.Angles(0, 0, math.rad(90)), pieza.color, pieza.material)
+  pt.Shape = Enum.PartType.Cylinder
+  pt.Parent = parent
+  return pt
+end
+
+-- La comida en la mano: una fresa roja con coronita, o el Boletus mini
 local function darEnMano(player, tipo)
   local d = SE.players[player]
   if not d or d.enMano then
@@ -363,13 +433,24 @@ local function darEnMano(player, tipo)
   tool.CanBeDropped = false
   local h
   if tipo == "Hongo" then
-    tool.ToolTip = "Hongo del bosque: se come"
-    h = parteDeTool("Handle", Vector3.new(0.4, 0.75, 0.4), CFrame.new(0, 3, 0), Color3.fromRGB(228, 208, 168))
+    tool.ToolTip = "Tu Boletus del bosque: se come"
+    local piezas = piezasBoletus(0.085, 10, 8)
+    local baseP = piezas[1]
+    h = parteDeTool("Handle", baseP.size, CFrame.new(0, 3, 0), baseP.color, baseP.material)
     h.Shape = Enum.PartType.Cylinder
+    h.CFrame = CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.rad(90))
     h.Parent = tool
-    local sombrero = parteDeTool("HongoSombrero", Vector3.new(0.95, 0.5, 0.95), CFrame.new(), Color3.fromRGB(158, 102, 60))
-    sombrero.Shape = Enum.PartType.Ball
-    soldarA(tool, h, sombrero, Vector3.new(0, 0.55, 0))
+    local baseY = baseP.y
+    for i = 2, #piezas do
+      local pz = piezas[i]
+      local extra = parteDeTool(pz.nombre, pz.size, CFrame.new(0, 3 + (pz.y - baseY), 0) * CFrame.Angles(0, 0, math.rad(90)), pz.color, pz.material)
+      extra.Shape = Enum.PartType.Cylinder
+      extra.Parent = tool
+      local w = Instance.new("WeldConstraint")
+      w.Part0 = h
+      w.Part1 = extra
+      w.Parent = extra
+    end
   else
     tipo = "Fresa"
     tool.ToolTip = "Fresa del Bosque Prohibido"
@@ -465,15 +546,12 @@ local function desgarrarEnMano(player)
     suelta.Name = tipo .. "Suelta"
     local ancla
     if tipo == "Hongo" then
-      local pie = parteDeTool("HongoPie", Vector3.new(0.42, 0.85, 0.42), CFrame.new(pos.X, 2.5, pos.Z), Color3.fromRGB(228, 208, 168))
-      pie.Shape = Enum.PartType.Cylinder
-      pie.Anchored = true
-      pie.Parent = suelta
-      local som = parteDeTool("HongoSombrero", Vector3.new(1.05, 0.55, 1.05), CFrame.new(pos.X, 3.05, pos.Z), Color3.fromRGB(158, 102, 60))
-      som.Shape = Enum.PartType.Ball
-      som.Anchored = true
-      som.Parent = suelta
-      ancla = pie
+      local cfSuelo = CFrame.new(pos.X, 2.0, pos.Z)
+      for _, pz in ipairs(piezasBoletus(0.16, 12, 9)) do
+        local pt = discoEn(suelta, pz, cfSuelo)
+        pt.Anchored = true
+        ancla = ancla or pt
+      end
     else
       local fb = parteDeTool("Berry", Vector3.new(0.6, 0.74, 0.6), CFrame.new(pos.X, 2.6, pos.Z), Color3.fromRGB(232, 42, 52))
       fb.Shape = Enum.PartType.Ball

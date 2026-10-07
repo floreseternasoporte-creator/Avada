@@ -77,7 +77,7 @@ contador.Visible = false
 local function boton(texto, textSize)
   local b = Instance.new("TextButton")
   b.AnchorPoint = Vector2.new(0.5, 0.5)
-  b.Size = UDim2.new(0, 68, 0, 68)
+  b.Size = UDim2.new(0, 56, 0, 56)
   b.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
   b.BackgroundTransparency = 0.32
   b.BorderSizePixel = 0
@@ -96,14 +96,14 @@ local function boton(texto, textSize)
   return b
 end
 
-local correrBtn = boton("CORRER", 13)
-correrBtn.Position = UDim2.new(1, -94, 1, -228) -- arriba-derecha del salto
-local tiendaBtn = boton("Tienda", 13)
-tiendaBtn.Position = UDim2.new(1, -172, 1, -300) -- encima de Comer
-local desgarrarBtn = boton("Desgarrar", 10)
-desgarrarBtn.Position = UDim2.new(1, -198, 1, -134) -- a la izquierda del salto
-local comerBtn = boton("Comer", 15)
-comerBtn.Position = UDim2.new(1, -186, 1, -218) -- arriba-izquierda del salto
+local correrBtn = boton("CORRER", 10)
+correrBtn.Position = UDim2.new(1, -60, 1, -186) -- arriba-derecha del salto
+local tiendaBtn = boton("Tienda", 10)
+tiendaBtn.Position = UDim2.new(1, -128, 1, -244) -- encima de Comer
+local desgarrarBtn = boton("Desgarrar", 8)
+desgarrarBtn.Position = UDim2.new(1, -146, 1, -104) -- a la izquierda del salto
+local comerBtn = boton("Comer", 12)
+comerBtn.Position = UDim2.new(1, -136, 1, -176) -- arriba-izquierda del salto
 
 -- Correr / caminar (alternando, como pidio el dueno del juego)
 local sprint = false
@@ -182,12 +182,12 @@ RE_UI.OnClientEvent:Connect(function(st)
   if st.mano == true then
     accionComer = "Comer"
     comerBtn.Text = "Comer"
-    comerBtn.TextSize = 15
+    comerBtn.TextSize = 12
     comerBtn.Visible = true
   elseif st.sacoEnMano == true and (st.saco or 0) > 0 then
     accionComer = "Desalmacenar"
     comerBtn.Text = "Desalmacenar"
-    comerBtn.TextSize = 9
+    comerBtn.TextSize = 8
     comerBtn.Visible = true
   elseif (st.saco or 0) > 0 then
     accionComer = "Comer"
