@@ -4,8 +4,8 @@
 -- * Borra de ServerScriptService: AvadaCore, AvadaParte1, AvadaParte2
 --   (y cualquier Script viejo de Avada que veas alli).
 -- * Deja UN SOLO Script (el nombre da igual) con TODO este archivo.
--- Incluye: nucleo de combate + cuadros amarillos + arenas + rondas
--- + isla flotante + tabla TOP SORCERERS.
+-- La partida se crea en el CIRCULO MAGICO del centro de la isla:
+-- te paras dentro, entra otro mago, y arranca el duelo.
 -- Si el pegado no llega hasta la ultima linea (-- FIN TODO EN UNO), se corto.
 --===========================================================
 local S
@@ -1301,19 +1301,13 @@ do
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local ServerScriptService = game:GetService("ServerScriptService")
-local squares = S.squares
-local squareParts = S.squareParts
-local padStations = S.padStations
 local arenaData = S.arenaData
-local playerSquare = S.playerSquare
 local playerDuel = S.playerDuel
 local pendingCast = S.pendingCast
 local LOBBY_SPAWN = S.LOBBY_SPAWN
 local ROUND_TIME = S.ROUND_TIME
 local TOTAL_ROUNDS = S.TOTAL_ROUNDS
 local HOUSES = S.HOUSES
-local PAD_DATA = S.PAD_DATA
 local ARENA_CENTERS = S.ARENA_CENTERS
 local KillsOrdered = S.KillsOrdered
 local RE_BattleStart = S.RE_BattleStart
@@ -1530,7 +1524,7 @@ end
 --===========================================================
 -- LOBBY WORLD BUILD
 --===========================================================
--- La Parte 3 construye el modelo IslandLobby (isla + tabla); aqui solo se espera para colgar los pads
+-- La Parte 2 construye el modelo IslandLobby (isla + tabla); aqui se espera para montar el circulo
 local LobbyModel
 do
   local t0 = os.clock()
@@ -1546,185 +1540,126 @@ do
 end
 
 --===========================================================
--- PAD STATIONS
+-- CIRCULO CENTRAL: CREAR LA PARTIDA (estilo 99 Nights)
+-- Sin pads: te paras dentro del circulo magico y entras a la
+-- cola; con 2+ magos arranca el duelo en una arena libre.
 --===========================================================
-local function createPadStation(idx, data)
-  local pad = makePart(
-    "DuelPad_" .. idx,
-    Vector3.new(11, 0.25, 11),
-    CFrame.new(data.pos),
-    "Dark stone grey",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    false,
-    true
-  )
-  pad.Color = Color3.fromRGB(28, 24, 38)
-  squareParts[idx] = pad
+local circleQueue = {}
+local lockedPair = {}
+local arenaBusy = { false, false, false, false }
 
-  local borders = {}
-  local bOff = 5.22
-  for _, bd in ipairs({
-    { Vector3.new(11, 0.34, 0.55), Vector3.new(0, 0.08, -bOff) },
-    { Vector3.new(11, 0.34, 0.55), Vector3.new(0, 0.08, bOff) },
-    { Vector3.new(0.55, 0.34, 11), Vector3.new(-bOff, 0.08, 0) },
-    { Vector3.new(0.55, 0.34, 11), Vector3.new(bOff, 0.08, 0) },
-  }) do
-    local bp = makePart(
-      "PadBorder_" .. idx,
-      bd[1],
-      CFrame.new(data.pos + bd[2]),
-      "Bright yellow",
-      Enum.Material.Neon,
-      LobbyModel,
-      false,
-      true
-    )
-    bp.Color = Color3.fromRGB(255, 205, 64)
-    table.insert(borders, bp)
+local circleAnchor = makePart(
+  "CircleBoardAnchor",
+  Vector3.new(1, 1, 1),
+  CFrame.new(0, 15.5, 0),
+  "White",
+  Enum.Material.SmoothPlastic,
+  LobbyModel,
+  false,
+  true
+)
+circleAnchor.Transparency = 1
+
+local circleGui = Instance.new("BillboardGui")
+circleGui.Name = "CircleBoard"
+circleGui.Size = UDim2.new(13, 0, 3.6, 0)
+circleGui.StudsOffset = Vector3.new(0, 2, 0)
+circleGui.AlwaysOnTop = true
+circleGui.LightInfluence = 0
+circleGui.MaxDistance = 140
+circleGui.Parent = circleAnchor
+
+local circleTitle = Instance.new("TextLabel")
+circleTitle.Name = "Title"
+circleTitle.Size = UDim2.new(1, 0, 0.42, 0)
+circleTitle.BackgroundTransparency = 1
+circleTitle.Font = Enum.Font.LuckiestGuy
+circleTitle.TextScaled = true
+circleTitle.TextColor3 = Color3.fromRGB(255, 214, 64)
+circleTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+circleTitle.TextStrokeTransparency = 0
+circleTitle.Text = "⚔️ CÍRCULO DE DUELOS ⚔️"
+circleTitle.Parent = circleGui
+
+local circleStatus = Instance.new("TextLabel")
+circleStatus.Name = "Status"
+circleStatus.Size = UDim2.new(1, 0, 0.36, 0)
+circleStatus.Position = UDim2.new(0, 0, 0.42, 0)
+circleStatus.BackgroundTransparency = 1
+circleStatus.Font = Enum.Font.FredokaOne
+circleStatus.TextScaled = true
+circleStatus.TextColor3 = Color3.fromRGB(235, 235, 235)
+circleStatus.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+circleStatus.TextStrokeTransparency = 0.2
+circleStatus.Text = "ENTRA AL CÍRCULO PARA PELEAR"
+circleStatus.Parent = circleGui
+
+local circleSub = Instance.new("TextLabel")
+circleSub.Name = "Sub"
+circleSub.Size = UDim2.new(1, 0, 0.22, 0)
+circleSub.Position = UDim2.new(0, 0, 0.78, 0)
+circleSub.BackgroundTransparency = 1
+circleSub.Font = Enum.Font.FredokaOne
+circleSub.TextScaled = true
+circleSub.TextColor3 = Color3.fromRGB(190, 190, 200)
+circleSub.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+circleSub.TextStrokeTransparency = 0.3
+circleSub.Text = "Sal del círculo para salir de la cola"
+circleSub.Parent = circleGui
+
+local function updateCircleBoard()
+  if next(lockedPair) ~= nil then
+    circleStatus.Text = "⚡ ¡DUELO EN CAMINO! ⚡"
+    circleStatus.TextColor3 = Color3.fromRGB(255, 215, 0)
+  elseif #circleQueue >= 2 then
+    circleStatus.Text = tostring(#circleQueue) .. " MAGOS LISTOS ⚡"
+    circleStatus.TextColor3 = Color3.fromRGB(120, 255, 120)
+  elseif #circleQueue == 1 then
+    circleStatus.Text = "1 MAGO ESPERANDO RIVAL..."
+    circleStatus.TextColor3 = Color3.fromRGB(255, 230, 120)
+  else
+    circleStatus.Text = "ENTRA AL CÍRCULO PARA PELEAR"
+    circleStatus.TextColor3 = Color3.fromRGB(235, 235, 235)
   end
-
-  local bb = Instance.new("BillboardGui")
-  bb.Name = "PadCounter"
-  bb.Size = UDim2.new(7, 0, 2.2, 0)
-  bb.StudsOffset = Vector3.new(0, 4.4, 0)
-  bb.AlwaysOnTop = true
-  bb.LightInfluence = 0
-  bb.MaxDistance = 90
-  bb.Parent = pad
-  local counter = Instance.new("TextLabel")
-  counter.Name = "Count"
-  counter.Size = UDim2.new(1, 0, 1, 0)
-  counter.BackgroundTransparency = 1
-  counter.Font = Enum.Font.LuckiestGuy
-  counter.TextScaled = true
-  counter.TextColor3 = Color3.fromRGB(255, 214, 64)
-  counter.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-  counter.TextStrokeTransparency = 0
-  counter.Text = "0/2"
-  counter.Parent = bb
-
-  makePart(
-    "PadBase_" .. idx,
-    Vector3.new(13, 1.4, 13),
-    CFrame.new(data.pos + Vector3.new(0, -0.8, 0)),
-    "Dark stone grey",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    true,
-    true
-  )
-
-  local sign = makePart(
-    "PadSign_" .. idx,
-    Vector3.new(9.5, 4.6, 0.2),
-    CFrame.new(data.signPos, data.signLook),
-    "Dark stone grey",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    false,
-    true
-  )
-  local gui = Instance.new("SurfaceGui")
-  gui.Face = Enum.NormalId.Front
-  gui.AlwaysOnTop = true
-  gui.LightInfluence = 0
-  gui.Parent = sign
-
-  local holder = Instance.new("Frame")
-  holder.Size = UDim2.new(1, 0, 1, 0)
-  holder.BackgroundColor3 = Color3.fromRGB(12, 10, 20)
-  holder.BackgroundTransparency = 0.12
-  holder.BorderSizePixel = 0
-  holder.Parent = gui
-  Instance.new("UICorner", holder).CornerRadius = UDim.new(0.08, 0)
-
-  local title = Instance.new("TextLabel")
-  title.Name = "Title"
-  title.BackgroundTransparency = 1
-  title.Size = UDim2.new(1, 0, 0.40, 0)
-  title.Position = UDim2.new(0, 0, 0.06, 0)
-  title.Font = Enum.Font.LuckiestGuy
-  title.TextScaled = true
-  title.TextColor3 = data.house.neon
-  title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-  title.TextStrokeTransparency = 0.35
-  title.Text = string.upper(data.house.name)
-  title.Parent = holder
-
-  local status = Instance.new("TextLabel")
-  status.Name = "Status"
-  status.BackgroundTransparency = 1
-  status.Size = UDim2.new(1, 0, 0.30, 0)
-  status.Position = UDim2.new(0, 0, 0.54, 0)
-  status.Font = Enum.Font.FredokaOne
-  status.TextScaled = true
-  status.TextColor3 = Color3.fromRGB(230, 230, 230)
-  status.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-  status.TextStrokeTransparency = 0.4
-  status.Text = "0/2 · TOCA PARA UNIRTE"
-  status.Parent = holder
-
-  padStations[idx] = {
-    part = pad,
-    sign = sign,
-    title = title,
-    status = status,
-    house = data.house,
-    borders = borders,
-    counter = counter,
-  }
 end
 
-for i, data in ipairs(PAD_DATA) do
-  createPadStation(i, data)
-end
-print("✅ [Avada] Pads amarillos construidos: " .. #PAD_DATA)
-
--- (los pads amarillos van sobre los caminos de la isla; sin plaza ni puerta del salón)
-
-local function updateBoardForPad(idx)
-  local sq = squares[idx]
-  local st = padStations[idx]
-  local pad = squareParts[idx]
-  if not sq or not st or not pad then
-    return
-  end
-  local occupied = (#sq.players > 0) or sq.inBattle or sq.countdown
-  local borderCol = sq.inBattle and Color3.fromRGB(255, 70, 70)
-    or (#sq.players == 1 and not sq.countdown) and Color3.fromRGB(120, 255, 120)
-    or Color3.fromRGB(255, 205, 64)
-  if st.borders then
-    for _, bp in ipairs(st.borders) do
-      bp.Color = borderCol
+local function removeFromQueue(player)
+  for k, p2 in ipairs(circleQueue) do
+    if p2 == player then
+      table.remove(circleQueue, k)
+      break
     end
   end
-  if st.counter then
-    st.counter.Text = tostring(#sq.players) .. "/2"
-    st.counter.TextColor3 = borderCol
-  end
-  pad.Color = occupied and Color3.fromRGB(48, 22, 26) or Color3.fromRGB(28, 24, 38)
-  if sq.inBattle then
-    st.status.Text = "EN BATALLA"
-    st.status.TextColor3 = Color3.fromRGB(255, 100, 100)
-  elseif sq.countdown then
-    st.status.Text = "PREPARANDO"
-    st.status.TextColor3 = Color3.fromRGB(255, 215, 0)
-  elseif #sq.players == 0 then
-    st.status.Text = "0/2 · TOCA PARA UNIRTE"
-    st.status.TextColor3 = Color3.fromRGB(210, 210, 210)
-  elseif #sq.players == 1 then
-    st.status.Text = "1/2 · ESPERANDO"
-    st.status.TextColor3 = Color3.fromRGB(120, 255, 120)
-  else
-    st.status.Text = "2/2 · LISTOS"
-    st.status.TextColor3 = Color3.fromRGB(255, 255, 255)
-  end
+  updateCircleBoard()
 end
 
-for i = 1, 4 do
-  updateBoardForPad(i)
-end
+-- Estar dentro del circulo = estar en la cola de duelos
+task.spawn(function()
+  while true do
+    task.wait(0.3)
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if not playerDuel[pl] and not lockedPair[pl] then
+        local char = pl.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local inside = false
+        if hrp then
+          local d = math.sqrt(hrp.Position.X ^ 2 + hrp.Position.Z ^ 2)
+          inside = (d <= 12.5) and hrp.Position.Y > 1 and hrp.Position.Y < 12
+        end
+        local qi = table.find(circleQueue, pl)
+        if inside and not qi then
+          table.insert(circleQueue, pl)
+          updateCircleBoard()
+        elseif not inside and qi then
+          table.remove(circleQueue, qi)
+          updateCircleBoard()
+        end
+      end
+    end
+  end
+end)
+updateCircleBoard()
+print("⭕ [Avada] Circulo central listo: la partida se crea en el circulo magico")
 
 --===========================================================
 -- ARENAS
@@ -1839,31 +1774,11 @@ for i = 1, 4 do
 end
 
 --===========================================================
--- ROUND SYSTEM
+-- ROUND SYSTEM (la entrada ahora es el circulo central)
 --===========================================================
-local function removeFromSquare(player)
-  local idx = playerSquare[player]
-  if not idx then
-    return
-  end
-  local sq = squares[idx]
-  for k, p in ipairs(sq.players) do
-    if p == player then
-      table.remove(sq.players, k)
-      break
-    end
-  end
-  playerSquare[player] = nil
-  updateBoardForPad(idx)
-end
-
-local function endBattle(squareIdx)
-  local sq = squares[squareIdx]
-  if sq then
-    sq.inBattle = false
-    sq.countdown = false
-    updateBoardForPad(squareIdx)
-  end
+local function freeArena(arenaIdx)
+  arenaBusy[arenaIdx] = false
+  updateCircleBoard()
 end
 
 local function startRound(p1, p2, roundNum, arenaIdx, wins)
@@ -1941,25 +1856,16 @@ local function startRound(p1, p2, roundNum, arenaIdx, wins)
   return roundWinner
 end
 
-local function startDuel(squareIdx)
-  local sq = squares[squareIdx]
-  if sq.inBattle or sq.countdown or #sq.players < 2 then
-    return
-  end
-
-  sq.countdown = true
-  updateBoardForPad(squareIdx)
-  local p1 = sq.players[1]
-  local p2 = sq.players[2]
+local function startDuelPair(p1, p2, arenaIdx)
   freezePlayer(p1, true)
   freezePlayer(p2, true)
 
   for t = 5, 1, -1 do
-    if not playerSquare[p1] or not playerSquare[p2] then
+    if not lockedPair[p1] or not lockedPair[p2] then
       freezePlayer(p1, false)
       freezePlayer(p2, false)
-      sq.countdown = false
-      updateBoardForPad(squareIdx)
+      arenaBusy[arenaIdx] = false
+      updateCircleBoard()
       return
     end
     RE_Countdown:FireClient(p1, t)
@@ -1967,21 +1873,21 @@ local function startDuel(squareIdx)
     task.wait(1)
   end
 
-  sq.countdown = false
-  sq.inBattle = true
-  playerSquare[p1] = nil
-  playerSquare[p2] = nil
-  sq.players = {}
-  updateBoardForPad(squareIdx)
+  lockedPair[p1] = nil
+  lockedPair[p2] = nil
+  updateCircleBoard()
 
-  local arena = arenaData[squareIdx]
+  local arena = arenaData[arenaIdx]
   if not arena then
-    endBattle(squareIdx)
+    freezePlayer(p1, false)
+    freezePlayer(p2, false)
+    arenaBusy[arenaIdx] = false
+    updateCircleBoard()
     return
   end
 
-  playerDuel[p1] = { opponent = p2, arenaIdx = squareIdx }
-  playerDuel[p2] = { opponent = p1, arenaIdx = squareIdx }
+  playerDuel[p1] = { opponent = p2, arenaIdx = arenaIdx }
+  playerDuel[p2] = { opponent = p1, arenaIdx = arenaIdx }
 
   RE_BattleStart:FireClient(p1, p2.Name)
   RE_BattleStart:FireClient(p2, p1.Name)
@@ -2000,7 +1906,7 @@ local function startDuel(squareIdx)
     if not playerDuel[p1] or not playerDuel[p2] then
       break
     end
-    local rWinner = startRound(p1, p2, round, squareIdx, wins)
+    local rWinner = startRound(p1, p2, round, arenaIdx, wins)
     if rWinner == p1 then
       wins[1] += 1
     elseif rWinner == p2 then
@@ -2061,63 +1967,45 @@ local function startDuel(squareIdx)
       end
       returnToLobby(overallLoser)
     end
-    endBattle(squareIdx)
+    freeArena(arenaIdx)
   end)
 end
 
---===========================================================
--- TOUCH PADS
---===========================================================
-for i, sqPart in ipairs(squareParts) do
-  sqPart.Touched:Connect(function(hit)
-    local char = hit and hit.Parent
-    local player = char and Players:GetPlayerFromCharacter(char)
-    if not player then
-      return
-    end
-    if playerSquare[player] or playerDuel[player] then
-      return
-    end
-    local sq = squares[i]
-    if sq.inBattle or sq.countdown or #sq.players >= 2 then
-      return
-    end
-    for _, p in ipairs(sq.players) do
-      if p == player then
-        return
+
+-- Emparejador: cada 0.5s toma parejas de la cola del circulo
+task.spawn(function()
+  while true do
+    task.wait(0.5)
+    for k = #circleQueue, 1, -1 do
+      local pl = circleQueue[k]
+      if not pl or not pl.Parent then
+        table.remove(circleQueue, k)
       end
     end
-    playerSquare[player] = i
-    table.insert(sq.players, player)
-    updateBoardForPad(i)
-    if #sq.players == 2 then
-      task.spawn(startDuel, i)
-    end
-  end)
-end
-
-local SQUARE_RADIUS = 6.0
-RunService.Heartbeat:Connect(function()
-  for i, sqPos in ipairs(PAD_DATA) do
-    local sq = squares[i]
-    if not sq.inBattle and not sq.countdown then
-      for k = #sq.players, 1, -1 do
-        local pl = sq.players[k]
-        local char = pl and pl.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then
-          table.remove(sq.players, k)
-          playerSquare[pl] = nil
-          updateBoardForPad(i)
-        else
-          local dist = (Vector3.new(hrp.Position.X, sqPos.pos.Y, hrp.Position.Z) - sqPos.pos).Magnitude
-          if dist > SQUARE_RADIUS then
-            table.remove(sq.players, k)
-            playerSquare[pl] = nil
-            updateBoardForPad(i)
-          end
+    while #circleQueue >= 2 do
+      local freeIdx
+      for i2 = 1, 4 do
+        if not arenaBusy[i2] then
+          freeIdx = i2
+          break
         end
       end
+      if not freeIdx then
+        break
+      end
+      local p1 = table.remove(circleQueue, 1)
+      local p2 = table.remove(circleQueue, 1)
+      if not (p1 and p2 and p1.Parent and p2.Parent) then
+        if p1 and p1.Parent then
+          table.insert(circleQueue, 1, p1)
+        end
+        break
+      end
+      arenaBusy[freeIdx] = true
+      lockedPair[p1] = { opponent = p2, arenaIdx = freeIdx }
+      lockedPair[p2] = { opponent = p1, arenaIdx = freeIdx }
+      updateCircleBoard()
+      task.spawn(startDuelPair, p1, p2, freeIdx)
     end
   end
 end)
@@ -2135,7 +2023,7 @@ Players.PlayerAdded:Connect(function(player)
   kills.Parent = ls
   loadKills(player)
   player.CharacterAdded:Connect(function(char)
-    removeFromSquare(player)
+    removeFromQueue(player)
     pendingCast[player] = nil
     local hrp = char:WaitForChild("HumanoidRootPart")
     task.wait(0.15)
@@ -2154,8 +2042,19 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-  removeFromSquare(player)
+  removeFromQueue(player)
   saveKills(player)
+  if lockedPair[player] then
+    local info = lockedPair[player]
+    lockedPair[player] = nil
+    local opp = info.opponent
+    if opp and lockedPair[opp] then
+      lockedPair[opp] = nil
+      freezePlayer(opp, false)
+    end
+    arenaBusy[info.arenaIdx] = false
+    updateCircleBoard()
+  end
   if playerDuel[player] then
     local info = playerDuel[player]
     local opp = info.opponent
@@ -2169,12 +2068,8 @@ Players.PlayerRemoving:Connect(function(player)
         if c and c:FindFirstChild("HumanoidRootPart") then
           c.HumanoidRootPart.CFrame = CFrame.new(LOBBY_SPAWN)
         end
-        local sq = squares[info.arenaIdx]
-        if sq then
-          sq.inBattle = false
-          sq.countdown = false
-          updateBoardForPad(info.arenaIdx)
-        end
+        arenaBusy[info.arenaIdx] = false
+        updateCircleBoard()
       end)
     end
   end
@@ -3329,6 +3224,6 @@ end
 
 -- FIN PARTE 2 (lobby visual: isla flotante + tabla TOP SORCERERS)
 end
-print("✅ [Avada] TODO EN UNO activo: nucleo + pads + isla + tabla")
+print("✅ [Avada] TODO EN UNO activo: nucleo + circulo + isla + tabla")
 
 -- FIN TODO EN UNO
