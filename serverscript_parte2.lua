@@ -9,14 +9,9 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
--- Datos propios minimos (copia de la Parte 1; solo posiciones de pads y el
--- DataStore de kills para la tabla). Si cambian alla, actualizar aqui.
-local PAD_DATA = {
-  { pos = Vector3.new(-21.2, 3.6, -21.2) },
-  { pos = Vector3.new(21.2, 3.6, -21.2) },
-  { pos = Vector3.new(-21.2, 3.6, 21.2) },
-  { pos = Vector3.new(21.2, 3.6, 21.2) },
-}
+-- Solo necesita el DataStore de kills para la tabla (con respaldo si
+-- Studio Lite no deja usarlo en Play).
+-- (pads eliminados: la partida se crea en el circulo central)
 local KillsOrdered
 do
   local okDS, resDS = pcall(function()
@@ -443,13 +438,7 @@ for i = 1, 42 do
   local a = i * 2.39996
   local r = 15 + (i % 33)
   local x, z = math.cos(a) * r, math.sin(a) * r
-  local nearPad = false
-  for _, pd2 in ipairs(PAD_DATA) do
-    if math.abs(x - pd2.pos.X) < 9.5 and math.abs(z - pd2.pos.Z) < 9.5 then
-      nearPad = true
-    end
-  end
-  if math.abs(z - x) > 7.5 and math.abs(z + x) > 7.5 and not nearPad and not (z > 36 and math.abs(x) < 28) then
+  if math.abs(z - x) > 7.5 and math.abs(z + x) > 7.5 and not (z > 36 and math.abs(x) < 28) then
     local tuft = makePart(
       "GrassTuft",
       Vector3.new(0.55, 0.75, 0.55),
