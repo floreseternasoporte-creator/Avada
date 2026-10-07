@@ -408,6 +408,53 @@ for i = 1, 130 do
   end
 end
 
+
+-- Hongos comestibles como el de referencia: pie crema grueso con base
+-- ancha, sombrero marron en forma de cupula y motas claras encima.
+-- Esparcidos por el bosque; PARTIDA los hace recogibles.
+local function hongoDelBosque(x, z, id, esc)
+  local crema = Color3.fromRGB(228, 208, 168)
+  local crema2 = Color3.fromRGB(214, 190, 146)
+  local marron = Color3.fromRGB(158, 102, 60)
+  local marron2 = Color3.fromRGB(138, 86, 48)
+  local function pieza(nombre, size, cf, color)
+    local pt = bp(nombre, size, cf, color, false)
+    pt:SetAttribute("HongoId", id)
+    return pt
+  end
+  -- base ancha y pie grueso en dos tramos
+  pieza("HongoBase", Vector3.new(1.5 * esc, 0.55 * esc, 1.5 * esc), CFrame.new(x, 2.0 + 0.27 * esc, z), crema2).Shape = Enum.PartType.Cylinder
+  pieza("HongoPie", Vector3.new(1.05 * esc, 1.7 * esc, 1.05 * esc), CFrame.new(x, 2.0 + 1.4 * esc, z), crema).Shape = Enum.PartType.Cylinder
+  pieza("HongoPieAlto", Vector3.new(0.88 * esc, 1.1 * esc, 0.88 * esc), CFrame.new(x, 2.0 + 2.65 * esc, z), crema).Shape = Enum.PartType.Cylinder
+  -- anillo claro bajo el sombrero
+  pieza("HongoAnillo", Vector3.new(1.7 * esc, 0.28 * esc, 1.7 * esc), CFrame.new(x, 2.0 + 3.2 * esc, z), crema2).Shape = Enum.PartType.Cylinder
+  -- el sombrero: cupula ancha marrón
+  local sombrero = pieza("HongoSombrero", Vector3.new(3.3 * esc, 1.55 * esc, 3.3 * esc), CFrame.new(x, 2.0 + 3.85 * esc, z), marron)
+  sombrero.Shape = Enum.PartType.Ball
+  sombrero:SetAttribute("Tipo", "Hongo")
+  -- borde inferior del sombrero, un poco mas oscuro
+  pieza("HongoBorde", Vector3.new(3.36 * esc, 0.34 * esc, 3.36 * esc), CFrame.new(x, 2.0 + 3.32 * esc, z), marron2).Shape = Enum.PartType.Cylinder
+  -- motas claras del sombrero
+  for m = 1, 4 do
+    local ma = m * 1.7 + id
+    local mota = pieza(
+      "HongoMota",
+      Vector3.new(0.5 * esc, 0.16 * esc, 0.5 * esc),
+      CFrame.new(x + math.cos(ma) * 0.85 * esc, 2.0 + 4.5 * esc, z + math.sin(ma) * 0.85 * esc),
+      Color3.fromRGB(238, 224, 192)
+    )
+    mota.Shape = Enum.PartType.Ball
+  end
+end
+for hi = 1, 14 do
+  local a = rngBosque:NextNumber(0, math.pi * 2)
+  local r = rngBosque:NextNumber(36, 208)
+  local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
+  if lejosDeJaulas(x, z) then
+    hongoDelBosque(x, z, hi, rngBosque:NextNumber(0.85, 1.45))
+  end
+end
+
 -- Cabanas (decoracion)
 local function cabana(cx, cz, yaw)
   local base = CFrame.new(cx, 2.0, cz) * CFrame.Angles(0, yaw, 0)
