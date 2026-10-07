@@ -7,6 +7,7 @@
 -- Si el pegado no llega hasta la ultima linea (-- FIN PARTE 2), se corto.
 --===========================================================
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 -- Datos propios minimos (copia de la Parte 1; solo posiciones de pads y el
 -- DataStore de kills para la tabla). Si cambian alla, actualizar aqui.
@@ -584,7 +585,7 @@ local function refreshLeaderboard()
       local thumb = ""
       if uid then
         local okN, nR = pcall(function()
-          return Players:GetNameFromUserIdAsync(uid)
+          return Players:GetNameByUserIdAsync(uid)
         end)
         if okN and nR then
           dName = nR
@@ -596,6 +597,9 @@ local function refreshLeaderboard()
         end)
         if okT and tR then
           thumb = tR
+        end
+        if thumb == "" then
+          thumb = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(uid) .. "&w=100&h=100"
         end
       end
       row.name.Text = dName
@@ -746,38 +750,7 @@ do
       bush.Color = greens[(k % 3) + 1]
     end
 
-    -- Llama magica sobre cristal, al frente interior del pilar (acento, sin bañar la piedra)
-    local FX = PX - sd * 4.6 -- fuegos SENTADOS en pedestal a los pies del pilar (antes flotaban a media columna)
-    MP("FlamePedestal", Vector3.new(1.5, 0.55, 1.5), CFrame.new(FX, 3.22, PZ - 3.55), "Really black", nil, false)
-    MP("FlameCup", Vector3.new(1.0, 0.32, 1.0), CFrame.new(FX, 3.65, PZ - 3.55), "Really black", nil, false)
-    local fcry =
-      MP("FlameOrb", Vector3.new(0.95, 0.95, 0.95), CFrame.new(FX, 4.3, PZ - 3.55), "White", Enum.Material.Neon, false)
-    fcry.Shape = Enum.PartType.Ball
-    fcry.Color = flameCol
-    local fcore =
-      MP("FlameCore", Vector3.new(0.5, 0.5, 0.5), CFrame.new(FX, 4.3, PZ - 3.55), "White", Enum.Material.Neon, false)
-    fcore.Shape = Enum.PartType.Ball
-    fcore.Color = Color3.fromRGB(255, 244, 214)
-    local ff = Instance.new("Fire")
-    ff.Heat = 5
-    ff.Size = 2.0
-    ff.Color = flameCol
-    ff.SecondaryColor = Color3.fromRGB(255, 255, 255)
-    ff.Parent = fcry
-    local fs = Instance.new("ParticleEmitter")
-    fs.Color = ColorSequence.new(flameCol, Color3.fromRGB(255, 255, 255))
-    fs.LightEmission = 1
-    fs.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
-    fs.Speed = NumberRange.new(3, 7)
-    fs.Lifetime = NumberRange.new(0.35, 0.75)
-    fs.Rate = 22
-    fs.SpreadAngle = Vector2.new(35, 35)
-    fs.Parent = fcry
-    local fl = Instance.new("PointLight")
-    fl.Brightness = 1.8
-    fl.Range = 9
-    fl.Color = flameCol
-    fl.Parent = fcry
+    -- (fuegos eliminados por peticion del usuario)
 
     -- Farol colgante con luz suave
     local arm = MP(
@@ -884,15 +857,15 @@ do
     )
     wedge(
       "GargWingA",
-      Vector3.new(5.0, 3.6, 0.5),
-      CFrame.new(PX + sd * 3.1, GY + 5.3, PZ + 0.75) * CFrame.Angles(0, math.rad(sd * -18), math.rad(sd * 14)),
+      Vector3.new(3.0, 2.6, 0.45),
+      CFrame.new(PX + sd * 2.3, GY + 5.5, PZ + 0.55) * CFrame.Angles(0, math.rad(sd * -12), math.rad(sd * 32)),
       Color3.fromRGB(11, 10, 18),
       false
     )
     wedge(
       "GargWingB",
-      Vector3.new(3.4, 2.4, 0.45),
-      CFrame.new(PX + sd * 5.6, GY + 6.1, PZ + 0.9) * CFrame.Angles(0, math.rad(sd * -24), math.rad(sd * 22)),
+      Vector3.new(2.2, 1.7, 0.4),
+      CFrame.new(PX + sd * 4.0, GY + 6.35, PZ + 0.65) * CFrame.Angles(0, math.rad(sd * -18), math.rad(sd * 40)),
       Color3.fromRGB(11, 10, 18),
       false
     )
