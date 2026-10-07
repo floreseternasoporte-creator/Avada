@@ -90,7 +90,7 @@ end
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
 local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego
-local jaulas, jaulasPos, lenaNodos, bayas, cofres, fireStatus
+local jaulas, jaulasPos, lenaNodos, fresas, cofres, fireStatus
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
 
@@ -106,7 +106,7 @@ local function escanearBosque()
     llamaBase = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
     anilloSeguro = {}
     lenaNodos, bayas, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}
-    local bayasPorGrupo = {}
+    local fresasPorClave = {}
     for _, d in ipairs(Bosque:GetDescendants()) do
       if d:IsA("BasePart") then
         local g = d:GetAttribute("Grupo")
@@ -124,10 +124,12 @@ local function escanearBosque()
         local tipo = d:GetAttribute("Tipo")
         if tipo == "Lena" then
           table.insert(lenaNodos, { part = d, pos = d.Position, listoEn = 0 })
-        elseif tipo == "Baya" then
+        elseif tipo == "Baya" or tipo == "Tapa" or tipo == "Tallo" then
           local gi = d:GetAttribute("Arbusto") or 1
-          bayasPorGrupo[gi] = bayasPorGrupo[gi] or { frutos = {}, listoEn = 0 }
-          table.insert(bayasPorGrupo[gi].frutos, d)
+          local fj = d:GetAttribute("Fresa") or 1
+          local clave = gi .. "/" .. fj
+          fresasPorClave[clave] = fresasPorClave[clave] or {}
+          fresasPorClave[clave][tipo] = d
         elseif tipo == "Cofre" then
           table.insert(cofres, { pos = d.Position, listo = 0, base = d })
         end
@@ -135,8 +137,10 @@ local function escanearBosque()
         -- se completa abajo junto con su ancla
       end
     end
-    for _, lst in pairs(bayasPorGrupo) do
-      table.insert(bayas, lst)
+    for _, conj in pairs(fresasPorClave) do
+      if conj.Baya then
+        table.insert(fresas, { berry = conj.Baya, tapa = conj.Tapa, tallo = conj.Tallo, disponible = true })
+      end
     end
     if llamaParts[1] then
       llamaLight = llamaParts[1]:FindFirstChildOfClass("PointLight")
@@ -270,6 +274,295 @@ local function bajaKill(player)
 end
 
 --===========================================================
+
+--===========================================================
+-- OBJETOS: fresas en la mano, SACO MAGICO (x/5) y acciones
+-- (como en 99 Noches: Comer, Desgarrar, Tienda, Desalmacenar)
+--===========================================================
+local RSvc = game:GetService("ReplicatedStorage")
+local function remotoBosque(nombre)
+  local r = RSvc:FindFirstChild(nombre)
+  if not r then
+    r = Instance.new("RemoteEvent")
+    r.Name = nombre
+    r.Parent = RSvc
+  end
+  return r
+end
+local RE_UI = remotoBosque("AvadaBosqueUI")
+local RE_ACC = remotoBosque("AvadaBosqueAccion")
+local SACO_MAX = 5
+
+local function sincronizaUI(player)
+  local d = SE.players[player]
+  if not (player and player.Parent) then
+    return
+  end
+  pcall(function()
+    RE_UI:FireClient(player, {
+      enPartida = SE.on and d ~= nil,
+      hambre = d and math.floor(d.hambre or 100) or 100,
+      mano = (d and d.toolFresa ~= nil) or false,
+      saco = d and #(d.saco or {}) or 0,
+      sacoMax = SACO_MAX,
+      sacoEnMano = (d and d.sacoEnMano) or false,
+      noche = SE.noche,
+      fase = SE.fase,
+    })
+  end)
+end
+
+local function parteDeTool(nombre, size, cf, color, material)
+  local pt = Instance.new("Part")
+  pt.Name = nombre
+  pt.Size = size
+  pt.CFrame = cf
+  pt.Color = color
+  pt.Material = material or Enum.Material.SmoothPlastic
+  pt.CanCollide = false
+  pt.CastShadow = false
+  pt.Massless = true
+  return pt
+end
+
+-- La fresa en la mano (se puede comer, desgarrar o guardar en el saco)
+local function darFresaEnMano(player)
+  local d = SE.players[player]
+  if not d or d.toolFresa then
+    return
+  end
+  local tool = Instance.new("Tool")
+  tool.Name = "Fresa"
+  tool.ToolTip = "Fresa del Bosque Prohibido"
+  tool.CanBeDropped = false
+  local h = parteDeTool("Handle", Vector3.new(0.66, 0.8, 0.66), CFrame.new(0, 3, 0), Color3.fromRGB(232, 42, 52))
+  h.Shape = Enum.PartType.Ball
+  h.Parent = tool
+  local tapa = parteDeTool("BerryCap", Vector3.new(0.46, 0.2, 0.46), CFrame.new(), Color3.fromRGB(40, 120, 44))
+  tapa.Shape = Enum.PartType.Ball
+  tapa.CFrame = h.CFrame * CFrame.new(0, 0.45, 0)
+  tapa.Parent = tool
+  local w = Instance.new("WeldConstraint")
+  w.Part0 = h
+  w.Part1 = tapa
+  w.Parent = tapa
+  tool.Parent = player:FindFirstChildOfClass("Backpack")
+  d.toolFresa = tool
+  local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+  if hum then
+    pcall(function()
+      hum:EquipTool(tool)
+    end)
+  end
+  sincronizaUI(player)
+end
+
+-- El saco del mago: marron con banda purpura y estrella dorada, guarda 5
+local function darSacoMago(player)
+  local d = SE.players[player]
+  if not d or d.toolSaco then
+    return
+  end
+  local tool = Instance.new("Tool")
+  tool.Name = "Saco mágico"
+  tool.ToolTip = "Tu saco de mago: guarda hasta " .. SACO_MAX .. " cosas"
+  tool.CanBeDropped = false
+  local h = parteDeTool("Handle", Vector3.new(1.05, 1.2, 1.05), CFrame.new(0, 3, 0), Color3.fromRGB(156, 108, 62))
+  h.Shape = Enum.PartType.Ball
+  h.Parent = tool
+  local function piezaSaco(nombre, size, off, color, material)
+    local pz = parteDeTool(nombre, size, CFrame.new(), color, material)
+    pz.CFrame = h.CFrame * CFrame.new(off)
+    pz.Parent = tool
+    local w = Instance.new("WeldConstraint")
+    w.Part0 = h
+    w.Part1 = pz
+    w.Parent = pz
+    return pz
+  end
+  piezaSaco("SackBand", Vector3.new(0.78, 0.3, 0.78), Vector3.new(0, 0.48, 0), Color3.fromRGB(96, 52, 140))
+  local nudo = piezaSaco("SackKnot", Vector3.new(0.42, 0.42, 0.42), Vector3.new(0, 0.78, 0), Color3.fromRGB(120, 80, 44))
+  nudo.Shape = Enum.PartType.Ball
+  local estrella = piezaSaco("SackStar", Vector3.new(0.4, 0.4, 0.12), Vector3.new(0, -0.05, -0.52), Color3.fromRGB(255, 196, 48), Enum.Material.Neon)
+  estrella.CFrame = h.CFrame * CFrame.new(0, -0.05, -0.52) * CFrame.Angles(0, 0, math.rad(45))
+  tool.Parent = player:FindFirstChildOfClass("Backpack")
+  d.toolSaco = tool
+  tool.Equipped:Connect(function()
+    if SE.players[player] == d then
+      d.sacoEnMano = true
+      sincronizaUI(player)
+    end
+  end)
+  tool.Unequipped:Connect(function()
+    if SE.players[player] == d then
+      d.sacoEnMano = false
+      sincronizaUI(player)
+    end
+  end)
+  sincronizaUI(player)
+end
+
+local function comerFresa(player, desdeSaco)
+  local d = SE.players[player]
+  if not d then
+    return
+  end
+  if desdeSaco then
+    if #d.saco <= 0 then
+      return
+    end
+    table.remove(d.saco, 1)
+  else
+    if not d.toolFresa then
+      return
+    end
+    d.toolFresa:Destroy()
+    d.toolFresa = nil
+  end
+  d.hambre = math.min(100, d.hambre + 30)
+  sincronizaUI(player)
+end
+
+local function desgarrarFresa(player)
+  local d = SE.players[player]
+  if not d or not d.toolFresa then
+    return
+  end
+  d.toolFresa:Destroy()
+  d.toolFresa = nil
+  -- la fresa cae al suelo y otro mago (o tu mismo) la puede recoger
+  local char = player.Character
+  local hrp = char and char:FindFirstChild("HumanoidRootPart")
+  if hrp then
+    local pos = hrp.Position + hrp.CFrame.LookVector * 2.5
+    local suelta = Instance.new("Model")
+    suelta.Name = "FresaSuelta"
+    local fb = parteDeTool("Berry", Vector3.new(0.6, 0.74, 0.6), CFrame.new(pos.X, 2.6, pos.Z), Color3.fromRGB(232, 42, 52))
+    fb.Shape = Enum.PartType.Ball
+    fb.Anchored = true
+    fb.Parent = suelta
+    local tapa = parteDeTool("BerryCap", Vector3.new(0.44, 0.18, 0.44), CFrame.new(pos.X, 3.05, pos.Z), Color3.fromRGB(40, 120, 44))
+    tapa.Shape = Enum.PartType.Ball
+    tapa.Anchored = true
+    tapa.Parent = suelta
+    local pr = Instance.new("ProximityPrompt")
+    pr.ActionText = "Recoger"
+    pr.ObjectText = "Fresa"
+    pr.HoldDuration = 0
+    pr.MaxActivationDistance = 9
+    pr.RequiresLineOfSight = false
+    pr.Parent = fb
+    pr.Triggered:Connect(function(otro)
+      if jugadorEnPartida(otro) and SE.players[otro].vivo and not SE.players[otro].toolFresa then
+        suelta:Destroy()
+        darFresaEnMano(otro)
+      end
+    end)
+    suelta.Parent = workspace
+  end
+  sincronizaUI(player)
+end
+
+local function guardarEnSaco(player) -- boton "Tienda": mete la fresa al saco
+  local d = SE.players[player]
+  if not d or not d.toolFresa or #d.saco >= SACO_MAX then
+    return
+  end
+  d.toolFresa:Destroy()
+  d.toolFresa = nil
+  table.insert(d.saco, "Fresa")
+  sincronizaUI(player)
+end
+
+local function desalmacenar(player) -- saca una fresa del saco a la mano
+  local d = SE.players[player]
+  if not d or d.toolFresa or #d.saco <= 0 then
+    return
+  end
+  table.remove(d.saco, 1)
+  darFresaEnMano(player)
+  sincronizaUI(player)
+end
+
+local function limpiarObjetos(player)
+  local d = SE.players[player]
+  if not d then
+    return
+  end
+  if d.toolFresa then
+    d.toolFresa:Destroy()
+    d.toolFresa = nil
+  end
+  if d.toolSaco then
+    d.toolSaco:Destroy()
+    d.toolSaco = nil
+  end
+  d.saco = {}
+  d.sacoEnMano = false
+end
+
+local function recogerFresaDelArbusto(player, fr)
+  if not fr.disponible or not jugadorEnPartida(player) then
+    return
+  end
+  local d = SE.players[player]
+  if not d.vivo or d.toolFresa then
+    return
+  end
+  fr.disponible = false
+  for _, parte in ipairs({ fr.berry, fr.tapa, fr.tallo }) do
+    if parte then
+      parte.Transparency = 1
+    end
+  end
+  if fr.prompt then
+    fr.prompt.Enabled = false
+  end
+  darFresaEnMano(player)
+  task.delay(18, function()
+    fr.disponible = true
+    for _, parte in ipairs({ fr.berry, fr.tapa, fr.tallo }) do
+      if parte and parte.Parent then
+        parte.Transparency = 0
+      end
+    end
+    if fr.prompt then
+      fr.prompt.Enabled = true
+    end
+  end)
+end
+
+RE_ACC.OnServerEvent:Connect(function(player, accion)
+  if not jugadorEnPartida(player) or not SE.players[player].vivo then
+    return
+  end
+  if accion == "Comer" then
+    if SE.players[player].toolFresa then
+      comerFresa(player, false)
+    else
+      comerFresa(player, true)
+    end
+  elseif accion == "Desgarrar" then
+    desgarrarFresa(player)
+  elseif accion == "Tienda" then
+    guardarEnSaco(player)
+  elseif accion == "Desalmacenar" then
+    desalmacenar(player)
+  end
+end)
+
+-- el hambre baja sin parar: la barra de la interfaz se refresca sola
+task.spawn(function()
+  while true do
+    task.wait(1.5)
+    if SE.on then
+      for player, _ in pairs(SE.players) do
+        sincronizaUI(player)
+      end
+    end
+  end
+end)
+
 -- SOMBRAS (las criaturas de la noche)
 --===========================================================
 local function crearSombra(pos, esGuardian, jaulaIdx, tipo)
@@ -521,6 +814,7 @@ end
 local LightingSvc = game:GetService("Lighting")
 
 local function volverAlLobby(player)
+  limpiarObjetos(player)
   local char = player and player.Character
   if char then
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -548,14 +842,16 @@ local function finPartida(victoria)
   end
   LightingSvc.ClockTime = 13.2
   LightingSvc.FogEnd = 100000
-  if victoria then
-    circleTitle.Text = "BOSQUE SUPERADO"
-    circleStatus.Text = "Los magos vencieron las " .. NOCHES_META .. " noches"
-  else
-    circleTitle.Text = "BOSQUE PROHIBIDO"
-    circleStatus.Text = "La partida termino en la noche " .. math.max(SE.noche, 1)
+  if circleTitle and circleStatus and circleSub then
+    if victoria then
+      circleTitle.Text = "BOSQUE SUPERADO"
+      circleStatus.Text = "Los magos vencieron las " .. NOCHES_META .. " noches"
+    else
+      circleTitle.Text = "BOSQUE PROHIBIDO"
+      circleStatus.Text = "La partida termino en la noche " .. math.max(SE.noche, 1)
+    end
+    circleSub.Text = "Párate en el círculo para jugar otra vez"
   end
-  circleSub.Text = "Párate en el círculo para jugar otra vez"
   for player, _ in pairs(SE.players) do
     volverAlLobby(player)
   end
@@ -820,27 +1116,19 @@ local function conectarToques()
       end
     end)
   end
-  for _, b in ipairs(bayas) do
-    for _, fb in ipairs(b.frutos) do
-      fb.Touched:Connect(function(hit)
-        if not SE.on or os.clock() < b.listoEn then
-          return
-        end
-        local player = jugadorDe(hit)
-        if player and jugadorEnPartida(player) and SE.players[player].vivo then
-          SE.players[player].hambre = math.min(100, SE.players[player].hambre + 30)
-          b.listoEn = os.clock() + 15
-          for _, f2 in ipairs(b.frutos) do
-            f2.Transparency = 1
-          end
-          task.delay(15, function()
-            for _, f2 in ipairs(b.frutos) do
-              f2.Transparency = 0
-            end
-          end)
-        end
-      end)
-    end
+  for _, fr in ipairs(fresas) do
+    local pr = Instance.new("ProximityPrompt")
+    pr.Name = "RecogerFresa"
+    pr.ActionText = "Recoger"
+    pr.ObjectText = "Fresa"
+    pr.HoldDuration = 0
+    pr.MaxActivationDistance = 9
+    pr.RequiresLineOfSight = false
+    pr.Parent = fr.berry
+    fr.prompt = pr
+    pr.Triggered:Connect(function(player)
+      recogerFresaDelArbusto(player, fr)
+    end)
   end
   deposito.Touched:Connect(function(hit)
     if not SE.on then
@@ -943,7 +1231,8 @@ local function iniciarPartida(lista)
   for _, player in ipairs(lista) do
     if player and player.Parent then
       k += 1
-      SE.players[player] = { vivo = true, lenos = 0, hambre = 100 }
+      SE.players[player] = { vivo = true, lenos = 0, hambre = 100, saco = {}, sacoEnMano = false, toolFresa = nil, toolSaco = nil }
+      darSacoMago(player)
       local char = player.Character
       if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")

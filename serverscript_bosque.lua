@@ -454,18 +454,47 @@ for i = 1, 10 do
   local a = (i / 10) * math.pi * 2 + 0.9
   local r = 55 + (i % 3) * 50
   local np = Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
-  bball("BerryBush", 3.0, CFrame.new(np.X, np.Y + 1.4, np.Z), Color3.fromRGB(46, 116, 44), false)
-  local frutos = {}
-  for j = 1, 5 do
-    local fb = bp(
-      "Berry",
-      Vector3.new(0.55, 0.55, 0.55),
-      CFrame.new(np.X + math.cos(j * 2.2) * 1.3, np.Y + 2.2 + math.sin(j * 3.1) * 0.5, np.Z + math.sin(j * 2.2) * 1.3),
-      Color3.fromRGB(235, 60, 80),
+  -- arbusto de fresas como el de referencia: copa redonda de hojas en dos
+  -- verdes y fresas rojas colgando por el borde (tallo + fresa + coronita)
+  bcyl("BerryStub", 0.9, 0.55, CFrame.new(np.X, np.Y + 0.45, np.Z), Color3.fromRGB(92, 58, 32), false)
+  local hojas = {
+    { 0, 2.5, 0, 3.1 },
+    { 1.15, 2.15, 0.4, 2.3 },
+    { -1.1, 2.2, -0.35, 2.35 },
+    { 0.35, 2.2, 1.1, 2.25 },
+    { -0.4, 2.15, -1.15, 2.2 },
+    { 0.1, 3.25, -0.1, 2.3 },
+  }
+  for hi, h in ipairs(hojas) do
+    local hoja = bball(
+      "BerryLeaf",
+      h[4],
+      CFrame.new(np.X + h[1], np.Y + h[2], np.Z + h[3]),
+      (hi % 2 == 0) and Color3.fromRGB(56, 142, 54) or Color3.fromRGB(44, 118, 46),
       false
     )
+    hoja.Size = Vector3.new(h[4], h[4] * 0.78, h[4])
+  end
+  local frutos = {}
+  for j = 1, 5 do
+    local ang = j * 2.25 + i
+    local fx, fz = np.X + math.cos(ang) * 1.55, np.Z + math.sin(ang) * 1.55
+    local fy = np.Y + 1.62 + math.sin(j * 2.7) * 0.22
+    local tallo = bp("BerryStem", Vector3.new(0.16, 0.85, 0.16), CFrame.new(fx, fy + 0.55, fz) * CFrame.Angles(math.rad(14), 0, math.rad(9)), Color3.fromRGB(38, 102, 40), false)
+    tallo:SetAttribute("Tipo", "Tallo")
+    tallo:SetAttribute("Arbusto", i)
+    tallo:SetAttribute("Fresa", j)
+    local fb = bp("Berry", Vector3.new(0.6, 0.74, 0.6), CFrame.new(fx, fy, fz), Color3.fromRGB(232, 42, 52), false)
+    fb.Shape = Enum.PartType.Ball
+    fb.Material = Enum.Material.SmoothPlastic
     fb:SetAttribute("Tipo", "Baya")
     fb:SetAttribute("Arbusto", i)
+    fb:SetAttribute("Fresa", j)
+    local tapa = bp("BerryCap", Vector3.new(0.44, 0.18, 0.44), CFrame.new(fx, fy + 0.38, fz), Color3.fromRGB(40, 120, 44), false)
+    tapa.Shape = Enum.PartType.Ball
+    tapa:SetAttribute("Tipo", "Tapa")
+    tapa:SetAttribute("Arbusto", i)
+    tapa:SetAttribute("Fresa", j)
     table.insert(frutos, fb)
   end
   table.insert(bayas, { frutos = frutos, listoEn = 0 })
