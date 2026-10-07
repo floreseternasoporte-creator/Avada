@@ -590,6 +590,7 @@ for i = 1, 12 do
   leaderboardRows[i] = { row = row, rank = rank, icon = ic, avatar = av, name = nm, kills = kl }
 end
 
+local nameCache = {}
 local function refreshLeaderboard()
   local ok, pages = pcall(function()
     return KillsOrdered:GetSortedAsync(false, 12)
@@ -613,13 +614,22 @@ local function refreshLeaderboard()
       local dName = "Mago"
       local thumb = ""
       if uid then
-        local okN, nR = pcall(function()
-          return Players:GetNameByUserIdAsync(uid)
-        end)
-        if okN and nR then
-          dName = nR
+        if nameCache[uid] then
+          dName = nameCache[uid]
         else
-          dName = "ID " .. tostring(uid)
+          local plrNow = Players:GetPlayerByUserId(uid)
+          if plrNow then
+            dName = plrNow.Name
+            nameCache[uid] = dName
+          else
+            local okN, nR = pcall(function()
+              return Players:GetNameByUserIdAsync(uid)
+            end)
+            if okN and nR and nR ~= "" then
+              dName = nR
+              nameCache[uid] = nR
+            end
+          end
         end
         local okT, tR = pcall(function()
           return Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
@@ -887,15 +897,15 @@ do
     )
     wedge(
       "GargWingA",
-      Vector3.new(3.0, 2.6, 0.45),
-      CFrame.new(PX + sd * 2.3, GY + 5.5, PZ + 0.55) * CFrame.Angles(0, math.rad(sd * -12), math.rad(sd * 32)),
+      Vector3.new(4.0, 2.9, 0.35),
+      CFrame.new(PX + sd * 2.5, GY + 5.2, PZ + 1.05) * CFrame.Angles(0, 0, math.rad(sd * 26)),
       Color3.fromRGB(11, 10, 18),
       false
     )
     wedge(
       "GargWingB",
-      Vector3.new(2.2, 1.7, 0.4),
-      CFrame.new(PX + sd * 4.0, GY + 6.35, PZ + 0.65) * CFrame.Angles(0, math.rad(sd * -18), math.rad(sd * 40)),
+      Vector3.new(2.8, 2.0, 0.3),
+      CFrame.new(PX + sd * 4.6, GY + 6.1, PZ + 1.05) * CFrame.Angles(0, 0, math.rad(sd * 50)),
       Color3.fromRGB(11, 10, 18),
       false
     )
@@ -956,17 +966,7 @@ do
   end
 
   -- Letrero de madera oscura TOP SORCERERS (legible: letras amarillas con borde negro)
-  for _, px2 in ipairs({ -6.5, 6.5 }) do
-    local post = MP(
-      "SignPost",
-      Vector3.new(0.9, 4.4, 0.9),
-      CFrame.new(px2, 30.4, 44.6),
-      "Reddish brown",
-      Enum.Material.Wood,
-      false
-    )
-    post.Color = Color3.fromRGB(80, 48, 24)
-  end
+    -- (Sin postes: el letrero va montado directo sobre el arco)
   local signPart = MP(
     "TopSorcerersSign",
     Vector3.new(23, 5.8, 0.8),
