@@ -2103,12 +2103,14 @@ end
 --===========================================================
 -- SOMBRAS (las criaturas de la noche)
 --===========================================================
-local function crearSombra(pos, esGuardian, jaulaIdx)
+local function crearSombra(pos, esGuardian, jaulaIdx, tipo)
+  tipo = tipo or "normal"
+  local esc = (tipo == "gigante") and 1.9 or 1
   local model = Instance.new("Model")
   model.Name = "Sombra"
   local root = Instance.new("Part")
   root.Name = "Root"
-  root.Size = Vector3.new(2.1, 3.2, 1.1)
+  root.Size = Vector3.new(2.1 * esc, 3.2 * esc, 1.1 * esc)
   root.BrickColor = BrickColor.new("White")
   root.Color = Color3.fromRGB(18, 16, 28)
   root.Material = Enum.Material.SmoothPlastic
@@ -2119,15 +2121,32 @@ local function crearSombra(pos, esGuardian, jaulaIdx)
   root.Parent = model
   local head = Instance.new("Part")
   head.Name = "Head"
-  head.Size = Vector3.new(1.5, 1.3, 1.3)
+  head.Size = Vector3.new(1.5 * esc, 1.3 * esc, 1.3 * esc)
   head.BrickColor = BrickColor.new("White")
   head.Color = Color3.fromRGB(13, 12, 22)
   head.Material = Enum.Material.SmoothPlastic
   head.Anchored = true
   head.CanCollide = false
   head.CastShadow = false
-  head.CFrame = CFrame.new(pos + Vector3.new(0, 2.25, 0))
+  head.CFrame = CFrame.new(pos + Vector3.new(0, 2.25 * esc, 0))
   head.Parent = model
+  local cuernos = {}
+  if tipo == "gigante" then
+    for _, sd in ipairs({ -1, 1 }) do
+      local cuerno = Instance.new("WedgePart")
+      cuerno.Name = "Cuerno"
+      cuerno.Size = Vector3.new(0.55, 1.7, 0.55)
+      cuerno.BrickColor = BrickColor.new("White")
+      cuerno.Color = Color3.fromRGB(230, 224, 210)
+      cuerno.Material = Enum.Material.SmoothPlastic
+      cuerno.Anchored = true
+      cuerno.CanCollide = false
+      cuerno.CastShadow = false
+      cuerno.CFrame = CFrame.new(pos + Vector3.new(sd * 1.25, 3.6, 0)) * CFrame.Angles(0, 0, math.rad(-sd * 34))
+      cuerno.Parent = model
+      table.insert(cuernos, { part = cuerno, off = Vector3.new(sd * 1.25, 3.6, 0), ang = math.rad(-sd * 34) })
+    end
+  end
   local ojos = {}
   for _, sd in ipairs({ -0.35, 0.35 }) do
     local eye = Instance.new("Part")
@@ -2139,9 +2158,9 @@ local function crearSombra(pos, esGuardian, jaulaIdx)
     eye.Anchored = true
     eye.CanCollide = false
     eye.CastShadow = false
-    eye.CFrame = CFrame.new(pos + Vector3.new(sd, 2.35, 0.68))
+    eye.CFrame = CFrame.new(pos + Vector3.new(sd * esc, 2.35 * esc, 0.68 * esc))
     eye.Parent = model
-    table.insert(ojos, { part = eye, off = Vector3.new(sd, 2.35, 0.68) })
+    table.insert(ojos, { part = eye, off = Vector3.new(sd * esc, 2.35 * esc, 0.68 * esc) })
   end
   local gl = Instance.new("BillboardGui")
   gl.Size = UDim2.new(5, 0, 1, 0)
@@ -2158,16 +2177,25 @@ local function crearSombra(pos, esGuardian, jaulaIdx)
   glLbl.TextColor3 = Color3.fromRGB(255, 120, 130)
   glLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
   glLbl.TextStrokeTransparency = 0.3
-  glLbl.Text = "Sombra"
+  glLbl.Text = (tipo == "gigante") and "EL SIN NOMBRE" or ((tipo == "raider") and "Adepto Sombra" or "Sombra")
   glLbl.Parent = gl
   model.Parent = workspace
   clasicoEn(model)
   local hp = esGuardian and 220 or (90 + SE.noche * 25)
+  if tipo == "gigante" then
+    hp = 100000 -- El Sin Nombre no muere: solo se aturde
+  elseif tipo == "raider" then
+    hp = 200
+  end
   local som = {
     model = model,
     root = root,
     head = head,
+    headOff = 2.25 * esc,
     ojos = ojos,
+    cuernos = cuernos,
+    tipo = tipo,
+    aturdidoHasta = 0,
     label = glLbl,
     hp = hp,
     hpMax = hp,
@@ -2215,9 +2243,15 @@ local function matarSombra(som, killer)
 end
 
 local function danarSombra(som, dmg, de, player)
+  if som.tipo == "gigante" then
+    som.aturdidoHasta = os.clock() + 2.2
+    if som.label then
+      som.label.Text = "EL SIN NOMBRE (aturdido)"
+    end
+  end
   som.hp -= dmg
   if som.label then
-    som.label.Text = "Sombra " .. math.max(math.floor(som.hp), 0) .. "/" .. som.hpMax
+    if som.tipo ~= "gigante" then som.label.Text = (som.tipo == "raider" and "Adepto " or "Sombra ") .. math.max(math.floor(som.hp), 0) .. "/" .. som.hpMax end
   end
   if som.root and som.root.Parent then
     local dir = (som.root.Position - de).Unit
@@ -2240,7 +2274,14 @@ local function danarSombra(som, dmg, de, player)
     end)
   end
   if som.hp <= 0 then
-    matarSombra(som, player)
+    if som.tipo == "gigante" then
+      som.hp = som.hpMax -- nunca muere
+      if som.label then
+        som.label.Text = "EL SIN NOMBRE"
+      end
+    else
+      matarSombra(som, player)
+    end
   end
 end
 
@@ -2364,11 +2405,39 @@ local function marcarMuerto(player)
 end
 
 local function nocheSombras()
-  local total = math.min(2 + SE.noche, 10)
+  local total
+  if SE.noche == 1 then
+    total = 1 -- primera noche suave, como en 99 Noches
+  else
+    total = math.min(2 + SE.noche, 10)
+  end
   for i = 1, total do
     local a = math.random() * math.pi * 2
     local pos = Vector3.new(FC.X + math.cos(a) * 205, 5.5, FC.Z + math.sin(a) * 205)
-    crearSombra(pos, false, nil)
+    crearSombra(pos, false, nil, "normal")
+  end
+  -- incursiones: en las noches 3 y 6 los Adeptos entran hasta la fogata
+  if SE.noche == 3 or SE.noche == 6 then
+    local n = (SE.noche == 3) and 2 or 4
+    for i = 1, n do
+      local a = math.random() * math.pi * 2
+      local pos = Vector3.new(FC.X + math.cos(a) * 175, 5.5, FC.Z + math.sin(a) * 175)
+      crearSombra(pos, false, nil, "raider")
+    end
+  end
+  -- El Sin Nombre ronda desde la noche 2 (no muere: se aturde con hechizos)
+  if SE.noche >= 2 then
+    local yaHay = false
+    for _, som in ipairs(SE.sombras) do
+      if som.tipo == "gigante" then
+        yaHay = true
+        break
+      end
+    end
+    if not yaHay then
+      local a = math.random() * math.pi * 2
+      crearSombra(Vector3.new(FC.X + math.cos(a) * 215, 7.5, FC.Z + math.sin(a) * 215), false, nil, "gigante")
+    end
   end
 end
 
@@ -2460,7 +2529,7 @@ local function bucleSombras()
     task.wait(0.25)
     if SE.on then
       for _, som in ipairs(SE.sombras) do
-        if som.root and som.root.Parent then
+        if som.root and som.root.Parent and os.clock() >= (som.aturdidoHasta or 0) then
           -- objetivo: el mago vivo mas cercano
           local bestP, bestD, bestPos
           for player, d in pairs(SE.players) do
@@ -2488,7 +2557,8 @@ local function bucleSombras()
             local toFire = math.sqrt(dfx * dfx + dfz * dfz)
             local destino = bestPos
             -- la llama protege: no entran al anillo mientras arda
-            if SE.llama > 0 then
+            -- (los Adeptos de las incursiones SI entran, como en 99 Noches)
+            if SE.llama > 0 and som.tipo ~= "raider" then
               local pfx, pfz = bestPos.X - fuegoPos.X, bestPos.Z - fuegoPos.Z
               local pf = math.sqrt(pfx * pfx + pfz * pfz)
               if pf < radioSeguro() + 1 then
@@ -2504,28 +2574,35 @@ local function bucleSombras()
             local dir = destino - rp
             dir = Vector3.new(dir.X, 0, dir.Z)
             if dir.Magnitude > 0.15 then
-              local paso = dir.Unit * math.min(dir.Magnitude, (11 + SE.noche * 0.5) * 0.25)
+              local vel = (som.tipo == "gigante") and 13.5 or (11 + SE.noche * 0.5)
+              local paso = dir.Unit * math.min(dir.Magnitude, vel * 0.25)
               local nuevo = rp + paso
               local cf = CFrame.new(nuevo, nuevo + dir.Unit)
               som.root.CFrame = cf
               if som.head then
-                som.head.CFrame = cf * CFrame.new(0, 2.25, 0)
+                som.head.CFrame = cf * CFrame.new(0, som.headOff or 2.25, 0)
               end
               if som.ojos then
                 for _, oj in ipairs(som.ojos) do
                   oj.part.CFrame = cf * CFrame.new(oj.off)
                 end
               end
+              if som.cuernos then
+                for _, cu in ipairs(som.cuernos) do
+                  cu.part.CFrame = cf * CFrame.new(cu.off) * CFrame.Angles(0, 0, cu.ang)
+                end
+              end
               rp = nuevo
             end
             -- golpe al mago
-            if bestP and bestD and bestD <= 3.4 and SE.players[bestP] and SE.players[bestP].vivo then
+            local alcanze = (som.tipo == "gigante") and 4.6 or 3.4
+            if bestP and bestD and bestD <= alcanze and SE.players[bestP] and SE.players[bestP].vivo then
               local now = os.clock()
               if now - (som.golpeEn or 0) >= 0.9 then
                 som.golpeEn = now
                 local hum = bestP.Character and bestP.Character:FindFirstChildOfClass("Humanoid")
                 if hum then
-                  hum:TakeDamage(8)
+                  hum:TakeDamage((som.tipo == "gigante") and 20 or ((som.tipo == "raider") and 10 or 8))
                 end
               end
             end
