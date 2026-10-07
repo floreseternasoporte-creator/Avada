@@ -128,13 +128,13 @@ local HOUSES = {
  
 -- Lobby estilo 99 Noches: los 4 pads en UNA fila central pegada (13 studs entre centros,
 -- bases tocándose), letreros bajos justo detrás y spawn al sur mirando a la plaza.
--- Isla circular: los 4 pads amarillos van sobre los 4 caminos diagonales (r=19),
--- letreros al final de cada camino (r=27.5) mirando al centro, spawn en el círculo mágico.
+-- Isla circular GRANDE (Ø112) flotante: los 4 pads amarillos van sobre los 4 caminos
+-- diagonales (r=30), letreros al final de cada camino (r=44), spawn en el círculo mágico.
 local PAD_DATA = {
-{ pos = Vector3.new(-13.4,3.6,-13.4), house=HOUSES[1], signPos=Vector3.new(-19.4,8.5,-19.4), signLook=Vector3.new(-13.4,8.5,-13.4) },
-{ pos = Vector3.new( 13.4,3.6,-13.4), house=HOUSES[2], signPos=Vector3.new( 19.4,8.5,-19.4), signLook=Vector3.new( 13.4,8.5,-13.4) },
-{ pos = Vector3.new(-13.4,3.6, 13.4), house=HOUSES[3], signPos=Vector3.new(-19.4,8.5, 19.4), signLook=Vector3.new(-13.4,8.5, 13.4) },
-{ pos = Vector3.new( 13.4,3.6, 13.4), house=HOUSES[4], signPos=Vector3.new( 19.4,8.5, 19.4), signLook=Vector3.new( 13.4,8.5, 13.4) },
+{ pos = Vector3.new(-21.2,3.6,-21.2), house=HOUSES[1], signPos=Vector3.new(-31.1,8.5,-31.1), signLook=Vector3.new(-21.2,8.5,-21.2) },
+{ pos = Vector3.new( 21.2,3.6,-21.2), house=HOUSES[2], signPos=Vector3.new( 31.1,8.5,-31.1), signLook=Vector3.new( 21.2,8.5,-21.2) },
+{ pos = Vector3.new(-21.2,3.6, 21.2), house=HOUSES[3], signPos=Vector3.new(-31.1,8.5, 31.1), signLook=Vector3.new(-21.2,8.5, 21.2) },
+{ pos = Vector3.new( 21.2,3.6, 21.2), house=HOUSES[4], signPos=Vector3.new( 31.1,8.5, 31.1), signLook=Vector3.new( 21.2,8.5, 21.2) },
 }
  
 local ARENA_CENTERS = {
