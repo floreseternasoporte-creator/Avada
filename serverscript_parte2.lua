@@ -182,7 +182,7 @@ end
  
                                                 for _,cp in ipairs({
                                                     Vector3.new(-34,LH-8,-18), Vector3.new(-34,LH-8,18),
-                                                    Vector3.new(0,LH-8,-24),   Vector3.new(0,LH-8,0), Vector3.new(0,LH-8,24),
+                                                    Vector3.new(0,LH-8,-24),   Vector3.new(0,LH-8,0), Vector3.new(26,LH-8,20),
                                                     Vector3.new(34,LH-8,-18),  Vector3.new(34,LH-8,18),
                                                     }) do addWallTorch(cp, LobbyModel) end
  
@@ -287,7 +287,7 @@ end
                                                             -- LEADERBOARD WALL
                                                             --===========================================================
                                                             local boardPart = makePart("LeaderboardBoard", Vector3.new(30,18,0.4), CFrame.new(0,16,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                            local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=false; boardGui.LightInfluence=1; boardGui.Parent=boardPart
+                                                            local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=false; boardGui.LightInfluence=0; boardGui.Parent=boardPart
 
                                                             local boardRoot = Instance.new("Frame"); boardRoot.Size=UDim2.new(1,0,1,0)
                                                             boardRoot.BackgroundColor3=Color3.fromRGB(8,6,18); boardRoot.BackgroundTransparency=0.05
@@ -364,215 +364,242 @@ end
                                                                                 end
  
                                                                                     task.spawn(function() while true do refreshLeaderboard(); task.wait(12) end end)
+
                                                                                                                         --===========================================================
-                                                                                                                        -- ESTRUCTURA EPICA DE LA CLASIFICACION (arco, gargolas, sombrero)
-                                                                                                                        -- Todo son Parts/SPARK creados aqui; no toca datos ni refresco.
+                                                                                                                        -- ESTRUCTURA EPICA V2 DE LA CLASIFICACION (arco alto, gargolas, sombrero)
+                                                                                                                        -- Reconstruida tras la captura del usuario: fondo oscuro propio para aislarla
+                                                                                                                        -- de la luz dorada del lobby, piedra casi negra, luces suaves y arco de verdad.
+                                                                                                                        -- Solo Parts decorativas; no toca datos ni el refresco de la tabla.
                                                                                                                         --===========================================================
                                                                                                                         do
-                                                                                                                            local BZ = 29.65 -- cara del tablon; el lobby queda hacia -Z
-                                                                                                                            local PZ = 29.3  -- plano de pilares y arco
+                                                                                                                            local BZ = 29.65
+                                                                                                                            local PZ = 29.3
+                                                                                                                            local STONE_A = Color3.fromRGB(23,22,33)
+                                                                                                                            local STONE_B = Color3.fromRGB(33,31,45)
+                                                                                                                            local STONE_CAP = Color3.fromRGB(19,18,29)
+                                                                                                                            local function MP(n, s, cf, bc, mat, cc)
+                                                                                                                                local part = makePart(n, s, cf, bc, mat or Enum.Material.SmoothPlastic, LobbyModel, cc, true)
+                                                                                                                                return part
+                                                                                                                            end
+                                                                                                                            local function cyl(n, size, cf, col)
+                                                                                                                                local part = Instance.new("Part")
+                                                                                                                                part.Name = n; part.Shape = Enum.PartType.Cylinder; part.Size = size
+                                                                                                                                part.CFrame = cf; part.BrickColor = BrickColor.new("White"); part.Color = col
+                                                                                                                                part.Material = Enum.Material.SmoothPlastic; part.Anchored = true
+                                                                                                                                part.CanCollide = false; part.CastShadow = false; part.Parent = LobbyModel
+                                                                                                                                return part
+                                                                                                                            end
+                                                                                                                            local function wedge(n, size, cf, col, neon)
+                                                                                                                                local part = Instance.new("WedgePart")
+                                                                                                                                part.Name = n; part.Size = size; part.CFrame = cf
+                                                                                                                                part.BrickColor = BrickColor.new("White"); part.Color = col
+                                                                                                                                part.Material = neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
+                                                                                                                                part.Anchored = true; part.CanCollide = false; part.CastShadow = false; part.Parent = LobbyModel
+                                                                                                                                return part
+                                                                                                                            end
 
-                                                                                                                            -- Marco de madera de la pizarra (4 vigas al frente)
-                                                                                                                            makePart("BoardFrameT", Vector3.new(32.6,1.3,0.55), CFrame.new(0,25.15,BZ-0.55), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                            makePart("BoardFrameB", Vector3.new(32.6,1.3,0.55), CFrame.new(0,6.85,BZ-0.55), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                            makePart("BoardFrameL", Vector3.new(1.3,19.6,0.55), CFrame.new(-15.65,16,BZ-0.55), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                            makePart("BoardFrameR", Vector3.new(1.3,19.6,0.55), CFrame.new(15.65,16,BZ-0.55), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
+                                                                                                                            -- Fondo oscuro propio + escenario (aisla el monumento de la luz dorada)
+                                                                                                                            local back = MP("ClassBackdrop", Vector3.new(54,40,0.6), CFrame.new(0,21,30.6), "Dark stone grey", nil, false)
+                                                                                                                            back.Color = Color3.fromRGB(22,20,34)
+                                                                                                                            local stage = MP("ClassStage", Vector3.new(52,0.9,7.5), CFrame.new(0,2.2,28.0), "Dark stone grey", nil, true)
+                                                                                                                            stage.Color = Color3.fromRGB(29,27,43)
+                                                                                                                            local step = MP("ClassStageStep", Vector3.new(42,0.55,2.4), CFrame.new(0,2.0,24.9), "Medium stone grey", nil, true)
+                                                                                                                            step.Color = Color3.fromRGB(38,35,52)
 
-                                                                                                                            -- Escalones de piedra hacia el lobby
-                                                                                                                            makePart("BoardStepTop", Vector3.new(34,0.9,3.6), CFrame.new(0,2.45,29.2), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                            makePart("BoardStepLow", Vector3.new(38,0.6,2.6), CFrame.new(0,2.3,27.3), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                                                                                            -- Marco de madera de la pizarra
+                                                                                                                            local frameCol = Color3.fromRGB(92,56,28)
+                                                                                                                            for _,fd in ipairs({
+                                                                                                                                {"BoardFrameT", Vector3.new(33,1.4,0.6), CFrame.new(0,25.3,BZ-0.6)},
+                                                                                                                                {"BoardFrameB", Vector3.new(33,1.4,0.6), CFrame.new(0,6.7,BZ-0.6)},
+                                                                                                                                {"BoardFrameL", Vector3.new(1.4,20,0.6), CFrame.new(-16.1,16,BZ-0.6)},
+                                                                                                                                {"BoardFrameR", Vector3.new(1.4,20,0.6), CFrame.new(16.1,16,BZ-0.6)},
+                                                                                                                            }) do
+                                                                                                                                local fp = MP(fd[1], fd[2], fd[3], "Reddish brown", Enum.Material.Wood, false)
+                                                                                                                                fp.Color = frameCol
+                                                                                                                            end
 
                                                                                                                             for _,sd in ipairs({-1,1}) do
-                                                                                                                                local PX = sd*19
+                                                                                                                                local PX = sd*20
+                                                                                                                                local flameCol = (sd < 0) and Color3.fromRGB(168,92,255) or Color3.fromRGB(74,140,255)
 
-                                                                                                                                -- Pilar voxel: base ancha, fuste de bloques alternados y capitel
-                                                                                                                                makePart("ClassPillarBase", Vector3.new(8.8,0.8,5.8), CFrame.new(PX,2.4,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                                makePart("ClassPillarPlinth", Vector3.new(7.6,1.2,4.8), CFrame.new(PX,3.3,PZ), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                                                                                                -- Pilar de piedra casi negra, bloques alternados
+                                                                                                                                local pb = MP("ClassPillarBase", Vector3.new(9.6,0.9,6.2), CFrame.new(PX,3.1,PZ), "Dark stone grey", nil, true); pb.Color = STONE_CAP
+                                                                                                                                local pp = MP("ClassPillarPlinth", Vector3.new(8.2,1.3,5.2), CFrame.new(PX,4.2,PZ), "Medium stone grey", nil, true); pp.Color = STONE_B
                                                                                                                                 for k=0,8 do
-                                                                                                                                    local by = 4.8 + k*2.4
                                                                                                                                     local wide = (k%2==0)
-                                                                                                                                    local blk = makePart("ClassPillarBlock", wide and Vector3.new(5.2,2.4,3.8) or Vector3.new(4.6,2.4,3.3), CFrame.new(PX + ((k%3)-1)*0.15, by, PZ + ((k%2)*0.14)-0.07), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                                    blk.Color = wide and Color3.fromRGB(41,39,54) or Color3.fromRGB(54,51,68)
+                                                                                                                                    local blk = MP("ClassPillarBlock", wide and Vector3.new(6.4,2.35,4.3) or Vector3.new(5.7,2.35,3.8), CFrame.new(PX+((k%3)-1)*0.15, 5.9+k*2.35, PZ+((k%2)*0.14)-0.07), "Dark stone grey", nil, true)
+                                                                                                                                    blk.Color = wide and STONE_A or STONE_B
                                                                                                                                 end
-                                                                                                                                makePart("ClassPillarCap", Vector3.new(7.4,1.5,5.0), CFrame.new(PX,25.95,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                                makePart("ClassPillarCapTrim", Vector3.new(8.2,0.7,5.5), CFrame.new(PX,26.95,PZ), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                                                                                                local cap = MP("ClassPillarCap", Vector3.new(8.0,1.4,5.4), CFrame.new(PX,26.6,PZ), "Dark stone grey", nil, true); cap.Color = STONE_CAP
+                                                                                                                                local trim = MP("ClassPillarTrim", Vector3.new(8.8,0.7,5.9), CFrame.new(PX,27.65,PZ), "Medium stone grey", nil, true); trim.Color = Color3.fromRGB(44,41,58)
 
-                                                                                                                                -- Enredaderas: cubitos verdes bajando en diagonal por el frente
-                                                                                                                                for k=0,15 do
-                                                                                                                                    local vy = 24.6 - k*1.28
-                                                                                                                                    local vx = PX + math.sin(k*1.85 + sd*2)*1.7 + (k%3-1)*0.4
-                                                                                                                                    local vs = 0.55 + (k%4)*0.17
-                                                                                                                                    local vine = makePart("ClassVine", Vector3.new(vs,vs,vs), CFrame.new(vx, vy, PZ-1.95-((k%3)*0.1)), (k%2==0) and "Bright green" or "Dark green", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                    vine.Color = (k%2==0) and Color3.fromRGB(52,148,66) or Color3.fromRGB(30,96,44)
-                                                                                                                                    if k%4==1 then
-                                                                                                                                        local vine2 = makePart("ClassVineSide", Vector3.new(vs*0.8,vs*0.8,vs*0.8), CFrame.new(PX - sd*2.75, vy-0.5, PZ-0.9), "Dark green", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                        vine2.Color = Color3.fromRGB(38,116,54)
+                                                                                                                                -- Enredaderas densas pegadas a la piedra (masas de hojas, no cubitos sueltos)
+                                                                                                                                local greens = {Color3.fromRGB(22,74,34), Color3.fromRGB(32,102,44), Color3.fromRGB(16,54,26)}
+                                                                                                                                for k=0,19 do
+                                                                                                                                    local vy = 25.4 - k*1.12
+                                                                                                                                    local vx = PX - sd*2.55 + math.sin(k*2.1 + sd*3)*0.85
+                                                                                                                                    local vs = 1.0 + (k%4)*0.22
+                                                                                                                                    local leaf = MP("ClassVine", Vector3.new(vs,vs,0.7), CFrame.new(vx, vy, PZ-2.2), "Dark green", nil, false)
+                                                                                                                                    leaf.Color = greens[(k%3)+1]
+                                                                                                                                    if k%3 == 0 then
+                                                                                                                                        local plate = MP("ClassVineLeaf", Vector3.new(1.6,0.3,1.05), CFrame.new(vx+0.4, vy-0.5, PZ-2.45)*CFrame.Angles(0, math.rad(k*37), math.rad(14)), "Bright green", nil, false)
+                                                                                                                                        plate.Color = greens[((k+1)%3)+1]
                                                                                                                                     end
                                                                                                                                 end
-
-                                                                                                                                -- Farol colgante: brazo de madera, cadena y nucleo calido
-                                                                                                                                makePart("LanternArm", Vector3.new(0.45,0.45,3.8), CFrame.new(PX,20.9,27.9), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                                makePart("LanternArmBrace", Vector3.new(0.35,0.35,2.4), CFrame.new(PX,21.8,28.5)*CFrame.Angles(math.rad(32),0,0), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                                for j=0,2 do
-                                                                                                                                    makePart("LanternChain", Vector3.new(0.17,0.46,0.17), CFrame.new(PX,20.35-j*0.44,26.3), "Really black", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                                                                                                for k=0,6 do
+                                                                                                                                    local bush = MP("ClassVineBush", Vector3.new(1.3+(k%3)*0.35, 1.1+(k%2)*0.4, 1.0), CFrame.new(PX - sd*2.2 + (k%3-1)*1.15, 3.4 + (k%2)*0.55, PZ-2.5), "Dark green", nil, false)
+                                                                                                                                    bush.Color = greens[(k%3)+1]
                                                                                                                                 end
-                                                                                                                                makePart("LanternCap", Vector3.new(1.0,0.28,1.0), CFrame.new(PX,19.15,26.3), "Really black", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                local lampCore = makePart("LanternCore", Vector3.new(0.64,1.15,0.64), CFrame.new(PX,18.45,26.3), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
-                                                                                                                                lampCore.Color = Color3.fromRGB(255,186,80)
-                                                                                                                                makePart("LanternBottom", Vector3.new(0.85,0.22,0.85), CFrame.new(PX,17.78,26.3), "Really black", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                local lampLight = Instance.new("PointLight"); lampLight.Brightness=5; lampLight.Range=21; lampLight.Color=Color3.fromRGB(255,170,60); lampLight.Parent=lampCore
 
-                                                                                                                                -- Llama magica sobre cristal (morada a la izquierda, azul a la derecha)
-                                                                                                                                local flameCol = (sd<0) and Color3.fromRGB(178,88,255) or Color3.fromRGB(70,145,255)
-                                                                                                                                makePart("FlameBase", Vector3.new(1.5,0.55,1.5), CFrame.new(PX-sd*2.35,13.05,PZ-1.55), "Really black", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                local fcry = Instance.new("WedgePart")
-                                                                                                                                fcry.Name="FlameCrystal"; fcry.Size=Vector3.new(1.15,2.8,1.15)
-                                                                                                                                fcry.CFrame=CFrame.new(PX-sd*2.35,14.8,PZ-1.55)*CFrame.Angles(0,math.rad(sd*20),math.rad(-sd*9))
-                                                                                                                                fcry.BrickColor=BrickColor.new("White"); fcry.Material=Enum.Material.Neon
-                                                                                                                                fcry.Color=flameCol; fcry.Anchored=true; fcry.CanCollide=false; fcry.Parent=LobbyModel
-                                                                                                                                local ff = Instance.new("Fire"); ff.Heat=7; ff.Size=4.2; ff.Color=flameCol; ff.SecondaryColor=Color3.fromRGB(255,255,255); ff.Parent=fcry
+                                                                                                                                -- Llama magica sobre cristal, al frente interior del pilar (acento, sin bañar la piedra)
+                                                                                                                                local FX = PX - sd*3.15
+                                                                                                                                MP("FlameBase", Vector3.new(1.6,0.6,1.6), CFrame.new(FX,12.8,PZ-2.35), "Really black", nil, false)
+                                                                                                                                local fcry = wedge("FlameCrystal", Vector3.new(1.0,1.7,1.0), CFrame.new(FX,13.9,PZ-2.35), flameCol, true)
+                                                                                                                                local ff = Instance.new("Fire"); ff.Heat=6; ff.Size=2.4; ff.Color=flameCol; ff.SecondaryColor=Color3.fromRGB(255,255,255); ff.Parent=fcry
                                                                                                                                 local fs = Instance.new("ParticleEmitter"); fs.Color=ColorSequence.new(flameCol, Color3.fromRGB(255,255,255)); fs.LightEmission=1
-                                                                                                                                fs.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.34), NumberSequenceKeypoint.new(1,0)}
-                                                                                                                                fs.Speed=NumberRange.new(1.2,3.2); fs.Acceleration=Vector3.new(0,6,0); fs.Lifetime=NumberRange.new(0.5,1.1); fs.Rate=42; fs.Parent=fcry
-                                                                                                                                local fl = Instance.new("PointLight"); fl.Brightness=6; fl.Range=19; fl.Color=flameCol; fl.Parent=fcry
+                                                                                                                                fs.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.3), NumberSequenceKeypoint.new(1,0)}
+                                                                                                                                fs.Speed=NumberRange.new(3,7); fs.Lifetime=NumberRange.new(0.35,0.75); fs.Rate=22; fs.SpreadAngle=Vector2.new(35,35); fs.Parent=fcry
+                                                                                                                                local fl = Instance.new("PointLight"); fl.Brightness=2.6; fl.Range=11; fl.Color=flameCol; fl.Parent=fcry
 
-                                                                                                                                -- Gargola alada sobre el capitel (mirando al lobby, -Z)
-                                                                                                                                local GY = 27.3
-                                                                                                                                local eyeCol = (sd<0) and Color3.fromRGB(255,60,50) or Color3.fromRGB(0,255,255)
-                                                                                                                                makePart("GargSeat", Vector3.new(3.1,1.1,2.7), CFrame.new(PX,GY+0.55,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargBody", Vector3.new(2.4,2.6,2.0), CFrame.new(PX,GY+2.4,PZ+0.1), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargChest", Vector3.new(1.8,2.0,0.5), CFrame.new(PX,GY+2.3,PZ-0.95), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargHead", Vector3.new(1.7,1.5,1.7), CFrame.new(PX,GY+4.35,PZ-0.25), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargSnout", Vector3.new(1.0,0.65,1.0), CFrame.new(PX,GY+3.95,PZ-1.15), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargBrow", Vector3.new(1.85,0.42,0.6), CFrame.new(PX,GY+4.85,PZ-0.85), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                for _,eo in ipairs({-0.42,0.42}) do
-                                                                                                                                    local eye = makePart("GargEye", Vector3.new(0.24,0.24,0.12), CFrame.new(PX+eo,GY+4.45,PZ-1.13), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                                                                                                -- Farol colgante con luz suave
+                                                                                                                                local arm = MP("LanternArm", Vector3.new(0.55,0.55,4.4), CFrame.new(PX,21.6,PZ-3.7), "Reddish brown", Enum.Material.Wood, false); arm.Color = frameCol
+                                                                                                                                for li=0,2 do
+                                                                                                                                    MP("LanternChain", Vector3.new(0.26,0.5,0.26), CFrame.new(PX, 21.1-li*0.48, PZ-5.7), "Really black", nil, false)
+                                                                                                                                end
+                                                                                                                                MP("LanternTop", Vector3.new(1.5,0.3,1.5), CFrame.new(PX,19.9,PZ-5.7), "Really black", nil, false)
+                                                                                                                                MP("LanternBase", Vector3.new(1.5,0.3,1.5), CFrame.new(PX,18.1,PZ-5.7), "Really black", nil, false)
+                                                                                                                                local core = MP("LanternCore", Vector3.new(1.0,1.5,1.0), CFrame.new(PX,19.0,PZ-5.7), "Bright yellow", Enum.Material.Neon, false)
+                                                                                                                                core.Color = Color3.fromRGB(255,190,80)
+                                                                                                                                local ll = Instance.new("PointLight"); ll.Brightness=2.0; ll.Range=11; ll.Color=Color3.fromRGB(255,170,70); ll.Parent=core
+
+                                                                                                                                -- Gárgola grande y oscura coronando el pilar (mirando al lobby, -Z)
+                                                                                                                                local GY = 28.0
+                                                                                                                                local function GP(n, s, cf, col)
+                                                                                                                                    local gp = MP(n, s, cf, "Dark stone grey", nil, false); gp.Color = col; return gp
+                                                                                                                                end
+                                                                                                                                GP("GargSeat", Vector3.new(4.4,1.0,3.8), CFrame.new(PX,GY+0.5,PZ), STONE_CAP)
+                                                                                                                                GP("GargBody", Vector3.new(3.0,3.2,2.5), CFrame.new(PX,GY+2.6,PZ+0.1), Color3.fromRGB(26,25,38))
+                                                                                                                                GP("GargChest", Vector3.new(2.2,2.4,0.6), CFrame.new(PX,GY+2.5,PZ-1.2), Color3.fromRGB(34,32,48))
+                                                                                                                                GP("GargHead", Vector3.new(2.1,1.9,2.1), CFrame.new(PX,GY+4.9,PZ-0.3), Color3.fromRGB(30,28,44))
+                                                                                                                                GP("GargSnout", Vector3.new(1.25,0.8,1.2), CFrame.new(PX,GY+4.4,PZ-1.65), Color3.fromRGB(38,36,52))
+                                                                                                                                GP("GargBrow", Vector3.new(2.3,0.5,0.7), CFrame.new(PX,GY+5.6,PZ-1.15), STONE_CAP)
+                                                                                                                                local eyeCol = (sd < 0) and Color3.fromRGB(255,64,64) or Color3.fromRGB(90,225,255)
+                                                                                                                                for _,eo in ipairs({-0.55,0.55}) do
+                                                                                                                                    local eye = MP("GargEye", Vector3.new(0.34,0.3,0.14), CFrame.new(PX+eo,GY+5.05,PZ-1.42), "White", Enum.Material.Neon, false)
                                                                                                                                     eye.Color = eyeCol
                                                                                                                                 end
-                                                                                                                                makePart("GargArmL", Vector3.new(0.7,2.4,0.7), CFrame.new(PX-1.35,GY+1.7,PZ-0.7)*CFrame.Angles(math.rad(14),0,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargArmR", Vector3.new(0.7,2.4,0.7), CFrame.new(PX+1.35,GY+1.7,PZ-0.7)*CFrame.Angles(math.rad(14),0,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargPawL", Vector3.new(0.95,0.5,1.5), CFrame.new(PX-1.35,GY+0.45,PZ-1.15), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargPawR", Vector3.new(0.95,0.5,1.5), CFrame.new(PX+1.35,GY+0.45,PZ-1.15), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                makePart("GargTail", Vector3.new(0.5,0.5,2.6), CFrame.new(PX,GY+1.0,PZ+1.9)*CFrame.Angles(math.rad(-18),0,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                for _,w in ipairs({
-                                                                                                                                    {Vector3.new(0.5,1.15,0.9), CFrame.new(PX-0.78,GY+5.45,PZ-0.1)*CFrame.Angles(0,0,math.rad(22))},
-                                                                                                                                    {Vector3.new(0.5,1.15,0.9), CFrame.new(PX+0.78,GY+5.45,PZ-0.1)*CFrame.Angles(0,0,math.rad(-22))},
-                                                                                                                                    {Vector3.new(0.45,0.95,0.7), CFrame.new(PX,GY+5.6,PZ-0.1)*CFrame.Angles(math.rad(-12),0,0)},
-                                                                                                                                    {Vector3.new(0.55,3.7,2.7), CFrame.new(PX+sd*2.0,GY+3.9,PZ+1.35)*CFrame.Angles(0,math.rad(sd*16),math.rad(-sd*26))},
-                                                                                                                                    {Vector3.new(0.5,2.3,1.9), CFrame.new(PX+sd*3.3,GY+5.35,PZ+1.6)*CFrame.Angles(0,math.rad(sd*22),math.rad(-sd*38))},
-                                                                                                                                }) do
-                                                                                                                                    local wp = Instance.new("WedgePart")
-                                                                                                                                    wp.Name="GargWedge"; wp.Size=w[1]; wp.CFrame=w[2]
-                                                                                                                                    wp.BrickColor=BrickColor.new("Dark stone grey"); wp.Material=Enum.Material.SmoothPlastic
-                                                                                                                                    wp.Anchored=true; wp.CanCollide=false; wp.Parent=LobbyModel
+                                                                                                                                for _,eo in ipairs({-1.2,1.2}) do
+                                                                                                                                    wedge("GargEar", Vector3.new(0.7,1.4,0.5), CFrame.new(PX+eo,GY+6.2,PZ-0.3)*CFrame.Angles(0,0,math.rad(-eo*18)), Color3.fromRGB(24,23,36), false)
                                                                                                                                 end
+                                                                                                                                for _,ao in ipairs({-1.85,1.85}) do
+                                                                                                                                    GP("GargArm", Vector3.new(0.85,3.0,0.85), CFrame.new(PX+ao,GY+1.9,PZ-0.85)*CFrame.Angles(math.rad(14),0,0), Color3.fromRGB(26,25,38))
+                                                                                                                                    GP("GargPaw", Vector3.new(1.15,0.6,1.9), CFrame.new(PX+ao,GY+0.55,PZ-1.55), Color3.fromRGB(34,32,48))
+                                                                                                                                    GP("GargHaunch", Vector3.new(1.1,1.9,1.7), CFrame.new(PX+ao,GY+1.35,PZ+0.65), Color3.fromRGB(26,25,38))
+                                                                                                                                end
+                                                                                                                                GP("GargTail", Vector3.new(0.55,0.55,3.2), CFrame.new(PX,GY+1.1,PZ+2.1)*CFrame.Angles(math.rad(-20),0,0), STONE_CAP)
+                                                                                                                                wedge("GargWingA", Vector3.new(5.4,3.8,0.45), CFrame.new(PX+sd*2.0,GY+4.4,PZ+1.45)*CFrame.Angles(0,math.rad(sd*26),math.rad(sd*-16)), Color3.fromRGB(20,19,31), false)
+                                                                                                                                wedge("GargWingB", Vector3.new(3.6,2.5,0.4), CFrame.new(PX+sd*4.1,GY+5.2,PZ+1.6)*CFrame.Angles(0,math.rad(sd*34),math.rad(sd*-24)), Color3.fromRGB(20,19,31), false)
 
-                                                                                                                                -- Varita apoyada en el lado interior del pilar, punta de cristal
-                                                                                                                                local wandCol = (sd<0) and Color3.fromRGB(190,95,255) or Color3.fromRGB(95,175,255)
-                                                                                                                                makePart("ClassWandStick", Vector3.new(0.17,4.9,0.17), CFrame.new(PX-sd*2.55,GY-22.1,PZ-1.85)*CFrame.Angles(0,0,math.rad(sd*15)), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                                local wtip = makePart("ClassWandTip", Vector3.new(0.36,0.75,0.36), CFrame.new(PX-sd*3.3,GY-19.85,PZ-1.85), "White", Enum.Material.Neon, LobbyModel, false, true)
-                                                                                                                                wtip.Color = wandCol
-                                                                                                                                local wl = Instance.new("PointLight"); wl.Brightness=2.5; wl.Range=10; wl.Color=wandCol; wl.Parent=wtip
+                                                                                                                                -- Varita apoyada junto al pilar
+                                                                                                                                local wandCol = flameCol
+                                                                                                                                local stick = MP("ClassWandStick", Vector3.new(0.18,5.4,0.18), CFrame.new(PX-sd*4.1,5.3,PZ-2.6)*CFrame.Angles(0,0,math.rad(sd*16)), "Reddish brown", Enum.Material.Wood, false)
+                                                                                                                                stick.Color = Color3.fromRGB(96,58,30)
+                                                                                                                                local wtip = wedge("ClassWandTip", Vector3.new(0.42,0.9,0.42), CFrame.new(PX-sd*4.85,7.85,PZ-2.6), wandCol, true)
+                                                                                                                                local wl = Instance.new("PointLight"); wl.Brightness=1.0; wl.Range=7; wl.Color=wandCol; wl.Parent=wtip
                                                                                                                             end
 
-                                                                                                                            -- Arco superior escalonado (voxel) uniendo los pilares
+                                                                                                                            -- Arco escalonado alto que une los pilares
                                                                                                                             for _,sd in ipairs({-1,1}) do
-                                                                                                                                local ab1 = makePart("ClassArchBlock", Vector3.new(5.2,2.0,3.4), CFrame.new(sd*14.8,27.7,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                ab1.Color = Color3.fromRGB(41,39,54)
-                                                                                                                                local ab2 = makePart("ClassArchBlock", Vector3.new(4.6,1.9,3.4), CFrame.new(sd*10.8,29.3,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                                ab2.Color = Color3.fromRGB(54,51,68)
+                                                                                                                                local a1 = MP("ClassArchBlock1", Vector3.new(6.2,2.2,3.9), CFrame.new(sd*15.2,28.9,PZ), "Dark stone grey", nil, false); a1.Color = STONE_B
+                                                                                                                                local a2 = MP("ClassArchBlock2", Vector3.new(5.4,2.1,3.9), CFrame.new(sd*10.6,30.6,PZ), "Dark stone grey", nil, false); a2.Color = STONE_A
                                                                                                                             end
-                                                                                                                            makePart("ClassArchBeam", Vector3.new(13,1.9,3.6), CFrame.new(0,30.3,PZ), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-                                                                                                                            makePart("ClassArchKey", Vector3.new(2.4,2.6,3.8), CFrame.new(0,29.9,PZ), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                                                                                            local beam = MP("ClassArchBeam", Vector3.new(15.5,2.2,4.1), CFrame.new(0,31.9,PZ), "Dark stone grey", nil, false); beam.Color = STONE_B
+                                                                                                                            local key = MP("ClassArchKey", Vector3.new(2.7,3.1,4.3), CFrame.new(0,31.3,PZ), "Medium stone grey", nil, false); key.Color = Color3.fromRGB(48,45,64)
 
-                                                                                                                            -- Runas luminosas sobre la cara frontal del arco (cian y moradas)
-                                                                                                                            local runeCols = {Color3.fromRGB(0,235,255), Color3.fromRGB(190,95,255)}
-                                                                                                                            for ri,rx in ipairs({-14.8,-10.8,10.8,14.8}) do
-                                                                                                                                local ry = (math.abs(rx) > 12) and 27.7 or 29.3
+                                                                                                                            -- Runas luminosas en la cara del arco (barritas neon, cian/morado alternadas)
+                                                                                                                            local runeCols = {Color3.fromRGB(110,220,255), Color3.fromRGB(190,140,255)}
+                                                                                                                            local runePos = {{-15.2,28.9},{-10.6,30.6},{-5.4,31.9},{5.4,31.9},{10.6,30.6},{15.2,28.9}}
+                                                                                                                            for ri,rp in ipairs(runePos) do
                                                                                                                                 local rc = runeCols[(ri%2)+1]
-                                                                                                                                local r1 = makePart("ClassRune", Vector3.new(0.26,1.9,0.16), CFrame.new(rx,ry,PZ-1.82), "White", Enum.Material.Neon, LobbyModel, false, true); r1.Color = rc
-                                                                                                                                local r2 = makePart("ClassRune", Vector3.new(0.26,1.05,0.16), CFrame.new(rx+0.38,ry+0.42,PZ-1.82)*CFrame.Angles(0,0,math.rad(48)), "White", Enum.Material.Neon, LobbyModel, false, true); r2.Color = rc
-                                                                                                                                local r3 = makePart("ClassRune", Vector3.new(0.26,0.9,0.16), CFrame.new(rx+0.36,ry-0.18,PZ-1.82)*CFrame.Angles(0,0,math.rad(-48)), "White", Enum.Material.Neon, LobbyModel, false, true); r3.Color = rc
+                                                                                                                                local flip = (ri%2==0) and 1 or -1
+                                                                                                                                local function RB(s, cf)
+                                                                                                                                    local rb = MP("ClassRune", s, cf, "White", Enum.Material.Neon, false); rb.Color = rc
+                                                                                                                                end
+                                                                                                                                RB(Vector3.new(0.28,2.0,0.18), CFrame.new(rp[1], rp[2], PZ-2.0))
+                                                                                                                                RB(Vector3.new(0.28,1.1,0.18), CFrame.new(rp[1]+0.4*flip, rp[2]+0.45, PZ-2.0)*CFrame.Angles(0,0,math.rad(48*flip)))
+                                                                                                                                RB(Vector3.new(0.28,1.0,0.18), CFrame.new(rp[1]+0.38*flip, rp[2]-0.15, PZ-2.0)*CFrame.Angles(0,0,math.rad(-48*flip)))
                                                                                                                             end
 
-                                                                                                                            -- Letrero de madera TOP SORCERERS en el centro del arco
-                                                                                                                            local signPart = makePart("TopSorcerersSign", Vector3.new(17,5,0.7), CFrame.new(0,28.2,27.45), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                            signPart.Color = Color3.fromRGB(122,74,34)
-                                                                                                                            makePart("SignPostL", Vector3.new(0.8,3.6,0.8), CFrame.new(-6,26.6,28.5), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
-                                                                                                                            makePart("SignPostR", Vector3.new(0.8,3.6,0.8), CFrame.new(6,26.6,28.5), "Reddish brown", Enum.Material.Wood, LobbyModel, false, true)
+                                                                                                                            -- Letrero de madera oscura TOP SORCERERS (legible: letras amarillas con borde negro)
+                                                                                                                            for _,px2 in ipairs({-6.5,6.5}) do
+                                                                                                                                local post = MP("SignPost", Vector3.new(0.9,4.4,0.9), CFrame.new(px2,30.4,28.6), "Reddish brown", Enum.Material.Wood, false)
+                                                                                                                                post.Color = Color3.fromRGB(80,48,24)
+                                                                                                                            end
+                                                                                                                            local signPart = MP("TopSorcerersSign", Vector3.new(21,5.6,0.8), CFrame.new(0,32.9,27.9), "Reddish brown", Enum.Material.Wood, false)
+                                                                                                                            signPart.Color = Color3.fromRGB(94,58,29)
+                                                                                                                            for _,sy in ipairs({32.05,33.75}) do
+                                                                                                                                local seam = MP("SignSeam", Vector3.new(21,0.16,0.12), CFrame.new(0,sy,27.45), "Really black", nil, false)
+                                                                                                                                seam.Color = Color3.fromRGB(58,34,16)
+                                                                                                                            end
                                                                                                                             local signGui = Instance.new("SurfaceGui"); signGui.Face=Enum.NormalId.Front; signGui.AlwaysOnTop=true; signGui.LightInfluence=0; signGui.Parent=signPart
                                                                                                                             local signLbl = Instance.new("TextLabel"); signLbl.Size=UDim2.new(1,0,1,0); signLbl.BackgroundTransparency=1
-                                                                                                                            signLbl.Font=Enum.Font.LuckiestGuy; signLbl.TextScaled=true; signLbl.TextColor3=Color3.fromRGB(255,202,40)
-                                                                                                                            signLbl.TextStrokeColor3=Color3.fromRGB(40,18,0); signLbl.TextStrokeTransparency=0.15
+                                                                                                                            signLbl.Font=Enum.Font.LuckiestGuy; signLbl.TextScaled=true; signLbl.TextWrapped=true
+                                                                                                                            signLbl.TextColor3=Color3.fromRGB(255,206,64); signLbl.TextStrokeColor3=Color3.fromRGB(0,0,0); signLbl.TextStrokeTransparency=0
                                                                                                                             signLbl.Text="TOP\nSORCERERS"; signLbl.Parent=signGui
 
-                                                                                                                            -- Sombrero de mago morado sobre el letrero (cilindros apilados con inclinacion)
-                                                                                                                            for _,c in ipairs({
-                                                                                                                                {x=0.6, y=31.0, z=27.5, h=0.45, d=6.4, col=Color3.fromRGB(86,42,140), lean=0},
-                                                                                                                                {x=0.62, y=31.65, z=27.5, h=0.85, d=4.7, col=Color3.fromRGB(30,16,44), lean=0},
-                                                                                                                                {x=0.7, y=32.35, z=27.5, h=1.25, d=4.35, col=Color3.fromRGB(104,54,168), lean=2},
-                                                                                                                                {x=1.0, y=33.55, z=27.5, h=1.25, d=3.3, col=Color3.fromRGB(104,54,168), lean=5},
-                                                                                                                                {x=1.4, y=34.65, z=27.5, h=1.15, d=2.3, col=Color3.fromRGB(96,48,156), lean=8},
-                                                                                                                                {x=1.85, y=35.6, z=27.5, h=1.05, d=1.35, col=Color3.fromRGB(88,44,146), lean=11},
-                                                                                                                            }) do
-                                                                                                                                local hp = Instance.new("Part")
-                                                                                                                                hp.Name="WitchHat"; hp.Shape=Enum.PartType.Cylinder
-                                                                                                                                hp.Size=Vector3.new(c.h, c.d, c.d)
-                                                                                                                                hp.CFrame=CFrame.new(c.x, c.y, c.z)*CFrame.Angles(0,0,math.rad(90+c.lean))
-                                                                                                                                hp.BrickColor=BrickColor.new("White"); hp.Material=Enum.Material.SmoothPlastic
-                                                                                                                                hp.Color=c.col; hp.Anchored=true; hp.CanCollide=false; hp.Parent=LobbyModel
-                                                                                                                            end
-                                                                                                                            local buckle = makePart("HatBuckle", Vector3.new(1.25,0.95,0.25), CFrame.new(0.72,31.65,25.05), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
-                                                                                                                            buckle.Color = Color3.fromRGB(255,214,64)
+                                                                                                                            -- Sombrero de mago sobre el letrero (ala + cono inclinado + banda + hebilla)
+                                                                                                                            local hatCol = Color3.fromRGB(96,44,150)
+                                                                                                                            cyl("WitchHatBrim", Vector3.new(0.55,6.6,6.6), CFrame.new(0,36.05,27.9)*CFrame.Angles(0,0,math.rad(90)), Color3.fromRGB(82,36,130))
+                                                                                                                            cyl("WitchHatBand", Vector3.new(0.85,4.8,4.8), CFrame.new(0,36.8,27.9)*CFrame.Angles(0,0,math.rad(90)), Color3.fromRGB(52,30,80))
+                                                                                                                            cyl("WitchHatCone1", Vector3.new(1.15,4.5,4.5), CFrame.new(0,37.3,27.9)*CFrame.Angles(0,0,math.rad(90)), hatCol)
+                                                                                                                            cyl("WitchHatCone2", Vector3.new(1.1,3.5,3.5), CFrame.new(0.3,38.3,27.9)*CFrame.Angles(0,0,math.rad(84)), hatCol)
+                                                                                                                            cyl("WitchHatCone3", Vector3.new(1.05,2.6,2.6), CFrame.new(0.65,39.2,27.9)*CFrame.Angles(0,0,math.rad(78)), hatCol)
+                                                                                                                            cyl("WitchHatTip", Vector3.new(0.95,1.7,1.7), CFrame.new(1.05,40.0,27.9)*CFrame.Angles(0,0,math.rad(68)), hatCol)
+                                                                                                                            local buckle = MP("HatBuckle", Vector3.new(1.35,1.0,0.28), CFrame.new(0.1,36.8,25.45), "Bright yellow", Enum.Material.Neon, false)
+                                                                                                                            buckle.Color = Color3.fromRGB(255,190,60)
 
-                                                                                                                            -- Racimos de cristales brillantes en la base (cian / rosa)
-                                                                                                                            for _,cl in ipairs({{-13.6, Color3.fromRGB(94,234,255)}, {13.6, Color3.fromRGB(255,105,220)}}) do
-                                                                                                                                local big = nil
-                                                                                                                                for j=1,4 do
-                                                                                                                                    local ch = 1.5 + j*0.5
-                                                                                                                                    local cw = Instance.new("WedgePart")
-                                                                                                                                    cw.Name="BaseCrystal"; cw.Size=Vector3.new(0.9+((j%2)*0.3), ch, 0.9+(((j+1)%2)*0.3))
-                                                                                                                                    cw.CFrame=CFrame.new(cl[1] + (j-2.5)*0.95, 2.9+ch/2-0.15, 28.5 + ((j%3)-1)*0.4)*CFrame.Angles(math.rad((j-2)*5), math.rad(j*43), math.rad((j%3-1)*9))
-                                                                                                                                    cw.BrickColor=BrickColor.new("White"); cw.Material=Enum.Material.Neon
-                                                                                                                                    cw.Color=cl[2]; cw.Anchored=true; cw.CanCollide=false; cw.Parent=LobbyModel
-                                                                                                                                    if j==3 then big = cw end
+                                                                                                                            -- Cristales brillantes en la base (cian a la izquierda, rosa a la derecha)
+                                                                                                                            for _,sd in ipairs({-1,1}) do
+                                                                                                                                local cc = (sd < 0) and Color3.fromRGB(130,235,255) or Color3.fromRGB(255,150,215)
+                                                                                                                                local CX = sd*13.8
+                                                                                                                                local rock = MP("CrystalRock", Vector3.new(3.4,0.8,2.6), CFrame.new(CX,2.9,26.5), "Dark stone grey", nil, false); rock.Color = STONE_CAP
+                                                                                                                                local heights = {2.4, 4.6, 3.2, 5.2}
+                                                                                                                                for ci,ch in ipairs(heights) do
+                                                                                                                                    local cx2 = CX + (ci-2.5)*0.95
+                                                                                                                                    local shard = wedge("ClassCrystal", Vector3.new(1.25,ch,1.25), CFrame.new(cx2, 3.2+ch/2, 26.5+((ci%2)*0.5-0.25))*CFrame.Angles(math.rad((ci%2)*10-5), math.rad(45), math.rad((ci%3)*6-6)), cc, true)
+                                                                                                                                    if ci == 4 then
+                                                                                                                                        local cl = Instance.new("PointLight"); cl.Brightness=1.6; cl.Range=9; cl.Color=cc; cl.Parent=shard
+                                                                                                                                    end
                                                                                                                                 end
-                                                                                                                                if big then local bl = Instance.new("PointLight"); bl.Brightness=3; bl.Range=13; bl.Color=cl[2]; bl.Parent=big end
                                                                                                                             end
 
-                                                                                                                            -- Libros: pila a la izquierda y uno apoyado en el pilar
-                                                                                                                            local bookCf = CFrame.new(-25.6,2.32,28.6)*CFrame.Angles(0,math.rad(14),0)
-                                                                                                                            local bk1 = makePart("SpellBookCover", Vector3.new(3.2,0.42,2.4), bookCf, "Really red", Enum.Material.SmoothPlastic, LobbyModel, true, true); bk1.Color=Color3.fromRGB(124,32,32)
-                                                                                                                            makePart("SpellBookPages", Vector3.new(2.95,0.3,2.15), bookCf*CFrame.new(0,0.34,0), "Institutional white", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                            local bk2cf = CFrame.new(-25.4,2.95,28.5)*CFrame.Angles(0,math.rad(-9),0)
-                                                                                                                            local bk2 = makePart("SpellBookCover2", Vector3.new(2.6,0.38,2.0), bk2cf, "Brown", Enum.Material.SmoothPlastic, LobbyModel, true, true); bk2.Color=Color3.fromRGB(96,56,26)
-                                                                                                                            makePart("SpellBookPages2", Vector3.new(2.35,0.26,1.75), bk2cf*CFrame.new(0,0.3,0), "Institutional white", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                                                                                            makePart("SpellBookGem", Vector3.new(0.5,0.14,0.5), bookCf*CFrame.new(0,0.55,0), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
-                                                                                                                            local leanCf = CFrame.new(-14.7,4.35,27.15)*CFrame.Angles(math.rad(17),0,0)
-                                                                                                                            local bk3 = makePart("SpellBookLean", Vector3.new(2.3,3.1,0.42), leanCf, "Navy blue", Enum.Material.SmoothPlastic, LobbyModel, false, true); bk3.Color=Color3.fromRGB(34,52,110)
-                                                                                                                            makePart("SpellBookLeanPages", Vector3.new(2.0,2.8,0.25), leanCf*CFrame.new(0,0,-0.32), "Institutional white", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                                                                                            -- Libros de hechizos a la izquierda de la base
+                                                                                                                            local b1 = MP("SpellBook1", Vector3.new(3.4,0.5,2.6), CFrame.new(-11.3,2.95,26.3), "Really red", nil, true); b1.Color = Color3.fromRGB(128,34,34)
+                                                                                                                            MP("SpellBook1Pages", Vector3.new(3.1,0.32,2.3), CFrame.new(-11.3,3.32,26.3), "Institutional white", nil, false)
+                                                                                                                            local b2cf = CFrame.new(-11.1,3.75,26.3)*CFrame.Angles(0,math.rad(18),0)
+                                                                                                                            local b2 = MP("SpellBook2", Vector3.new(2.8,0.45,2.1), b2cf, "Navy blue", nil, true)
+                                                                                                                            b2.Color = Color3.fromRGB(40,60,120)
+                                                                                                                            local gem = MP("SpellBookGem", Vector3.new(0.55,0.16,0.55), CFrame.new(-11.1,4.05,26.3), "Bright yellow", Enum.Material.Neon, false)
+                                                                                                                            gem.Color = Color3.fromRGB(255,190,60)
+                                                                                                                            local lean = MP("SpellBookLean", Vector3.new(2.4,3.4,0.5), CFrame.new(-15.9,4.4,26.7)*CFrame.Angles(0,0,math.rad(16)), "Plum", nil, true)
+                                                                                                                            lean.Color = Color3.fromRGB(110,40,90)
 
                                                                                                                             -- Pociones a la derecha de la base
-                                                                                                                            for pi,pc in ipairs({Color3.fromRGB(64,255,120), Color3.fromRGB(190,95,255), Color3.fromRGB(255,80,80)}) do
-                                                                                                                                local px2 = 22.9 + pi*1.65
-                                                                                                                                local pz2 = 28.7 - (pi%2)*0.5
-                                                                                                                                local body = Instance.new("Part")
-                                                                                                                                body.Name="PotionBody"; body.Shape=Enum.PartType.Ball; body.Size=Vector3.new(1.05,1.2,1.05)
-                                                                                                                                body.CFrame=CFrame.new(px2,2.6,pz2)
-                                                                                                                                body.BrickColor=BrickColor.new("Institutional white"); body.Material=Enum.Material.Glass
-                                                                                                                                body.Transparency=0.45; body.Anchored=true; body.CanCollide=false; body.Parent=LobbyModel
-                                                                                                                                local liq = Instance.new("Part")
-                                                                                                                                liq.Name="PotionLiquid"; liq.Shape=Enum.PartType.Ball; liq.Size=Vector3.new(0.82,0.82,0.82)
-                                                                                                                                liq.CFrame=CFrame.new(px2,2.48,pz2)
-                                                                                                                                liq.BrickColor=BrickColor.new("White"); liq.Material=Enum.Material.Neon
-                                                                                                                                liq.Color=pc; liq.Anchored=true; liq.CanCollide=false; liq.Parent=LobbyModel
-                                                                                                                                local pl2 = Instance.new("PointLight"); pl2.Brightness=1.6; pl2.Range=8; pl2.Color=pc; pl2.Parent=liq
-                                                                                                                                makePart("PotionNeck", Vector3.new(0.36,0.55,0.36), CFrame.new(px2,3.35,pz2), "Institutional white", Enum.Material.Glass, LobbyModel, false, true)
-                                                                                                                                makePart("PotionCork", Vector3.new(0.3,0.34,0.3), CFrame.new(px2,3.72,pz2), "Brown", Enum.Material.Wood, LobbyModel, false, true)
+                                                                                                                            local potionCols = {Color3.fromRGB(80,255,120), Color3.fromRGB(190,110,255), Color3.fromRGB(255,90,90)}
+                                                                                                                            for pi,pc in ipairs(potionCols) do
+                                                                                                                                local px2 = 11.2 + (pi-1)*1.7
+                                                                                                                                local glass = MP("PotionBottle", Vector3.new(1.0,1.35,1.0), CFrame.new(px2,3.35,26.4), "Institutional white", Enum.Material.Glass, false)
+                                                                                                                                glass.Transparency = 0.35
+                                                                                                                                local liq = MP("PotionLiquid", Vector3.new(0.8,0.85,0.8), CFrame.new(px2,3.15,26.4), "White", Enum.Material.Neon, false)
+                                                                                                                                liq.Color = pc
+                                                                                                                                MP("PotionNeck", Vector3.new(0.4,0.5,0.4), CFrame.new(px2,4.25,26.4), "Institutional white", Enum.Material.Glass, false)
+                                                                                                                                MP("PotionCork", Vector3.new(0.34,0.36,0.34), CFrame.new(px2,4.62,26.4), "Brown", Enum.Material.Wood, false)
+                                                                                                                                if pi == 2 then
+                                                                                                                                    local pl2 = Instance.new("PointLight"); pl2.Brightness=1.1; pl2.Range=7; pl2.Color=pc; pl2.Parent=liq
+                                                                                                                                end
                                                                                                                             end
                                                                                                                         end
 
- 
                                                                                         --===========================================================
                                                                                         -- ARENAS
                                                                                         --===========================================================
