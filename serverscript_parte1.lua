@@ -10,14 +10,21 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ServerScriptService = game:GetService("ServerScriptService")
--- Busca el ModuleScript del nucleo SIN importar su nombre exacto
+-- Busca el ModuleScript del nucleo SIN importar su nombre ni la carpeta
+-- (espera lo que haga falta y avisa, para que nunca muera el juego en silencio)
 local coreMod
-local tCore = os.clock()
-repeat
-  task.wait(0.25)
-  coreMod = ServerScriptService:FindFirstChildOfClass("ModuleScript")
-until coreMod or (os.clock() - tCore > 15)
-assert(coreMod, "Avada: falta el ModuleScript del nucleo en ServerScriptService")
+local waited = 0
+while not coreMod do
+  coreMod = ServerScriptService:FindFirstChildOfClass("ModuleScript", true)
+  if not coreMod then
+    task.wait(0.5)
+    waited += 0.5
+    if waited % 5 < 0.5 then
+      warn("[Avada] Buscando el ModuleScript del nucleo en ServerScriptService...")
+    end
+  end
+end
+print("[Avada] Nucleo encontrado: " .. coreMod.Name)
 local S = require(coreMod)
 
 local squares = S.squares

@@ -284,34 +284,63 @@ local function islCrys(size, cf, col)
   mesh.Parent = part
   return part
 end
-for _, bp in ipairs({ { -38, -19, 3.4 }, { -19, -38, 2.7 }, { 38, -19, 3.4 }, { 19, -38, 2.7 }, { -39, 15, 2.7 }, {
-  39,
-  15,
-  3.4,
-} }) do
-  local bush = makePart(
-    "TopiaryBush",
-    Vector3.new(bp[3], bp[3] * 0.9, bp[3]),
-    CFrame.new(bp[1], 2 + bp[3] * 0.45, bp[2]),
-    "Dark green",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    true,
-    true
-  )
-  bush.Color = Color3.fromRGB(30, 86, 36)
-  local top = makePart(
-    "TopiaryTop",
-    Vector3.new(bp[3] * 0.8, bp[3] * 0.45, bp[3] * 0.8),
-    CFrame.new(bp[1], 2 + bp[3] * 1.1, bp[2]),
-    "Bright green",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    true,
-    true
-  )
-  top.Color = Color3.fromRGB(48, 118, 52)
+local function islBall(name, size, cf, col)
+  local part = makePart(name, size, cf, "White", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+  part.Shape = Enum.PartType.Ball
+  part.Color = col
+  return part
 end
+local treeGreens = { Color3.fromRGB(34, 110, 44), Color3.fromRGB(52, 138, 58), Color3.fromRGB(74, 168, 74) }
+local function islTree(x, z, s, tone)
+  local tilt = math.sin(x * 1.7 + z) * 4
+  -- Tronco en dos tramos con una leve inclinación, sobre una base de tierra
+  local trunk = makePart(
+    "TreeTrunk",
+    Vector3.new(1.05 * s, 2.3 * s, 1.05 * s),
+    CFrame.new(x, 2 + 1.15 * s, z) * CFrame.Angles(0, 0, math.rad(tilt)),
+    "Reddish brown",
+    Enum.Material.Wood,
+    LobbyModel,
+    true,
+    true
+  )
+  trunk.Color = Color3.fromRGB(94, 58, 32)
+  local trunk2 = makePart(
+    "TreeTrunkTop",
+    Vector3.new(0.72 * s, 1.9 * s, 0.72 * s),
+    CFrame.new(x + 0.18 * s, 2 + 3.1 * s, z) * CFrame.Angles(0, 0, math.rad(tilt - 3)),
+    "Reddish brown",
+    Enum.Material.Wood,
+    LobbyModel,
+    true,
+    true
+  )
+  trunk2.Color = Color3.fromRGB(104, 66, 36)
+  -- Copa frondosa: tres esferas que se abrazan (como los árboles de la referencia)
+  local g1 = treeGreens[((tone - 1) % 3) + 1]
+  local g2 = treeGreens[(tone % 3) + 1]
+  local g3 = treeGreens[((tone + 1) % 3) + 1]
+  islBall("TreeCanopy", Vector3.new(4.6 * s, 4.2 * s, 4.6 * s), CFrame.new(x, 2 + 5.1 * s, z), g1)
+  islBall("TreeCanopy", Vector3.new(3.3 * s, 3.0 * s, 3.3 * s), CFrame.new(x + 1.35 * s, 2 + 4.3 * s, z + 0.6 * s), g2)
+  islBall("TreeCanopy", Vector3.new(2.7 * s, 2.5 * s, 2.7 * s), CFrame.new(x - 1.15 * s, 2 + 5.9 * s, z - 0.5 * s), g3)
+  -- Lucecitas mágicas entre las hojas (guiño al círculo del centro)
+  for fi = 1, 3 do
+    local fa = fi * 2.1 + x
+    local dot = islBall(
+      "TreeLight",
+      Vector3.new(0.34, 0.34, 0.34),
+      CFrame.new(x + math.cos(fa) * 1.9 * s, 2 + (4.4 + (fi % 2) * 0.9) * s, z + math.sin(fa) * 1.9 * s),
+      (fi % 2 == 0) and Color3.fromRGB(255, 110, 235) or Color3.fromRGB(90, 240, 255)
+    )
+    dot.Material = Enum.Material.Neon
+  end
+end
+islTree(-38, -19, 1.08, 1)
+islTree(-19, -38, 0.9, 2)
+islTree(38, -19, 1.08, 3)
+islTree(19, -38, 0.9, 1)
+islTree(-39, 15, 0.95, 2)
+islTree(39, 15, 1.08, 3)
 for _, pp in ipairs({ { 10, -36 }, { -10, -36 }, { 36, 10 }, { -36, 10 }, { 10, 32 }, { -10, 32 }, { 35, -10 }, {
   -35,
   -10,
@@ -747,6 +776,7 @@ do
         nil,
         false
       )
+      bush.Shape = Enum.PartType.Ball
       bush.Color = greens[(k % 3) + 1]
     end
 
