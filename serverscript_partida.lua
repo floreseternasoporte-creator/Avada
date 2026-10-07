@@ -585,6 +585,8 @@ local function recogerHongo(player, hg)
   for _, parte in ipairs(hg.partes) do
     if parte then
       parte.Transparency = 1
+      parte.CanCollide = false
+      parte.CanQuery = false
     end
   end
   if hg.prompt then
@@ -596,6 +598,8 @@ local function recogerHongo(player, hg)
     for _, parte in ipairs(hg.partes) do
       if parte and parte.Parent then
         parte.Transparency = 0
+        parte.CanCollide = true
+        parte.CanQuery = true
       end
     end
     if hg.prompt then

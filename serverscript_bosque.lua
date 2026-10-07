@@ -409,49 +409,129 @@ for i = 1, 130 do
 end
 
 
--- Hongos comestibles como el de referencia: pie crema grueso con base
--- ancha, sombrero marron en forma de cupula y motas claras encima.
--- Esparcidos por el bosque; PARTIDA los hace recogibles.
-local function hongoDelBosque(x, z, id, esc)
-  local crema = Color3.fromRGB(228, 208, 168)
-  local crema2 = Color3.fromRGB(214, 190, 146)
-  local marron = Color3.fromRGB(158, 102, 60)
-  local marron2 = Color3.fromRGB(138, 86, 48)
-  local function pieza(nombre, size, cf, color)
-    local pt = bp(nombre, size, cf, color, false)
-    pt:SetAttribute("HongoId", id)
-    return pt
+-- Hongos comestibles: el Boletus del dueno del juego (tallo grueso crema
+-- con base ensanchada y sombrero marron en cupula suave con manchas),
+-- adaptado al bosque: tamano de bosque, semilla distinta por hongo y
+-- piezas etiquetadas para que PARTIDA los haga recogibles y comestibles.
+local ALTURA_TALLO_H = 9
+local RADIO_SOMBRERO_H = 7.6
+local ALTURA_SOMBRERO_H = 4.6
+local PERFIL_TALLO_H = {
+  { 0.00, 1.90 }, { 0.03, 2.55 }, { 0.08, 3.05 },
+  { 0.16, 2.80 }, { 0.40, 2.70 }, { 0.70, 2.55 }, { 1.00, 2.15 },
+}
+local COLOR_TALLO_ARRIBA = Color3.fromRGB(226, 202, 148)
+local COLOR_TALLO_ABAJO = Color3.fromRGB(188, 150, 98)
+local COLOR_SOMBRERO_TOPE = Color3.fromRGB(150, 92, 62)
+local COLOR_SOMBRERO_BORDE = Color3.fromRGB(200, 150, 108)
+local COLOR_MANCHA_H = Color3.fromRGB(222, 188, 148)
+local COLOR_POROS_H = Color3.fromRGB(228, 208, 152)
+
+local function leerPerfilH(perfil, t)
+  for i = 1, #perfil - 1 do
+    local p0, p1 = perfil[i], perfil[i + 1]
+    if t <= p1[1] then
+      local k = (t - p0[1]) / math.max(p1[1] - p0[1], 0.001)
+      k = math.clamp(k, 0, 1)
+      return p0[2] + (p1[2] - p0[2]) * (k * k * (3 - 2 * k))
+    end
   end
-  -- base ancha y pie grueso en dos tramos
-  pieza("HongoBase", Vector3.new(1.5 * esc, 0.55 * esc, 1.5 * esc), CFrame.new(x, 2.0 + 0.27 * esc, z), crema2).Shape = Enum.PartType.Cylinder
-  pieza("HongoPie", Vector3.new(1.05 * esc, 1.7 * esc, 1.05 * esc), CFrame.new(x, 2.0 + 1.4 * esc, z), crema).Shape = Enum.PartType.Cylinder
-  pieza("HongoPieAlto", Vector3.new(0.88 * esc, 1.1 * esc, 0.88 * esc), CFrame.new(x, 2.0 + 2.65 * esc, z), crema).Shape = Enum.PartType.Cylinder
-  -- anillo claro bajo el sombrero
-  pieza("HongoAnillo", Vector3.new(1.7 * esc, 0.28 * esc, 1.7 * esc), CFrame.new(x, 2.0 + 3.2 * esc, z), crema2).Shape = Enum.PartType.Cylinder
-  -- el sombrero: cupula ancha marrón
-  local sombrero = pieza("HongoSombrero", Vector3.new(3.3 * esc, 1.55 * esc, 3.3 * esc), CFrame.new(x, 2.0 + 3.85 * esc, z), marron)
-  sombrero.Shape = Enum.PartType.Ball
-  sombrero:SetAttribute("Tipo", "Hongo")
-  -- borde inferior del sombrero, un poco mas oscuro
-  pieza("HongoBorde", Vector3.new(3.36 * esc, 0.34 * esc, 3.36 * esc), CFrame.new(x, 2.0 + 3.32 * esc, z), marron2).Shape = Enum.PartType.Cylinder
-  -- motas claras del sombrero
-  for m = 1, 4 do
-    local ma = m * 1.7 + id
-    local mota = pieza(
-      "HongoMota",
-      Vector3.new(0.5 * esc, 0.16 * esc, 0.5 * esc),
-      CFrame.new(x + math.cos(ma) * 0.85 * esc, 2.0 + 4.5 * esc, z + math.sin(ma) * 0.85 * esc),
-      Color3.fromRGB(238, 224, 192)
+  return perfil[#perfil][2]
+end
+
+local function discoHongo(padre, nombre, y, altura, radio, color, material, escala)
+  local pt = Instance.new("Part")
+  pt.Name = nombre
+  pt.Shape = Enum.PartType.Cylinder
+  pt.Size = Vector3.new(altura, radio * 2, radio * 2) * escala
+  pt.CFrame = CFrame.new(0, y * escala, 0) * CFrame.Angles(0, 0, math.rad(90))
+  pt.Color = color
+  pt.Material = material
+  pt.Anchored = true
+  pt.CanCollide = true
+  pt.TopSurface = Enum.SurfaceType.Smooth
+  pt.BottomSurface = Enum.SurfaceType.Smooth
+  pt.Parent = padre
+  return pt
+end
+
+local function crearHongoDelBosque(posicion, escala, semilla, id)
+  local azar = Random.new(semilla)
+  local modelo = Instance.new("Model")
+  modelo.Name = "Hongo" .. id
+  local tallo = Instance.new("Folder")
+  tallo.Name = "Tallo"
+  tallo.Parent = modelo
+  local sombrero = Instance.new("Folder")
+  sombrero.Name = "Sombrero"
+  sombrero.Parent = modelo
+  local n = 16
+  local primeraParte
+  for i = 1, n do
+    local t0, t1 = (i - 1) / n, i / n
+    local tm = (t0 + t1) / 2
+    local radio = leerPerfilH(PERFIL_TALLO_H, tm)
+    local alturaSeg = ALTURA_TALLO_H / n + 0.05
+    local color = COLOR_TALLO_ABAJO:Lerp(COLOR_TALLO_ARRIBA, math.clamp(tm * 1.4, 0, 1))
+    local v = azar:NextNumber(-0.02, 0.02)
+    color = Color3.new(
+      math.clamp(color.R + v, 0, 1),
+      math.clamp(color.G + v, 0, 1),
+      math.clamp(color.B + v, 0, 1)
     )
-    mota.Shape = Enum.PartType.Ball
+    local parte = discoHongo(tallo, "TalloSeg" .. i, tm * ALTURA_TALLO_H, alturaSeg, radio, color, Enum.Material.Fabric, escala)
+    primeraParte = primeraParte or parte
   end
+  local baseSombrero = ALTURA_TALLO_H * 0.88
+  discoHongo(sombrero, "Labio", baseSombrero + 0.25, 0.5, RADIO_SOMBRERO_H, COLOR_SOMBRERO_BORDE, Enum.Material.Fabric, escala)
+  discoHongo(sombrero, "Poros", baseSombrero + 0.05, 0.3, RADIO_SOMBRERO_H * 0.95, COLOR_POROS_H, Enum.Material.Sand, escala)
+  discoHongo(sombrero, "PorosCentro", baseSombrero + 0.5, 0.4, RADIO_SOMBRERO_H * 0.45, COLOR_POROS_H:Lerp(COLOR_TALLO_ARRIBA, 0.5), Enum.Material.Sand, escala)
+  local anillos = 12
+  local anguloMax = math.rad(86)
+  for i = 1, anillos do
+    local a0 = (i - 1) / anillos * anguloMax
+    local a1 = i / anillos * anguloMax
+    local y0 = ALTURA_SOMBRERO_H * math.sin(a0)
+    local y1 = ALTURA_SOMBRERO_H * math.sin(a1)
+    local alturaAnillo = math.max(y1 - y0, 0.2) + 0.08
+    local radio = RADIO_SOMBRERO_H * math.cos((a0 + a1) / 2) ^ 0.85
+    local k = (i - 1) / (anillos - 1)
+    local color = COLOR_SOMBRERO_BORDE:Lerp(COLOR_SOMBRERO_TOPE, k ^ 0.6)
+    if i <= 4 and azar:NextNumber() < 0.4 then
+      color = color:Lerp(COLOR_MANCHA_H, azar:NextNumber(0.3, 0.6))
+    else
+      local v = azar:NextNumber(-0.04, 0.04)
+      color = Color3.new(
+        math.clamp(color.R + v, 0, 1),
+        math.clamp(color.G + v * 0.8, 0, 1),
+        math.clamp(color.B + v * 0.6, 0, 1)
+      )
+    end
+    discoHongo(sombrero, "Cupula" .. i, baseSombrero + 0.5 + (y0 + y1) / 2, alturaAnillo, radio, color, Enum.Material.Fabric, escala)
+  end
+  modelo.PrimaryPart = primeraParte
+  local rotacion = math.rad(azar:NextNumber(0, 360))
+  local offsetBase = (ALTURA_TALLO_H / n) * 0.5 * escala
+  modelo:PivotTo(CFrame.new(posicion + Vector3.new(0, offsetBase, 0)) * CFrame.Angles(0, rotacion, 0))
+  -- etiquetas para PARTIDA: todas las piezas llevan HongoId y la base
+  -- (PrimaryPart) lleva Tipo=Hongo, ahi se ancla el letrero "Recoger"
+  for _, d in ipairs(modelo:GetDescendants()) do
+    if d:IsA("BasePart") then
+      d:SetAttribute("HongoId", id)
+    end
+  end
+  if primeraParte then
+    primeraParte:SetAttribute("Tipo", "Hongo")
+  end
+  modelo.Parent = Bosque
+  return modelo
 end
 for hi = 1, 14 do
   local a = rngBosque:NextNumber(0, math.pi * 2)
   local r = rngBosque:NextNumber(36, 208)
   local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
   if lejosDeJaulas(x, z) then
-    hongoDelBosque(x, z, hi, rngBosque:NextNumber(0.85, 1.45))
+    crearHongoDelBosque(Vector3.new(x, 2.0, z), rngBosque:NextNumber(0.32, 0.5), 7665 + hi * 131, hi)
   end
 end
 

@@ -71,19 +71,13 @@ local contador = etiqueta("0/5", 36, UDim2.new(0.60, -70, 0.40, 0), UDim2.new(14
 contador.Font = Enum.Font.GothamBlack
 contador.Visible = false
 
--- Botones circulares a la derecha (a la izquierda del boton de salto)
-local columna = Instance.new("Frame")
-columna.AnchorPoint = Vector2.new(1, 1)
-columna.Position = UDim2.new(1, -118, 1, -108)
-columna.Size = UDim2.new(0, 78, 0, 320)
-columna.BackgroundTransparency = 1
-columna.Parent = raiz
-
-local function boton(texto, y, textSize)
+-- Botones circulares pegados a la esquina, alrededor del boton de salto
+-- (como en 99 Noches: Comer arriba-izquierda, CORRER arriba-derecha,
+-- Desgarrar a la izquierda del salto y Tienda encima)
+local function boton(texto, textSize)
   local b = Instance.new("TextButton")
-  b.AnchorPoint = Vector2.new(0.5, 1)
-  b.Position = UDim2.new(0.5, 0, 1, y)
-  b.Size = UDim2.new(0, 64, 0, 64)
+  b.AnchorPoint = Vector2.new(0.5, 0.5)
+  b.Size = UDim2.new(0, 68, 0, 68)
   b.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
   b.BackgroundTransparency = 0.32
   b.BorderSizePixel = 0
@@ -92,7 +86,7 @@ local function boton(texto, y, textSize)
   b.TextSize = textSize or 14
   b.TextColor3 = Color3.new(1, 1, 1)
   b.AutoButtonColor = true
-  b.Parent = columna
+  b.Parent = raiz
   Instance.new("UICorner", b).CornerRadius = UDim.new(1, 0)
   local st = Instance.new("UIStroke")
   st.Color = Color3.fromRGB(0, 0, 0)
@@ -102,10 +96,14 @@ local function boton(texto, y, textSize)
   return b
 end
 
-local correrBtn = boton("CORRER", 0, 13)
-local tiendaBtn = boton("Tienda", -76, 13)
-local desgarrarBtn = boton("Desgarrar", -152, 10)
-local comerBtn = boton("Comer", -228, 15)
+local correrBtn = boton("CORRER", 13)
+correrBtn.Position = UDim2.new(1, -94, 1, -228) -- arriba-derecha del salto
+local tiendaBtn = boton("Tienda", 13)
+tiendaBtn.Position = UDim2.new(1, -172, 1, -300) -- encima de Comer
+local desgarrarBtn = boton("Desgarrar", 10)
+desgarrarBtn.Position = UDim2.new(1, -198, 1, -134) -- a la izquierda del salto
+local comerBtn = boton("Comer", 15)
+comerBtn.Position = UDim2.new(1, -186, 1, -218) -- arriba-izquierda del salto
 
 -- Correr / caminar (alternando, como pidio el dueno del juego)
 local sprint = false
@@ -127,17 +125,49 @@ player.CharacterAdded:Connect(function()
   aplicarVelocidad()
 end)
 
+local accionComer = "Comer"
 comerBtn.MouseButton1Click:Connect(function()
-  RE_ACC:FireServer("Comer")
+  RE_ACC:FireServer(accionComer)
 end)
 desgarrarBtn.MouseButton1Click:Connect(function()
   RE_ACC:FireServer("Desgarrar")
 end)
 tiendaBtn.MouseButton1Click:Connect(function()
-  RE_ACC:FireServer(tiendaBtn.Text) -- "Tienda" o "Desalmacenar", segun contexto
+  RE_ACC:FireServer("Tienda")
 end)
 
 -- Estado que manda el servidor
+local ultimoEstado = nil
+local sacoEnManoLocal = false
+local function revisaContador()
+  if not ultimoEstado then
+    return
+  end
+  contador.Visible = ultimoEstado.sacoEnMano == true or sacoEnManoLocal
+  contador.Text = tostring(ultimoEstado.saco or 0) .. "/" .. tostring(ultimoEstado.sacoMax or 5)
+end
+local function vigilaSaco(char)
+  if not char then
+    return
+  end
+  local function mira()
+    sacoEnManoLocal = false
+    for _, c in ipairs(char:GetChildren()) do
+      if c:IsA("Tool") and c.Name == "Saco mágico" then
+        sacoEnManoLocal = true
+      end
+    end
+    revisaContador()
+  end
+  char.ChildAdded:Connect(mira)
+  char.ChildRemoved:Connect(mira)
+  mira()
+end
+player.CharacterAdded:Connect(vigilaSaco)
+if player.Character then
+  vigilaSaco(player.Character)
+end
+
 RE_UI.OnClientEvent:Connect(function(st)
   if type(st) ~= "table" then
     return
@@ -148,21 +178,28 @@ RE_UI.OnClientEvent:Connect(function(st)
   end
   relleno.Size = UDim2.new(math.clamp((st.hambre or 100) / 100, 0, 1), 0, 1, 0)
   diaLbl.Text = (st.fase == "noche") and ("Noche " .. tostring(st.noche or 1) .. " de 7") or "Día"
-  comerBtn.Visible = st.mano == true or (st.sacoEnMano == true and (st.saco or 0) > 0)
-  desgarrarBtn.Visible = st.mano == true
+  ultimoEstado = st
   if st.mano == true then
-    tiendaBtn.Text = "Tienda"
-    tiendaBtn.TextSize = 13
-    tiendaBtn.Visible = true
+    accionComer = "Comer"
+    comerBtn.Text = "Comer"
+    comerBtn.TextSize = 15
+    comerBtn.Visible = true
   elseif st.sacoEnMano == true and (st.saco or 0) > 0 then
-    tiendaBtn.Text = "Desalmacenar"
-    tiendaBtn.TextSize = 9
-    tiendaBtn.Visible = true
+    accionComer = "Desalmacenar"
+    comerBtn.Text = "Desalmacenar"
+    comerBtn.TextSize = 9
+    comerBtn.Visible = true
+  elseif (st.saco or 0) > 0 then
+    accionComer = "Comer"
+    comerBtn.Text = "Comer"
+    comerBtn.TextSize = 15
+    comerBtn.Visible = true
   else
-    tiendaBtn.Visible = false
+    comerBtn.Visible = false
   end
-  contador.Visible = st.sacoEnMano == true
-  contador.Text = tostring(st.saco or 0) .. "/" .. tostring(st.sacoMax or 5)
+  desgarrarBtn.Visible = st.mano == true
+  tiendaBtn.Visible = st.mano == true
+  revisaContador()
 end)
 
 -- FIN LOCAL BOSQUE
