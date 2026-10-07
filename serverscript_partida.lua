@@ -89,7 +89,7 @@ end
 --===========================================================
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
-local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro
+local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego
 local jaulas, jaulasPos, lenaNodos, bayas, cofres, fireStatus
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
@@ -140,6 +140,7 @@ local function escanearBosque()
     end
     if llamaParts[1] then
       llamaLight = llamaParts[1]:FindFirstChildOfClass("PointLight")
+      chispasFuego = llamaParts[1]:FindFirstChild("FireSparks")
     end
     -- jaulas: anclas etiquetadas con su indice
     for _, d in ipairs(Bosque:GetDescendants()) do
@@ -226,16 +227,8 @@ local function updateFireBoard()
     .. SE.aprendices
     .. "/4"
   end
-  -- la llama crece y el anillo seguro respira con ella
-  local f = 0.35 + (SE.llama / 100) * 0.85
-  for i, fp in ipairs(llamaParts) do
-    local b = llamaBase[i]
-    fp.Size = Vector3.new(b.X * f, b.Y * f, b.Z * f)
-    fp.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.7 + (i - 1) * 1.4 * f, fuegoPos.Z)
-  end
-  if llamaLight then
-    llamaLight.Range = 16 + SE.llama * 0.2
-  end
+  -- el tamano y el baile de la llama los lleva el animador (abajo);
+  -- aqui solo respira el anillo seguro en el suelo
   local radio = 9 + SE.llama * 0.11
   for _, sd in ipairs(anilloSeguro) do
     sd.part.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -sd.ang, 0) * CFrame.new(0, 0, radio)
@@ -1037,6 +1030,43 @@ Players.PlayerRemoving:Connect(function(player)
   end
   SE.enCirculo[player] = nil
   castCd[player] = nil
+end)
+
+-- ANIMADOR DE LA LLAMA: pulso, lengua que sube y se recoge, luz que tiembla
+task.spawn(function()
+  local t = 0
+  while true do
+    task.wait(0.1)
+    t += 0.1
+    if llamaParts and llamaBase and fuegoPos then
+      local viva = SE.llama > 0
+      local f = viva and (0.35 + (SE.llama / 100) * 0.85) or 0.02
+      for i, fp in ipairs(llamaParts) do
+        local bse = llamaBase[i]
+        local pulso = 1 + 0.14 * math.sin(t * (5.2 + i * 1.9) + i * 2.4) + 0.06 * math.sin(t * 11.7 + i * 0.9)
+        local subida = 0
+        if i == 3 then
+          -- la lengua de arriba sube y se recoge, como fuego de verdad
+          local fase = (t * 0.55) % 1
+          subida = fase * 1.5 * f
+          pulso *= (1 - fase * 0.45)
+        end
+        fp.Size = Vector3.new(bse.X * f * pulso, bse.Y * f * (1.06 - 0.1 * math.sin(t * 7 + i)), bse.Z * f * pulso)
+        fp.CFrame = CFrame.new(
+          fuegoPos.X + 0.1 * math.sin(t * 2.6 + i * 1.7),
+          fuegoPos.Y + 0.7 + (i - 1) * 1.4 * f + subida,
+          fuegoPos.Z + 0.08 * math.cos(t * 3.1 + i)
+        ) * CFrame.Angles(0, t * (0.5 + i * 0.13), 0)
+      end
+      if llamaLight then
+        llamaLight.Brightness = viva and (2.0 + (SE.llama / 100) * 0.9 + 0.35 * math.sin(t * 9.3) + 0.18 * math.sin(t * 23.7)) or 0
+        llamaLight.Range = (16 + SE.llama * 0.2) * (0.95 + 0.05 * math.sin(t * 6.1))
+      end
+      if chispasFuego then
+        chispasFuego.Enabled = viva
+      end
+    end
+  end
 end)
 
 task.spawn(function()

@@ -252,6 +252,26 @@ local fuegoFire = Instance.new("Fire")
 fuegoFire.Heat = 6
 fuegoFire.Size = 5
 fuegoFire.Parent = llamaParts[1]
+-- chispas vivas subiendo de la llama (se mueven solas, sin codigo)
+local chispas = Instance.new("ParticleEmitter")
+chispas.Name = "FireSparks"
+chispas.Color = ColorSequence.new({
+  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 214, 110)),
+  ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 130, 40)),
+  ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 40, 16)),
+})
+chispas.LightEmission = 1
+chispas.Rate = 16
+chispas.Lifetime = NumberRange.new(0.9, 2.0)
+chispas.Speed = NumberRange.new(2.6, 5.0)
+chispas.SpreadAngle = Vector2.new(24, 24)
+chispas.Acceleration = Vector3.new(0, 2.5, 0)
+chispas.Size = NumberSequence.new({
+  NumberSequenceKeypoint.new(0, 0.42),
+  NumberSequenceKeypoint.new(0.7, 0.26),
+  NumberSequenceKeypoint.new(1, 0.02),
+})
+chispas.Parent = llamaParts[1]
 -- Anillo del radio seguro (se ve en el suelo, marca hasta donde llegan las Sombras)
 local anilloSeguro = {}
 for i = 0, 23 do
@@ -321,17 +341,70 @@ local function lejosDeJaulas(x, z)
   end
   return true
 end
+-- Arboles del Bosque Prohibido: tronco en 3 tramos que se afina, 2 ramas
+-- y copa de 4 capas giradas (silueta llena, estilo clasico de bloques)
+local verdesCopa = {
+  Color3.fromRGB(46, 116, 44),
+  Color3.fromRGB(56, 134, 50),
+  Color3.fromRGB(66, 152, 58),
+  Color3.fromRGB(80, 170, 66),
+}
+local function arbolProhibido(x, z, i)
+  local esc = rngBosque:NextNumber(0.85, 1.3)
+  local marron = Color3.fromRGB(106, 70, 40)
+  local marron2 = Color3.fromRGB(92, 58, 32)
+  -- raiz y tronco en tramos (cada tramo mas fino y un poco ladeado)
+  bcyl("TreeRoot", 0.9, 2.1 * esc, CFrame.new(x, 2.45, z), marron2, true)
+  local px, pz = x, z
+  local y = 2.0
+  local diams = { 1.45, 1.12, 0.8 }
+  for t = 1, 3 do
+    local h = 2.7 * esc
+    bcyl("TreeTrunk", h, diams[t] * esc, CFrame.new(px, y + h / 2, pz), (t % 2 == 0) and marron2 or marron, true)
+    y += h - 0.25
+    px += rngBosque:NextNumber(-0.28, 0.28)
+    pz += rngBosque:NextNumber(-0.28, 0.28)
+  end
+  local copaY = y + 0.4
+  -- 2 ramas inclinadas hacia lados opuestos
+  for r = 1, 2 do
+    local yaw = rngBosque:NextNumber(0, math.pi * 2)
+    local by = 2.0 + (3.4 + r * 1.9) * esc
+    local rama = bp(
+      "TreeBranch",
+      Vector3.new(0.5 * esc, 3.0 * esc, 0.5 * esc),
+      CFrame.new(x + math.cos(yaw) * 0.9 * esc, by, z + math.sin(yaw) * 0.9 * esc)
+        * CFrame.Angles(math.rad(52), yaw, 0),
+      marron2,
+      false
+    )
+    rama.Shape = Enum.PartType.Cylinder
+  end
+  -- copa en 4 capas cuadradas, cada una menor y girada: se ve frondosa
+  local anchos = { 8.6, 7.0, 5.2, 3.4 }
+  local cy = copaY
+  for l = 1, 4 do
+    local w = anchos[l] * esc
+    local giro = rngBosque:NextNumber(-0.3, 0.3) + (l % 2) * 0.35
+    bp(
+      "TreeLeaf",
+      Vector3.new(w, 1.7 * esc, w),
+      CFrame.new(px + rngBosque:NextNumber(-0.4, 0.4), cy + 0.85 * esc, pz + rngBosque:NextNumber(-0.4, 0.4))
+        * CFrame.Angles(0, giro, 0),
+      verdesCopa[((i + l - 2) % 4) + 1],
+      false
+    )
+    cy += 1.45 * esc
+  end
+  -- punta
+  bp("TreeLeaf", Vector3.new(1.8 * esc, 1.5 * esc, 1.8 * esc), CFrame.new(px, cy + 0.7 * esc, pz), verdesCopa[4], false)
+end
 for i = 1, 130 do
   local a = rngBosque:NextNumber(0, math.pi * 2)
   local r = rngBosque:NextNumber(30, 214)
   local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
   if lejosDeJaulas(x, z) then
-    local th = rngBosque:NextNumber(4.5, 7.5)
-    bcyl("TreeTrunk", th, 1.3, CFrame.new(x, 2.0 + th / 2, z), Color3.fromRGB(106, 70, 40), true)
-    local verdes = { Color3.fromRGB(52, 128, 48), Color3.fromRGB(64, 148, 56), Color3.fromRGB(44, 110, 42) }
-    local lw = rngBosque:NextNumber(4.6, 6.2)
-    bp("TreeLeaf", Vector3.new(lw, lw * 0.55, lw), CFrame.new(x, 2.0 + th + lw * 0.25, z), verdes[(i % 3) + 1], false)
-    bp("TreeLeaf", Vector3.new(lw * 0.66, lw * 0.5, lw * 0.66), CFrame.new(x, 2.0 + th + lw * 0.72, z), verdes[((i + 1) % 3) + 1], false)
+    arbolProhibido(x, z, i)
   end
 end
 
