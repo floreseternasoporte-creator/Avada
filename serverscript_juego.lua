@@ -1292,7 +1292,7 @@ S = { -- antes shared.AvadaDuel; ahora local (Studio Lite bloquea shared)
   saveKills = saveKills,
   registerKill = registerKill,
 }
-print("⚡ [DuelGame] Nucleo listo (archivo de juego) ⚡")
+print("[DuelGame] Nucleo listo (archivo de juego)")
 end
 do
 local Players = game:GetService("Players")
@@ -1317,6 +1317,35 @@ local returnToLobby = S.returnToLobby
 local giveFighterSetup = S.giveFighterSetup
 local loadKills = S.loadKills
 local saveKills = S.saveKills
+
+-- Verificacion: cada pieza del nucleo debe existir (si falta, el Output la nombra)
+do
+  local faltan = {}
+  for nombre, valor in pairs({
+    arenaData = arenaData,
+    playerDuel = playerDuel,
+    pendingCast = pendingCast,
+    freezePlayer = freezePlayer,
+    teleportTo = teleportTo,
+    returnToLobby = returnToLobby,
+    giveFighterSetup = giveFighterSetup,
+    loadKills = loadKills,
+    saveKills = saveKills,
+    RE_BattleStart = RE_BattleStart,
+    RE_BattleEnd = RE_BattleEnd,
+    RE_Countdown = RE_Countdown,
+    RE_RoundUpdate = RE_RoundUpdate,
+  }) do
+    if valor == nil then
+      table.insert(faltan, nombre)
+    end
+  end
+  if #faltan > 0 then
+    warn("[Avada] FALTAN piezas del nucleo: " .. table.concat(faltan, ", "))
+  else
+    print("[Avada] Nucleo verificado: todas las piezas presentes")
+  end
+end
 
 --===========================================================
 -- HELPERS: WORLD BUILDING
@@ -1575,7 +1604,7 @@ circleTitle.TextScaled = true
 circleTitle.TextColor3 = Color3.fromRGB(255, 214, 64)
 circleTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 circleTitle.TextStrokeTransparency = 0
-circleTitle.Text = "⚔️ CÍRCULO DE DUELOS ⚔️"
+circleTitle.Text = "CÍRCULO DE DUELOS"
 circleTitle.Parent = circleGui
 
 local circleStatus = Instance.new("TextLabel")
@@ -1606,10 +1635,10 @@ circleSub.Parent = circleGui
 
 local function updateCircleBoard()
   if next(lockedPair) ~= nil then
-    circleStatus.Text = "⚡ ¡DUELO EN CAMINO! ⚡"
+    circleStatus.Text = "¡DUELO EN CAMINO!"
     circleStatus.TextColor3 = Color3.fromRGB(255, 215, 0)
   elseif #circleQueue >= 2 then
-    circleStatus.Text = tostring(#circleQueue) .. " MAGOS LISTOS ⚡"
+    circleStatus.Text = tostring(#circleQueue) .. " MAGOS LISTOS"
     circleStatus.TextColor3 = Color3.fromRGB(120, 255, 120)
   elseif #circleQueue == 1 then
     circleStatus.Text = "1 MAGO ESPERANDO RIVAL..."
@@ -1656,7 +1685,7 @@ task.spawn(function()
   end
 end)
 updateCircleBoard()
-print("⭕ [Avada] Circulo central listo: la partida se crea en el circulo magico")
+print("[Avada] Circulo central listo: la partida se crea en el circulo magico")
 
 --===========================================================
 -- ARENAS
@@ -1778,9 +1807,18 @@ local function freeArena(arenaIdx)
   updateCircleBoard()
 end
 
+local function fireSafe(remote, ...)
+  if remote then
+    local args = { ... }
+    pcall(function()
+      remote:FireClient(table.unpack(args))
+    end)
+  end
+end
+
 local function startRound(p1, p2, roundNum, arenaIdx, wins)
-  RE_RoundUpdate:FireClient(p1, roundNum, ROUND_TIME, wins[1], wins[2])
-  RE_RoundUpdate:FireClient(p2, roundNum, ROUND_TIME, wins[2], wins[1])
+  fireSafe(RE_RoundUpdate, p1, roundNum, ROUND_TIME, wins[1], wins[2])
+  fireSafe(RE_RoundUpdate, p2, roundNum, ROUND_TIME, wins[2], wins[1])
 
   local arena = arenaData[arenaIdx]
   giveFighterSetup(p1, HOUSES[arenaIdx].name)
@@ -1833,8 +1871,8 @@ local function startRound(p1, p2, roundNum, arenaIdx, wins)
       return
     end
     timeLeft -= dt
-    RE_RoundUpdate:FireClient(p1, roundNum, math.ceil(timeLeft), wins[1], wins[2])
-    RE_RoundUpdate:FireClient(p2, roundNum, math.ceil(timeLeft), wins[2], wins[1])
+    fireSafe(RE_RoundUpdate, p1, roundNum, math.ceil(timeLeft), wins[1], wins[2])
+    fireSafe(RE_RoundUpdate, p2, roundNum, math.ceil(timeLeft), wins[2], wins[1])
     if timeLeft <= 0 then
       roundFinished = true
       roundWinner = nil
@@ -1854,19 +1892,24 @@ local function startRound(p1, p2, roundNum, arenaIdx, wins)
 end
 
 local function startDuelPair(p1, p2, arenaIdx)
+  if not (p1 and p2 and p1.Parent and p2.Parent) then
+    arenaBusy[arenaIdx] = false
+    updateCircleBoard()
+    return
+  end
   freezePlayer(p1, true)
   freezePlayer(p2, true)
 
   for t = 5, 1, -1 do
-    if not lockedPair[p1] or not lockedPair[p2] then
+    if not lockedPair[p1] or not lockedPair[p2] or not p1.Parent or not p2.Parent then
       freezePlayer(p1, false)
       freezePlayer(p2, false)
       arenaBusy[arenaIdx] = false
       updateCircleBoard()
       return
     end
-    RE_Countdown:FireClient(p1, t)
-    RE_Countdown:FireClient(p2, t)
+    fireSafe(RE_Countdown, p1, t)
+    fireSafe(RE_Countdown, p2, t)
     task.wait(1)
   end
 
@@ -1886,8 +1929,8 @@ local function startDuelPair(p1, p2, arenaIdx)
   playerDuel[p1] = { opponent = p2, arenaIdx = arenaIdx }
   playerDuel[p2] = { opponent = p1, arenaIdx = arenaIdx }
 
-  RE_BattleStart:FireClient(p1, p2.Name)
-  RE_BattleStart:FireClient(p2, p1.Name)
+  fireSafe(RE_BattleStart, p1, p2.Name)
+  fireSafe(RE_BattleStart, p2, p1.Name)
   task.wait(2.0)
 
   teleportTo(p1, arena.spawnA, arena.spawnB)
@@ -1909,8 +1952,8 @@ local function startDuelPair(p1, p2, arenaIdx)
     elseif rWinner == p2 then
       wins[2] += 1
     end
-    RE_RoundUpdate:FireClient(p1, round, 0, wins[1], wins[2])
-    RE_RoundUpdate:FireClient(p2, round, 0, wins[2], wins[1])
+    fireSafe(RE_RoundUpdate, p1, round, 0, wins[1], wins[2])
+    fireSafe(RE_RoundUpdate, p2, round, 0, wins[2], wins[1])
     if wins[1] >= 2 then
       overallWinner = p1
       overallLoser = p2
@@ -1939,13 +1982,13 @@ local function startDuelPair(p1, p2, arenaIdx)
   end
 
   if overallWinner then
-    RE_BattleEnd:FireClient(overallWinner, overallWinner.Name, true)
+    fireSafe(RE_BattleEnd, overallWinner, overallWinner.Name, true)
     if overallLoser then
-      RE_BattleEnd:FireClient(overallLoser, overallWinner.Name, false)
+      fireSafe(RE_BattleEnd, overallLoser, overallWinner.Name, false)
     end
   else
-    RE_BattleEnd:FireClient(p1, "EMPATE", false)
-    RE_BattleEnd:FireClient(p2, "EMPATE", false)
+    fireSafe(RE_BattleEnd, p1, "EMPATE", false)
+    fireSafe(RE_BattleEnd, p2, "EMPATE", false)
   end
 
   playerDuel[p1] = nil
@@ -2058,7 +2101,7 @@ Players.PlayerRemoving:Connect(function(player)
     playerDuel[player] = nil
     if opp and playerDuel[opp] then
       playerDuel[opp] = nil
-      RE_BattleEnd:FireClient(opp, opp.Name, true)
+      fireSafe(RE_BattleEnd, opp, opp.Name, true)
       task.spawn(function()
         task.wait(2)
         local c = opp.Character
@@ -2081,7 +2124,7 @@ task.spawn(function()
   end
 end)
 
-print("⚡ [DuelGame v11.0] Server Script loaded — 7 spells, epic clash system ⚡")
+print("[DuelGame v11.0] Server Script loaded - 7 spells, epic clash system")
 
 -- FIN PARTE 1
 end

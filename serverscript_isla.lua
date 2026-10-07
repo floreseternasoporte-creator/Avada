@@ -204,25 +204,6 @@ for _, rot in ipairs({ 0, math.pi / 3 }) do
     bar.Color = Color3.fromRGB(170, 240, 255)
   end
 end
-for i = 0, 7 do
-  local a = i * (math.pi / 4) + math.pi / 8
-  local rc = (i % 2 == 0) and Color3.fromRGB(110, 220, 255) or Color3.fromRGB(255, 120, 220)
-  for b = 0, 2 do
-    local off = (b - 1) * 0.45
-    local rb = makePart(
-      "MagicRune",
-      Vector3.new(0.8, 0.34, 0.2),
-      CFrame.new(math.cos(a) * 10.0 - math.sin(a) * off, 2.62, math.sin(a) * 10.0 + math.cos(a) * off)
-        * CFrame.Angles(0, -a, 0),
-      "White",
-      Enum.Material.Neon,
-      LobbyModel,
-      false,
-      true
-    )
-    rb.Color = rc
-  end
-end
 local glowPart = makePart(
   "MagicGlow",
   Vector3.new(1, 1, 1),
@@ -284,63 +265,7 @@ local function islCrys(size, cf, col)
   mesh.Parent = part
   return part
 end
-local function islBall(name, size, cf, col)
-  local part = makePart(name, size, cf, "White", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-  part.Shape = Enum.PartType.Ball
-  part.Color = col
-  return part
-end
-local treeGreens = { Color3.fromRGB(34, 110, 44), Color3.fromRGB(52, 138, 58), Color3.fromRGB(74, 168, 74) }
-local function islTree(x, z, s, tone)
-  local tilt = math.sin(x * 1.7 + z) * 4
-  -- Tronco en dos tramos con una leve inclinación, sobre una base de tierra
-  local trunk = makePart(
-    "TreeTrunk",
-    Vector3.new(1.05 * s, 2.3 * s, 1.05 * s),
-    CFrame.new(x, 2 + 1.15 * s, z) * CFrame.Angles(0, 0, math.rad(tilt)),
-    "Reddish brown",
-    Enum.Material.Wood,
-    LobbyModel,
-    true,
-    true
-  )
-  trunk.Color = Color3.fromRGB(94, 58, 32)
-  local trunk2 = makePart(
-    "TreeTrunkTop",
-    Vector3.new(0.72 * s, 1.9 * s, 0.72 * s),
-    CFrame.new(x + 0.18 * s, 2 + 3.1 * s, z) * CFrame.Angles(0, 0, math.rad(tilt - 3)),
-    "Reddish brown",
-    Enum.Material.Wood,
-    LobbyModel,
-    true,
-    true
-  )
-  trunk2.Color = Color3.fromRGB(104, 66, 36)
-  -- Copa frondosa: tres esferas que se abrazan (como los árboles de la referencia)
-  local g1 = treeGreens[((tone - 1) % 3) + 1]
-  local g2 = treeGreens[(tone % 3) + 1]
-  local g3 = treeGreens[((tone + 1) % 3) + 1]
-  islBall("TreeCanopy", Vector3.new(4.6 * s, 4.2 * s, 4.6 * s), CFrame.new(x, 2 + 5.1 * s, z), g1)
-  islBall("TreeCanopy", Vector3.new(3.3 * s, 3.0 * s, 3.3 * s), CFrame.new(x + 1.35 * s, 2 + 4.3 * s, z + 0.6 * s), g2)
-  islBall("TreeCanopy", Vector3.new(2.7 * s, 2.5 * s, 2.7 * s), CFrame.new(x - 1.15 * s, 2 + 5.9 * s, z - 0.5 * s), g3)
-  -- Lucecitas mágicas entre las hojas (guiño al círculo del centro)
-  for fi = 1, 3 do
-    local fa = fi * 2.1 + x
-    local dot = islBall(
-      "TreeLight",
-      Vector3.new(0.34, 0.34, 0.34),
-      CFrame.new(x + math.cos(fa) * 1.9 * s, 2 + (4.4 + (fi % 2) * 0.9) * s, z + math.sin(fa) * 1.9 * s),
-      (fi % 2 == 0) and Color3.fromRGB(255, 110, 235) or Color3.fromRGB(90, 240, 255)
-    )
-    dot.Material = Enum.Material.Neon
-  end
-end
-islTree(-38, -19, 1.08, 1)
-islTree(-19, -38, 0.9, 2)
-islTree(38, -19, 1.08, 3)
-islTree(19, -38, 0.9, 1)
-islTree(-39, 15, 0.95, 2)
-islTree(39, 15, 1.08, 3)
+-- (sin árboles ni arbustos: isla limpia, solo caminos, plantas y rocas)
 for _, pp in ipairs({ { 10, -36 }, { -10, -36 }, { 36, 10 }, { -36, 10 }, { 10, 32 }, { -10, 32 }, { 35, -10 }, {
   -35,
   -10,
@@ -406,37 +331,6 @@ for _, cp in ipairs({
       cl.Color = cp[3]
       cl.Parent = shard
     end
-  end
-end
-for ri, rp in ipairs({ { 15, -30 }, { -15, -30 }, { 30, 15 }, { -30, 15 }, { 0, -46 } }) do
-  local slab = makePart(
-    "RuneSlab",
-    Vector3.new(2.3, 0.35, 2.3),
-    CFrame.new(rp[1], 2.18, rp[2]) * CFrame.Angles(0, math.rad(ri * 24), 0),
-    "Dark stone grey",
-    Enum.Material.SmoothPlastic,
-    LobbyModel,
-    true,
-    true
-  )
-  slab.Color = Color3.fromRGB(70, 70, 84)
-  local rc = (ri % 2 == 0) and Color3.fromRGB(255, 120, 220) or Color3.fromRGB(110, 220, 255)
-  for b = 0, 1 do
-    local rb = makePart(
-      "RuneSlabMark",
-      Vector3.new(0.9, 0.14, 0.22),
-      CFrame.new(rp[1] + (b - 0.5) * 0.5, 2.42, rp[2] + (b - 0.5) * 0.3) * CFrame.Angles(
-          0,
-          math.rad(ri * 24 + b * 50),
-          0
-        ),
-      "White",
-      Enum.Material.Neon,
-      LobbyModel,
-      false,
-      true
-    )
-    rb.Color = rc
   end
 end
 for i = 1, 42 do
@@ -545,7 +439,7 @@ for i = 1, 12 do
   ic.Font = Enum.Font.GothamBold
   ic.TextScaled = true
   ic.TextColor3 = Color3.fromRGB(255, 255, 255)
-  ic.Text = rankIcons[i] or "⚡"
+  ic.Text = ""
   ic.Parent = row
 
   local av = Instance.new("ImageLabel")
@@ -937,27 +831,6 @@ do
   beam.Color = STONE_B
   local key = MP("ClassArchKey", Vector3.new(2.7, 3.1, 4.3), CFrame.new(0, 31.3, PZ), "Medium stone grey", nil, false)
   key.Color = Color3.fromRGB(34, 32, 46)
-
-  -- Runas luminosas en la cara del arco (barritas neon, cian/morado alternadas)
-  local runeCols = { Color3.fromRGB(110, 220, 255), Color3.fromRGB(190, 140, 255) }
-  local runePos = { { -15.2, 28.9 }, { -10.6, 30.6 }, { 10.6, 30.6 }, { 15.2, 28.9 } }
-  for ri, rp in ipairs(runePos) do
-    local rc = runeCols[(ri % 2) + 1]
-    local flip = (ri % 2 == 0) and 1 or -1
-    local function RB(s, cf)
-      local rb = MP("ClassRune", s, cf, "White", Enum.Material.Neon, false)
-      rb.Color = rc
-    end
-    RB(Vector3.new(0.28, 2.0, 0.18), CFrame.new(rp[1], rp[2], PZ - 2.0))
-    RB(
-      Vector3.new(0.28, 1.1, 0.18),
-      CFrame.new(rp[1] + 0.4 * flip, rp[2] + 0.45, PZ - 2.0) * CFrame.Angles(0, 0, math.rad(48 * flip))
-    )
-    RB(
-      Vector3.new(0.28, 1.0, 0.18),
-      CFrame.new(rp[1] + 0.38 * flip, rp[2] - 0.15, PZ - 2.0) * CFrame.Angles(0, 0, math.rad(-48 * flip))
-    )
-  end
 
   -- Letrero de madera oscura TOP SORCERERS (legible: letras amarillas con borde negro)
     -- (Sin postes: el letrero va montado directo sobre el arco)
