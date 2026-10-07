@@ -10,7 +10,15 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ServerScriptService = game:GetService("ServerScriptService")
-local S = require(ServerScriptService:WaitForChild("AvadaCore"))
+-- Busca el ModuleScript del nucleo SIN importar su nombre exacto
+local coreMod
+local tCore = os.clock()
+repeat
+  task.wait(0.25)
+  coreMod = ServerScriptService:FindFirstChildOfClass("ModuleScript")
+until coreMod or (os.clock() - tCore > 15)
+assert(coreMod, "Avada: falta el ModuleScript del nucleo en ServerScriptService")
+local S = require(coreMod)
 
 local squares = S.squares
 local squareParts = S.squareParts
@@ -389,6 +397,7 @@ end
 for i, data in ipairs(PAD_DATA) do
   createPadStation(i, data)
 end
+print("✅ [Avada] Pads amarillos construidos: " .. #PAD_DATA)
 
 -- (los pads amarillos van sobre los caminos de la isla; sin plaza ni puerta del salón)
 

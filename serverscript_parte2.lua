@@ -672,13 +672,7 @@ do
     mesh.Parent = part
     return part
   end
-  local back = MP("ClassBackdrop", Vector3.new(62, 42, 0.6), CFrame.new(0, 21.5, 46.6), "Dark stone grey", nil, false)
-  back.Color = Color3.fromRGB(17, 16, 27)
-  local stage = MP("ClassStage", Vector3.new(52, 0.9, 7.5), CFrame.new(0, 2.2, 28.0), "Dark stone grey", nil, true)
-  stage.Color = Color3.fromRGB(29, 27, 43)
-  local step =
-    MP("ClassStageStep", Vector3.new(42, 0.55, 2.4), CFrame.new(0, 2.0, 24.9), "Medium stone grey", nil, true)
-  step.Color = Color3.fromRGB(38, 35, 52)
+  -- (Sin pared trasera ni escenario en el suelo: el monumento va directo sobre el césped)
 
   -- Marco de madera de la pizarra
   local frameCol = Color3.fromRGB(92, 56, 28)
