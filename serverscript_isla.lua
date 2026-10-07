@@ -564,20 +564,39 @@ local function clasicoEn(modelo)
   local INL = Enum.SurfaceType.Inlet
   for _, p in ipairs(modelo:GetDescendants()) do
     if p:IsA("BasePart") and p.Transparency < 1 then
-      local isBlock = (p.ClassName == "Part") and (p.Shape == Enum.PartType.Block)
       p.Material = Enum.Material.Plastic
       p.Reflectance = 0
-      if not isBlock then
-        p.TopSurface, p.BottomSurface = SM, SM
-        p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
-      else
-        local sx, sy, sz = p.Size.X, p.Size.Y, p.Size.Z
+      -- una Texture en una cara tapa los studs de esa cara: se apaga
+      for _, t in ipairs(p:GetChildren()) do
+        if t:IsA("Texture") then
+          t.Transparency = 1
+        end
+      end
+      local cn = p.ClassName
+      local sx, sy, sz = p.Size.X, p.Size.Y, p.Size.Z
+      if cn == "WedgePart" or cn == "CornerWedgePart" then
+        p.TopSurface = ST
+        p.FrontSurface = ST
+        p.BackSurface = ST
+        p.BottomSurface = INL
+        p.LeftSurface, p.RightSurface = SM, SM
+      elseif cn == "Part" and p.Shape == Enum.PartType.Cylinder then
+        -- en un cilindro las caras redondas son Left/Right: ahi van los studs
+        -- (la isla entera es un cilindro: ese es el suelo)
+        p.LeftSurface = ST
+        p.RightSurface = ST
+        p.TopSurface, p.BottomSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
+      elseif cn == "Part" and p.Shape == Enum.PartType.Block then
         p.TopSurface = (sx >= 0.9 and sz >= 0.9) and ST or SM
         p.BottomSurface = (sx >= 0.9 and sz >= 0.9) and INL or SM
         p.FrontSurface = (sx >= 0.9 and sy >= 0.9) and ST or SM
         p.BackSurface = p.FrontSurface
         p.LeftSurface = (sz >= 0.9 and sy >= 0.9) and ST or SM
         p.RightSurface = p.LeftSurface
+      else
+        -- esferas y mallas: lisas (en el Roblox clasico eran mallas, sin studs)
+        p.TopSurface, p.BottomSurface = SM, SM
+        p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
       end
     end
   end
