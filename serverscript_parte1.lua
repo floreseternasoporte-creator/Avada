@@ -17,7 +17,7 @@ local TweenService      = game:GetService("TweenService")
 --===========================================================
 -- CONFIG
 --===========================================================
-local LOBBY_SPAWN   = Vector3.new(0, 6, 19)
+local LOBBY_SPAWN   = Vector3.new(0, 6, 0)
 local PLAYER_HEALTH = 100
 local ROUND_TIME    = 60
 local TOTAL_ROUNDS  = 3
@@ -128,11 +128,13 @@ local HOUSES = {
  
 -- Lobby estilo 99 Noches: los 4 pads en UNA fila central pegada (13 studs entre centros,
 -- bases tocándose), letreros bajos justo detrás y spawn al sur mirando a la plaza.
+-- Isla circular: los 4 pads amarillos van sobre los 4 caminos diagonales (r=19),
+-- letreros al final de cada camino (r=27.5) mirando al centro, spawn en el círculo mágico.
 local PAD_DATA = {
-{ pos = Vector3.new(-19.5,3.6,-6), house=HOUSES[1], signPos=Vector3.new(-19.5,9.5,-16), signLook=Vector3.new(-19.5,9.5,-6) },
-{ pos = Vector3.new( -6.5,3.6,-6), house=HOUSES[2], signPos=Vector3.new( -6.5,9.5,-16), signLook=Vector3.new( -6.5,9.5,-6) },
-{ pos = Vector3.new(  6.5,3.6,-6), house=HOUSES[3], signPos=Vector3.new(  6.5,9.5,-16), signLook=Vector3.new(  6.5,9.5,-6) },
-{ pos = Vector3.new( 19.5,3.6,-6), house=HOUSES[4], signPos=Vector3.new( 19.5,9.5,-16), signLook=Vector3.new( 19.5,9.5,-6) },
+{ pos = Vector3.new(-13.4,3.6,-13.4), house=HOUSES[1], signPos=Vector3.new(-19.4,8.5,-19.4), signLook=Vector3.new(-13.4,8.5,-13.4) },
+{ pos = Vector3.new( 13.4,3.6,-13.4), house=HOUSES[2], signPos=Vector3.new( 19.4,8.5,-19.4), signLook=Vector3.new( 13.4,8.5,-13.4) },
+{ pos = Vector3.new(-13.4,3.6, 13.4), house=HOUSES[3], signPos=Vector3.new(-19.4,8.5, 19.4), signLook=Vector3.new(-13.4,8.5, 13.4) },
+{ pos = Vector3.new( 13.4,3.6, 13.4), house=HOUSES[4], signPos=Vector3.new( 19.4,8.5, 19.4), signLook=Vector3.new( 13.4,8.5, 13.4) },
 }
  
 local ARENA_CENTERS = {

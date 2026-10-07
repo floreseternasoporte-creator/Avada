@@ -134,62 +134,173 @@ end
                                                 local spawnLoc = workspace:FindFirstChild("LobbySpawn")
                                                 if not spawnLoc then
                                                     spawnLoc = Instance.new("SpawnLocation"); spawnLoc.Name="LobbySpawn"
-                                                    spawnLoc.Size=Vector3.new(6,1,6); spawnLoc.CFrame=CFrame.new(0,3,19)
+                                                    spawnLoc.Size=Vector3.new(6,1,6); spawnLoc.CFrame=CFrame.new(0,3,0)
                                                     spawnLoc.Transparency=1; spawnLoc.CanCollide=true; spawnLoc.Anchored=true
                                                     spawnLoc.Neutral=true; spawnLoc.Parent=workspace
                                                 end
  
-                                                local LobbyModel = workspace:FindFirstChild("HogwartsLobby")
+                                                local LobbyModel = workspace:FindFirstChild("IslandLobby")
                                                 if LobbyModel then LobbyModel:Destroy() end
-                                                LobbyModel = Instance.new("Model"); LobbyModel.Name="HogwartsLobby"; LobbyModel.Parent=workspace
+                                                LobbyModel = Instance.new("Model"); LobbyModel.Name="IslandLobby"; LobbyModel.Parent=workspace
  
-                                                local LW, LD, LH = 78, 62, 40
- 
-                                                local floor = makePart("Floor", Vector3.new(LW,2,LD), CFrame.new(0,1,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                addTex(floor, Enum.NormalId.Top, 9, 9)
- 
-                                                for _, data in ipairs({
-                                                    {"WallBack",  Vector3.new(LW,LH,2.5),    CFrame.new(0,LH/2+1,-LD/2)},
-                                                    {"WallFront", Vector3.new(LW,LH,2.5),    CFrame.new(0,LH/2+1, LD/2)},
-                                                    {"WallLeft",  Vector3.new(2.5,LH,LD+5),  CFrame.new(-LW/2,LH/2+1,0)},
-                                                    {"WallRight", Vector3.new(2.5,LH,LD+5),  CFrame.new( LW/2,LH/2+1,0)},
-                                                    {"Ceiling",   Vector3.new(LW,2.5,LD),    CFrame.new(0,LH+2,0)},
-                                                    }) do
-                                                    local w = makePart(data[1], data[2], data[3], "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                    addTex(w, Enum.NormalId.Front, 8, 8); addTex(w, Enum.NormalId.Back, 8, 8)
+
+                                                local LW, LD, LH = 78, 62, 40 -- compatibilidad: el leaderboard usa LD
+
+                                                -- Iluminación diurna tipo diorama (y fuera el tinte dorado sobre la tabla)
+                                                local Lighting = game:GetService("Lighting")
+                                                Lighting.ClockTime = 13.2
+                                                Lighting.Brightness = 2
+                                                Lighting.Ambient = Color3.fromRGB(150,150,168)
+                                                Lighting.OutdoorAmbient = Color3.fromRGB(170,175,190)
+
+                                                local function islCyl(name, h, d, cf, col, collide)
+                                                    local part = Instance.new("Part"); part.Name=name; part.Shape=Enum.PartType.Cylinder
+                                                    part.Size=Vector3.new(h,d,d); part.CFrame=cf*CFrame.Angles(0,0,math.rad(90))
+                                                    part.BrickColor=BrickColor.new("White"); part.Color=col; part.Material=Enum.Material.SmoothPlastic
+                                                    part.Anchored=true; part.CanCollide=(collide~=false); part.CastShadow=false; part.Parent=LobbyModel
+                                                    return part
                                                 end
- 
-                                                for z=-24,24,12 do makePart("VaultZ_"..z, Vector3.new(LW,2,2), CFrame.new(0,LH+1,z), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
-                                                for x=-36,36,18 do makePart("VaultX_"..x, Vector3.new(2,2,LD), CFrame.new(x,LH+1,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
- 
-                                                for _,px in ipairs({-32,32}) do
-                                                    for _,pz in ipairs({-22,-7,7,22}) do addGothicPillar(px,2,pz,LH-4,LobbyModel) end
+
+                                                -- Isla flotante por capas, como el corte de la imagen: césped, tierra y piedra
+                                                islCyl("IslandGrass", 1.2, 78, CFrame.new(0,1.4,0), Color3.fromRGB(84,158,66), true)
+                                                islCyl("IslandDirt", 2.0, 75.5, CFrame.new(0,0.05,0), Color3.fromRGB(112,76,45), false)
+                                                islCyl("IslandStone", 2.0, 71, CFrame.new(0,-1.7,0), Color3.fromRGB(74,74,86), false)
+                                                islCyl("IslandTip", 3.0, 42, CFrame.new(0,-4.0,0), Color3.fromRGB(62,62,74), false)
+                                                islCyl("IslandTip2", 2.6, 22, CFrame.new(0,-6.4,0), Color3.fromRGB(54,54,66), false)
+
+                                                -- Borde de piedras alrededor de la isla
+                                                for i=0,37 do
+                                                    local a = (i/38)*math.pi*2
+                                                    local rim = makePart("IslandRim", Vector3.new(4.6,0.8,1.3), CFrame.new(math.cos(a)*37.8, 2.15, math.sin(a)*37.8)*CFrame.Angles(0,-a-math.pi/2,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    rim.Color = (i%2==0) and Color3.fromRGB(66,66,78) or Color3.fromRGB(76,76,90)
                                                 end
-                                                for _,pz in ipairs({-22,-7,7,22}) do
-                                                    addGothicArch(-LW/2+1,2,pz,18,30,2,LobbyModel,90)
-                                                    addGothicArch( LW/2-1,2,pz,18,30,2,LobbyModel,90)
-                                                end
- 
-                                                local glassColors = {
-                                                {Color3.fromRGB(200,30,30),  Color3.fromRGB(255,215,0),  Color3.fromRGB(200,30,30)},
-                                                {Color3.fromRGB(0,140,60),   Color3.fromRGB(180,180,180),Color3.fromRGB(0,140,60)},
-                                                {Color3.fromRGB(30,60,200),  Color3.fromRGB(180,180,200),Color3.fromRGB(30,60,200)},
-                                                {Color3.fromRGB(210,180,0),  Color3.fromRGB(30,30,30),   Color3.fromRGB(210,180,0)},
-                                                }
-                                                for i,gc in ipairs(glassColors) do
-                                                    addStainedGlass(Vector3.new(-27+(i-1)*18, LH-12, -LD/2+1), Vector3.new(10,16,0.4), gc, LobbyModel)
-                                                end
- 
-                                                for _,cp in ipairs({
-                                                    Vector3.new(-34,LH-8,-18), Vector3.new(-34,LH-8,18),
-                                                    Vector3.new(0,LH-8,-24),   Vector3.new(0,LH-8,0), Vector3.new(26,LH-8,20),
-                                                    Vector3.new(34,LH-8,-18),  Vector3.new(34,LH-8,18),
-                                                    }) do addWallTorch(cp, LobbyModel) end
- 
-                                                    for i=1,14 do
-                                                        createFlyingCandle(Vector3.new(math.random(-34,34), LH-math.random(5,15), math.random(-26,26)), LobbyModel)
+
+                                                -- 4 caminos de losas en X hacia el centro (los pads amarillos van encima)
+                                                for _,pd in ipairs({{1,-1},{-1,-1},{-1,1},{1,1}}) do
+                                                    local dx, dz = pd[1]*0.7071, pd[2]*0.7071
+                                                    local yaw = -math.atan2(dz, dx)
+                                                    local px, pz = -dz, dx
+                                                    for r=13.2, 35, 3.35 do
+                                                        local cx, cz = dx*r, dz*r
+                                                        local slab = makePart("PathSlab", Vector3.new(3.15,0.35,6.9), CFrame.new(cx,2.16,cz)*CFrame.Angles(0,yaw,0), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                        slab.Color = ((r*10)%2 < 1) and Color3.fromRGB(126,126,138) or Color3.fromRGB(110,110,124)
+                                                        for _,sd2 in ipairs({-1,1}) do
+                                                            local curb = makePart("PathCurb", Vector3.new(3.15,0.52,0.55), CFrame.new(cx+px*3.45*sd2, 2.24, cz+pz*3.45*sd2)*CFrame.Angles(0,yaw,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                            curb.Color = Color3.fromRGB(82,82,96)
+                                                        end
                                                     end
- 
+                                                end
+
+                                                -- Círculo mágico central: anillos neón cian->magenta que giran, estrella y runas
+                                                local spinParts = {}
+                                                local function spinAdd(part, radius, y, baseAng, dir)
+                                                    table.insert(spinParts, {part=part, r=radius, y=y, a=baseAng, dir=dir})
+                                                end
+                                                islCyl("MagicRim", 0.6, 25.8, CFrame.new(0,2.2,0), Color3.fromRGB(52,50,66), false)
+                                                islCyl("MagicDisc", 0.5, 24.5, CFrame.new(0,2.28,0), Color3.fromRGB(22,20,34), true)
+                                                islCyl("MagicCore", 0.56, 7, CFrame.new(0,2.3,0), Color3.fromRGB(15,13,25), false)
+                                                local function neonRing(radius, y, segCount, segLen, thick, dir)
+                                                    for i=0, segCount-1 do
+                                                        local a = (i/segCount)*math.pi*2
+                                                        local col = Color3.fromRGB(80,220,255):Lerp(Color3.fromRGB(255,90,220), i/segCount)
+                                                        local seg = makePart("MagicRingSeg", Vector3.new(segLen,0.32,thick), CFrame.new(math.cos(a)*radius, y, math.sin(a)*radius)*CFrame.Angles(0,-a-math.pi/2,0), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                        seg.Color = col
+                                                        spinAdd(seg, radius, y, a, dir)
+                                                    end
+                                                end
+                                                neonRing(10.6, 2.62, 28, 2.35, 1.05, 1)
+                                                neonRing(7.6, 2.62, 22, 2.1, 0.7, -1)
+                                                for _,rot in ipairs({0, math.pi/3}) do
+                                                    for k=0,2 do
+                                                        local a1 = rot + k*(math.pi*2/3)
+                                                        local a2 = rot + (k+1)*(math.pi*2/3)
+                                                        local x1,z1 = math.cos(a1)*6.2, math.sin(a1)*6.2
+                                                        local x2,z2 = math.cos(a2)*6.2, math.sin(a2)*6.2
+                                                        local dx,dz = x2-x1, z2-z1
+                                                        local bar = makePart("MagicStar", Vector3.new(math.sqrt(dx*dx+dz*dz),0.3,0.55), CFrame.new((x1+x2)/2,2.62,(z1+z2)/2)*CFrame.Angles(0,-math.atan2(dz,dx),0), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                        bar.Color = Color3.fromRGB(170,240,255)
+                                                    end
+                                                end
+                                                for i=0,7 do
+                                                    local a = i*(math.pi/4) + math.pi/8
+                                                    local rc = (i%2==0) and Color3.fromRGB(110,220,255) or Color3.fromRGB(255,120,220)
+                                                    for b=0,2 do
+                                                        local off = (b-1)*0.45
+                                                        local rb = makePart("MagicRune", Vector3.new(0.8,0.34,0.2), CFrame.new(math.cos(a)*9.0 - math.sin(a)*off, 2.62, math.sin(a)*9.0 + math.cos(a)*off)*CFrame.Angles(0,-a,0), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                        rb.Color = rc
+                                                    end
+                                                end
+                                                local glowPart = makePart("MagicGlow", Vector3.new(1,1,1), CFrame.new(0,4.4,0), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                glowPart.Transparency = 1
+                                                local gl = Instance.new("PointLight"); gl.Brightness=2.2; gl.Range=22; gl.Color=Color3.fromRGB(150,130,255); gl.Parent=glowPart
+                                                local em = Instance.new("ParticleEmitter")
+                                                em.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(120,230,255)), ColorSequenceKeypoint.new(1,Color3.fromRGB(255,120,230))}
+                                                em.LightEmission=1
+                                                em.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.35), NumberSequenceKeypoint.new(1,0)}
+                                                em.Speed=NumberRange.new(1.5,3.5); em.Lifetime=NumberRange.new(1.2,2.4); em.Rate=26; em.SpreadAngle=Vector2.new(55,55); em.Parent=glowPart
+                                                local spinAngle = 0
+                                                RunService.Heartbeat:Connect(function(dt)
+                                                    spinAngle += dt*0.35
+                                                    for _,sp in ipairs(spinParts) do
+                                                        local a = sp.a + spinAngle*sp.dir
+                                                        sp.part.CFrame = CFrame.new(math.cos(a)*sp.r, sp.y, math.sin(a)*sp.r)*CFrame.Angles(0,-a-math.pi/2,0)
+                                                    end
+                                                end)
+
+                                                -- Arbustos cúbicos de seto, plantas, rocas, cristales y losas con runas (como la imagen)
+                                                local function islWedge(name, size, cf, col, neon)
+                                                    local part = Instance.new("WedgePart"); part.Name=name; part.Size=size; part.CFrame=cf
+                                                    part.BrickColor=BrickColor.new("White"); part.Color=col
+                                                    part.Material=neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
+                                                    part.Anchored=true; part.CanCollide=false; part.CastShadow=false; part.Parent=LobbyModel
+                                                    return part
+                                                end
+                                                for _,bp in ipairs({{-26,-13,3.4},{-13,-26,2.7},{26,-13,3.4},{13,-26,2.7},{-27,10,2.7},{27,10,3.4}}) do
+                                                    local bush = makePart("TopiaryBush", Vector3.new(bp[3],bp[3]*0.9,bp[3]), CFrame.new(bp[1],2+bp[3]*0.45,bp[2]), "Dark green", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    bush.Color = Color3.fromRGB(30,86,36)
+                                                    local top = makePart("TopiaryTop", Vector3.new(bp[3]*0.8,bp[3]*0.45,bp[3]*0.8), CFrame.new(bp[1],2+bp[3]*1.1,bp[2]), "Bright green", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    top.Color = Color3.fromRGB(48,118,52)
+                                                end
+                                                for _,pp in ipairs({{7,-25},{-7,-25},{25,7},{-25,7},{7,22},{-7,22},{24,-7},{-24,-7}}) do
+                                                    makePart("PlantRock", Vector3.new(0.8,0.5,0.8), CFrame.new(pp[1],2.25,pp[2]), "Medium stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    for li=0,2 do
+                                                        local leaf = makePart("PlantLeaf", Vector3.new(0.3,1.15,0.55), CFrame.new(pp[1]+math.sin(li*2.1)*0.4, 2.8, pp[2]+math.cos(li*2.1)*0.4)*CFrame.Angles(math.rad(18), li*2.1, math.rad(-14)), "Bright green", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                        leaf.Color = Color3.fromRGB(42,112,46)
+                                                    end
+                                                end
+                                                for _,rp in ipairs({{24,-14},{-24,-14},{26,4},{-26,4},{4,-28},{-4,-28}}) do
+                                                    islWedge("IslandRock", Vector3.new(1.6+(rp[1]%3)*0.3, 1.3, 1.5), CFrame.new(rp[1],2.6,rp[2])*CFrame.Angles(0,math.rad(rp[1]*7),0), Color3.fromRGB(112,112,122), false)
+                                                end
+                                                for _,cp in ipairs({{30,-6,Color3.fromRGB(190,110,255)},{-30,-6,Color3.fromRGB(110,220,255)},{30,16,Color3.fromRGB(110,220,255)},{-30,16,Color3.fromRGB(255,120,220)}}) do
+                                                    islWedge("IslandCrystalRock", Vector3.new(2.2,0.7,1.9), CFrame.new(cp[1],2.3,cp[2]), Color3.fromRGB(40,38,54), false)
+                                                    for ci,ch in ipairs({1.5,2.4,1.8}) do
+                                                        local shard = islWedge("IslandCrystal", Vector3.new(0.85,ch,0.85), CFrame.new(cp[1]+(ci-2)*0.8, 2.5+ch/2, cp[2]+((ci%2)*0.6-0.3))*CFrame.Angles(math.rad((ci%2)*8-4), math.rad(45), math.rad((ci%3)*5-5)), cp[3], true)
+                                                        if ci == 2 then local cl = Instance.new("PointLight"); cl.Brightness=1.3; cl.Range=8; cl.Color=cp[3]; cl.Parent=shard end
+                                                    end
+                                                end
+                                                for ri,rp in ipairs({{10,-21},{-10,-21},{21,10},{-21,10},{0,-32}}) do
+                                                    local slab = makePart("RuneSlab", Vector3.new(2.3,0.35,2.3), CFrame.new(rp[1],2.18,rp[2])*CFrame.Angles(0,math.rad(ri*24),0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    slab.Color = Color3.fromRGB(70,70,84)
+                                                    local rc = (ri%2==0) and Color3.fromRGB(255,120,220) or Color3.fromRGB(110,220,255)
+                                                    for b=0,1 do
+                                                        local rb = makePart("RuneSlabMark", Vector3.new(0.9,0.14,0.22), CFrame.new(rp[1]+(b-0.5)*0.5, 2.42, rp[2]+(b-0.5)*0.3)*CFrame.Angles(0,math.rad(ri*24 + b*50),0), "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                        rb.Color = rc
+                                                    end
+                                                end
+                                                for i=1,42 do
+                                                    local a = i*2.39996
+                                                    local r = 13 + (i%19)
+                                                    local x, z = math.cos(a)*r, math.sin(a)*r
+                                                    local nearPad = false
+                                                    for _,pd2 in ipairs(PAD_DATA) do
+                                                        if math.abs(x-pd2.pos.X) < 8.5 and math.abs(z-pd2.pos.Z) < 8.5 then nearPad = true end
+                                                    end
+                                                    if math.abs(z-x) > 6.5 and math.abs(z+x) > 6.5 and not nearPad and not (z > 20 and math.abs(x) < 27) then
+                                                        local tuft = makePart("GrassTuft", Vector3.new(0.55,0.75,0.55), CFrame.new(x,2.35,z), "Bright green", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                        tuft.Color = Color3.fromRGB(58,138,52)
+                                                    end
+                                                end
+
                                                     --===========================================================
                                                     -- PAD STATIONS
                                                     --===========================================================
@@ -248,22 +359,7 @@ end
  
                                                     for i,data in ipairs(PAD_DATA) do createPadStation(i, data) end
 
-                                                    local plaza = makePart("LobbyPlaza", Vector3.new(60,1,20), CFrame.new(0,2.55,-6), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                    addTex(plaza, Enum.NormalId.Top, 6, 6)
-
-                                                    makePart("GatePostL", Vector3.new(1.2,14,1.2), CFrame.new(-27,8.5,-19), "Really black", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                    makePart("GatePostR", Vector3.new(1.2,14,1.2), CFrame.new( 27,8.5,-19), "Really black", Enum.Material.SmoothPlastic, LobbyModel, true, true)
-                                                    for gi=0,11 do
-                                                        local gx = -24.75 + gi*4.5
-                                                        local segA = makePart("GateTapeA_"..gi, Vector3.new(4.5,1.1,0.35), CFrame.new(gx,13.8,-19), (gi%2==0) and "Bright yellow" or "Really black", Enum.Material.Neon, LobbyModel, false, true)
-                                                        if gi%2==0 then segA.Color = Color3.fromRGB(255,205,64) end
-                                                        local segB = makePart("GateTapeB_"..gi, Vector3.new(4.5,1.1,0.35), CFrame.new(gx,12.2,-19), (gi%2==1) and "Bright yellow" or "Really black", Enum.Material.Neon, LobbyModel, false, true)
-                                                        if gi%2==1 then segB.Color = Color3.fromRGB(255,205,64) end
-                                                    end
-
-                                                    for _,cp2 in ipairs({Vector3.new(30,3.4,-14), Vector3.new(30,3.4,-10.8), Vector3.new(30,6.2,-12.4), Vector3.new(-30,3.4,-12.4)}) do
-                                                        makePart("SupplyCrate", Vector3.new(2.8,2.8,2.8), CFrame.new(cp2)*CFrame.Angles(0,math.rad(12),0), "Brown", Enum.Material.Wood, LobbyModel, true, true)
-                                                    end
+                                                    -- (los pads amarillos van sobre los caminos de la isla; sin plaza ni puerta del salón)
  
                                                     local function updateBoardForPad(idx)
                                                         local sq=squares[idx]; local st=padStations[idx]; local pad=squareParts[idx]
