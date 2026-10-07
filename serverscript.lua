@@ -13,7 +13,7 @@ local TweenService      = game:GetService("TweenService")
 --===========================================================
 -- CONFIG
 --===========================================================
-local LOBBY_SPAWN   = Vector3.new(0, 6, 0)
+local LOBBY_SPAWN   = Vector3.new(0, 6, 19)
 local PLAYER_HEALTH = 100
 local ROUND_TIME    = 60
 local TOTAL_ROUNDS  = 3
@@ -122,11 +122,13 @@ local HOUSES = {
 { name = "Hufflepuff", primary = "Bright yellow", neon = Color3.fromRGB(210,180,0)  },
 }
  
+-- Lobby estilo 99 Noches: los 4 pads en UNA fila central pegada (13 studs entre centros,
+-- bases tocándose), letreros bajos justo detrás y spawn al sur mirando a la plaza.
 local PAD_DATA = {
-{ pos = Vector3.new(-60,3.6,-38), house=HOUSES[1], signPos=Vector3.new(-60,20,-45), signLook=Vector3.new(-60,20,-38) },
-{ pos = Vector3.new( 60,3.6,-38), house=HOUSES[2], signPos=Vector3.new( 60,20,-45), signLook=Vector3.new( 60,20,-38) },
-{ pos = Vector3.new(-60,3.6, 38), house=HOUSES[3], signPos=Vector3.new(-60,20, 45), signLook=Vector3.new(-60,20, 38) },
-{ pos = Vector3.new( 60,3.6, 38), house=HOUSES[4], signPos=Vector3.new( 60,20, 45), signLook=Vector3.new( 60,20, 38) },
+{ pos = Vector3.new(-19.5,3.6,-6), house=HOUSES[1], signPos=Vector3.new(-19.5,9.5,-16), signLook=Vector3.new(-19.5,9.5,-6) },
+{ pos = Vector3.new( -6.5,3.6,-6), house=HOUSES[2], signPos=Vector3.new( -6.5,9.5,-16), signLook=Vector3.new( -6.5,9.5,-6) },
+{ pos = Vector3.new(  6.5,3.6,-6), house=HOUSES[3], signPos=Vector3.new(  6.5,9.5,-16), signLook=Vector3.new(  6.5,9.5,-6) },
+{ pos = Vector3.new( 19.5,3.6,-6), house=HOUSES[4], signPos=Vector3.new( 19.5,9.5,-16), signLook=Vector3.new( 19.5,9.5,-6) },
 }
  
 local ARENA_CENTERS = {
@@ -979,7 +981,7 @@ local function registerKill(killer)
                                                 local spawnLoc = workspace:FindFirstChild("LobbySpawn")
                                                 if not spawnLoc then
                                                     spawnLoc = Instance.new("SpawnLocation"); spawnLoc.Name="LobbySpawn"
-                                                    spawnLoc.Size=Vector3.new(6,1,6); spawnLoc.CFrame=CFrame.new(0,3,0)
+                                                    spawnLoc.Size=Vector3.new(6,1,6); spawnLoc.CFrame=CFrame.new(0,3,19)
                                                     spawnLoc.Transparency=1; spawnLoc.CanCollide=true; spawnLoc.Anchored=true
                                                     spawnLoc.Neutral=true; spawnLoc.Parent=workspace
                                                 end
@@ -988,7 +990,7 @@ local function registerKill(killer)
                                                 if LobbyModel then LobbyModel:Destroy() end
                                                 LobbyModel = Instance.new("Model"); LobbyModel.Name="HogwartsLobby"; LobbyModel.Parent=workspace
  
-                                                local LW, LD, LH = 165, 95, 65
+                                                local LW, LD, LH = 78, 62, 40
  
                                                 local floor = makePart("Floor", Vector3.new(LW,2,LD), CFrame.new(0,1,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
                                                 addTex(floor, Enum.NormalId.Top, 9, 9)
@@ -1004,13 +1006,13 @@ local function registerKill(killer)
                                                     addTex(w, Enum.NormalId.Front, 8, 8); addTex(w, Enum.NormalId.Back, 8, 8)
                                                 end
  
-                                                for z=-35,35,12 do makePart("VaultZ_"..z, Vector3.new(LW,2,2), CFrame.new(0,LH+1,z), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
-                                                for x=-75,75,18 do makePart("VaultX_"..x, Vector3.new(2,2,LD), CFrame.new(x,LH+1,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
+                                                for z=-24,24,12 do makePart("VaultZ_"..z, Vector3.new(LW,2,2), CFrame.new(0,LH+1,z), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
+                                                for x=-36,36,18 do makePart("VaultX_"..x, Vector3.new(2,2,LD), CFrame.new(x,LH+1,0), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true) end
  
-                                                for _,px in ipairs({-65,65}) do
-                                                    for _,pz in ipairs({-32,-12,12,32}) do addGothicPillar(px,2,pz,LH-4,LobbyModel) end
+                                                for _,px in ipairs({-32,32}) do
+                                                    for _,pz in ipairs({-22,-7,7,22}) do addGothicPillar(px,2,pz,LH-4,LobbyModel) end
                                                 end
-                                                for _,pz in ipairs({-32,-12,12,32}) do
+                                                for _,pz in ipairs({-22,-7,7,22}) do
                                                     addGothicArch(-LW/2+1,2,pz,18,30,2,LobbyModel,90)
                                                     addGothicArch( LW/2-1,2,pz,18,30,2,LobbyModel,90)
                                                 end
@@ -1022,30 +1024,53 @@ local function registerKill(killer)
                                                 {Color3.fromRGB(210,180,0),  Color3.fromRGB(30,30,30),   Color3.fromRGB(210,180,0)},
                                                 }
                                                 for i,gc in ipairs(glassColors) do
-                                                    addStainedGlass(Vector3.new(-45+(i-1)*30, LH-12, -LD/2+1), Vector3.new(10,16,0.4), gc, LobbyModel)
+                                                    addStainedGlass(Vector3.new(-27+(i-1)*18, LH-12, -LD/2+1), Vector3.new(10,16,0.4), gc, LobbyModel)
                                                 end
  
                                                 for _,cp in ipairs({
-                                                    Vector3.new(-60,LH-5,-22), Vector3.new(-60,LH-5,22),
-                                                    Vector3.new(0,LH-5,-22),   Vector3.new(0,LH-5,0), Vector3.new(0,LH-5,22),
-                                                    Vector3.new(60,LH-5,-22),  Vector3.new(60,LH-5,22),
+                                                    Vector3.new(-34,LH-8,-18), Vector3.new(-34,LH-8,18),
+                                                    Vector3.new(0,LH-8,-24),   Vector3.new(0,LH-8,0), Vector3.new(0,LH-8,24),
+                                                    Vector3.new(34,LH-8,-18),  Vector3.new(34,LH-8,18),
                                                     }) do addWallTorch(cp, LobbyModel) end
  
                                                     for i=1,14 do
-                                                        createFlyingCandle(Vector3.new(math.random(-70,70), LH-math.random(5,18), math.random(-40,40)), LobbyModel)
+                                                        createFlyingCandle(Vector3.new(math.random(-34,34), LH-math.random(5,15), math.random(-26,26)), LobbyModel)
                                                     end
  
                                                     --===========================================================
                                                     -- PAD STATIONS
                                                     --===========================================================
                                                     local function createPadStation(idx, data)
-                                                        local pad = makePart("DuelPad_"..idx, Vector3.new(10,0.25,10), CFrame.new(data.pos), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
-                                                        pad.Transparency = 0.2
+                                                        local pad = makePart("DuelPad_"..idx, Vector3.new(11,0.25,11), CFrame.new(data.pos), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                        pad.Color = Color3.fromRGB(28,24,38)
                                                         squareParts[idx] = pad
+
+                                                        local borders = {}
+                                                        local bOff = 5.22
+                                                        for _,bd in ipairs({
+                                                            {Vector3.new(11,0.34,0.55), Vector3.new(0,0.08,-bOff)},
+                                                            {Vector3.new(11,0.34,0.55), Vector3.new(0,0.08, bOff)},
+                                                            {Vector3.new(0.55,0.34,11), Vector3.new(-bOff,0.08,0)},
+                                                            {Vector3.new(0.55,0.34,11), Vector3.new( bOff,0.08,0)},
+                                                        }) do
+                                                            local bp = makePart("PadBorder_"..idx, bd[1], CFrame.new(data.pos+bd[2]), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
+                                                            bp.Color = Color3.fromRGB(255,205,64)
+                                                            table.insert(borders, bp)
+                                                        end
+
+                                                        local bb = Instance.new("BillboardGui"); bb.Name="PadCounter"
+                                                        bb.Size=UDim2.new(7,0,2.2,0); bb.StudsOffset=Vector3.new(0,4.4,0)
+                                                        bb.AlwaysOnTop=true; bb.LightInfluence=0; bb.MaxDistance=90; bb.Parent=pad
+                                                        local counter = Instance.new("TextLabel"); counter.Name="Count"
+                                                        counter.Size=UDim2.new(1,0,1,0); counter.BackgroundTransparency=1
+                                                        counter.Font=Enum.Font.LuckiestGuy; counter.TextScaled=true
+                                                        counter.TextColor3=Color3.fromRGB(255,214,64)
+                                                        counter.TextStrokeColor3=Color3.fromRGB(0,0,0); counter.TextStrokeTransparency=0
+                                                        counter.Text="0/2"; counter.Parent=bb
  
                                                         makePart("PadBase_"..idx, Vector3.new(13,1.4,13), CFrame.new(data.pos+Vector3.new(0,-0.8,0)), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
  
-                                                        local sign = makePart("PadSign_"..idx, Vector3.new(10,7,0.2), CFrame.new(data.signPos, data.signLook), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                        local sign = makePart("PadSign_"..idx, Vector3.new(9.5,4.6,0.2), CFrame.new(data.signPos, data.signLook), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
                                                         local gui = Instance.new("SurfaceGui"); gui.Face=Enum.NormalId.Front; gui.AlwaysOnTop=true; gui.LightInfluence=0; gui.Parent=sign
  
                                                         local holder = Instance.new("Frame"); holder.Size=UDim2.new(1,0,1,0)
@@ -1055,26 +1080,46 @@ local function registerKill(killer)
  
                                                         local title = Instance.new("TextLabel"); title.Name="Title"
                                                         title.BackgroundTransparency=1; title.Size=UDim2.new(1,0,0.40,0); title.Position=UDim2.new(0,0,0.06,0)
-                                                        title.Font=Enum.Font.GothamBold; title.TextScaled=true; title.TextColor3=data.house.neon
+                                                        title.Font=Enum.Font.LuckiestGuy; title.TextScaled=true; title.TextColor3=data.house.neon
                                                         title.TextStrokeColor3=Color3.fromRGB(0,0,0); title.TextStrokeTransparency=0.35
                                                         title.Text=string.upper(data.house.name); title.Parent=holder
  
                                                         local status = Instance.new("TextLabel"); status.Name="Status"
                                                         status.BackgroundTransparency=1; status.Size=UDim2.new(1,0,0.30,0); status.Position=UDim2.new(0,0,0.54,0)
-                                                        status.Font=Enum.Font.GothamMedium; status.TextScaled=true; status.TextColor3=Color3.fromRGB(230,230,230)
+                                                        status.Font=Enum.Font.FredokaOne; status.TextScaled=true; status.TextColor3=Color3.fromRGB(230,230,230)
                                                         status.TextStrokeColor3=Color3.fromRGB(0,0,0); status.TextStrokeTransparency=0.4
                                                         status.Text="0/2 · TOCA PARA UNIRTE"; status.Parent=holder
  
-                                                        padStations[idx] = { part=pad, sign=sign, title=title, status=status, house=data.house }
+                                                        padStations[idx] = { part=pad, sign=sign, title=title, status=status, house=data.house, borders=borders, counter=counter }
                                                     end
  
                                                     for i,data in ipairs(PAD_DATA) do createPadStation(i, data) end
+
+                                                    local plaza = makePart("LobbyPlaza", Vector3.new(60,1,20), CFrame.new(0,2.55,-6), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    addTex(plaza, Enum.NormalId.Top, 6, 6)
+
+                                                    makePart("GatePostL", Vector3.new(1.2,14,1.2), CFrame.new(-27,8.5,-19), "Really black", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    makePart("GatePostR", Vector3.new(1.2,14,1.2), CFrame.new( 27,8.5,-19), "Really black", Enum.Material.SmoothPlastic, LobbyModel, true, true)
+                                                    for gi=0,11 do
+                                                        local gx = -24.75 + gi*4.5
+                                                        local segA = makePart("GateTapeA_"..gi, Vector3.new(4.5,1.1,0.35), CFrame.new(gx,13.8,-19), (gi%2==0) and "Bright yellow" or "Really black", Enum.Material.Neon, LobbyModel, false, true)
+                                                        if gi%2==0 then segA.Color = Color3.fromRGB(255,205,64) end
+                                                        local segB = makePart("GateTapeB_"..gi, Vector3.new(4.5,1.1,0.35), CFrame.new(gx,12.2,-19), (gi%2==1) and "Bright yellow" or "Really black", Enum.Material.Neon, LobbyModel, false, true)
+                                                        if gi%2==1 then segB.Color = Color3.fromRGB(255,205,64) end
+                                                    end
+
+                                                    for _,cp2 in ipairs({Vector3.new(30,3.4,-14), Vector3.new(30,3.4,-10.8), Vector3.new(30,6.2,-12.4), Vector3.new(-30,3.4,-12.4)}) do
+                                                        makePart("SupplyCrate", Vector3.new(2.8,2.8,2.8), CFrame.new(cp2)*CFrame.Angles(0,math.rad(12),0), "Brown", Enum.Material.Wood, LobbyModel, true, true)
+                                                    end
  
                                                     local function updateBoardForPad(idx)
                                                         local sq=squares[idx]; local st=padStations[idx]; local pad=squareParts[idx]
                                                         if not sq or not st or not pad then return end
                                                         local occupied = (#sq.players>0) or sq.inBattle or sq.countdown
-                                                        pad.BrickColor = BrickColor.new(occupied and "Really red" or "Bright yellow")
+                                                        local borderCol = sq.inBattle and Color3.fromRGB(255,70,70) or (#sq.players==1 and not sq.countdown) and Color3.fromRGB(120,255,120) or Color3.fromRGB(255,205,64)
+                                                        if st.borders then for _,bp in ipairs(st.borders) do bp.Color = borderCol end end
+                                                        if st.counter then st.counter.Text = tostring(#sq.players).."/2"; st.counter.TextColor3 = borderCol end
+                                                        pad.Color = occupied and Color3.fromRGB(48,22,26) or Color3.fromRGB(28,24,38)
                                                         if sq.inBattle then st.status.Text="EN BATALLA"; st.status.TextColor3=Color3.fromRGB(255,100,100)
                                                         elseif sq.countdown then st.status.Text="PREPARANDO"; st.status.TextColor3=Color3.fromRGB(255,215,0)
                                                         elseif #sq.players==0 then st.status.Text="0/2 · TOCA PARA UNIRTE"; st.status.TextColor3=Color3.fromRGB(210,210,210)
@@ -1088,7 +1133,7 @@ local function registerKill(killer)
                                                             --===========================================================
                                                             -- LEADERBOARD WALL
                                                             --===========================================================
-                                                            local boardPart = makePart("LeaderboardBoard", Vector3.new(34,24,0.4), CFrame.new(0,26,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+                                                            local boardPart = makePart("LeaderboardBoard", Vector3.new(30,18,0.4), CFrame.new(0,16,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
                                                             local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=false; boardGui.LightInfluence=1; boardGui.Parent=boardPart
  
                                                             local boardRoot = Instance.new("Frame"); boardRoot.Size=UDim2.new(1,0,1,0)
@@ -1098,7 +1143,7 @@ local function registerKill(killer)
                                                             local bStroke=Instance.new("UIStroke"); bStroke.Color=Color3.fromRGB(255,215,0); bStroke.Thickness=2; bStroke.Parent=boardRoot
  
                                                             local bTitle=Instance.new("TextLabel"); bTitle.Size=UDim2.new(1,0,0.14,0); bTitle.Position=UDim2.new(0,0,0.02,0)
-                                                            bTitle.BackgroundTransparency=1; bTitle.Font=Enum.Font.GothamBlack; bTitle.TextScaled=true
+                                                            bTitle.BackgroundTransparency=1; bTitle.Font=Enum.Font.LuckiestGuy; bTitle.TextScaled=true
                                                             bTitle.TextColor3=Color3.fromRGB(255,215,0); bTitle.TextStrokeColor3=Color3.fromRGB(0,0,0); bTitle.TextStrokeTransparency=0.35
                                                             bTitle.Text="⚡ MEJORES MAGOS ⚡"; bTitle.Parent=boardRoot
  
@@ -1370,7 +1415,7 @@ local function registerKill(killer)
                                                                                                             end)
                                                                                                         end
  
-                                                                                                        local SQUARE_RADIUS=7.5
+                                                                                                        local SQUARE_RADIUS=6.0
                                                                                                         RunService.Heartbeat:Connect(function()
                                                                                                             for i,sqPos in ipairs(PAD_DATA) do
                                                                                                                 local sq=squares[i]
