@@ -255,6 +255,12 @@ end
                                                     part.Anchored=true; part.CanCollide=false; part.CastShadow=false; part.Parent=LobbyModel
                                                     return part
                                                 end
+                                                local function islCrys(size, cf, col)
+                                                    local part = makePart("IslandCrystal", Vector3.new(1,1,1), cf, "White", Enum.Material.Neon, LobbyModel, false, true)
+                                                    part.Color = col
+                                                    local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.Pyramid; mesh.Scale = size; mesh.Parent = part
+                                                    return part
+                                                end
                                                 for _,bp in ipairs({{-26,-13,3.4},{-13,-26,2.7},{26,-13,3.4},{13,-26,2.7},{-27,10,2.7},{27,10,3.4}}) do
                                                     local bush = makePart("TopiaryBush", Vector3.new(bp[3],bp[3]*0.9,bp[3]), CFrame.new(bp[1],2+bp[3]*0.45,bp[2]), "Dark green", Enum.Material.SmoothPlastic, LobbyModel, true, true)
                                                     bush.Color = Color3.fromRGB(30,86,36)
@@ -274,7 +280,7 @@ end
                                                 for _,cp in ipairs({{30,-6,Color3.fromRGB(190,110,255)},{-30,-6,Color3.fromRGB(110,220,255)},{30,16,Color3.fromRGB(110,220,255)},{-30,16,Color3.fromRGB(255,120,220)}}) do
                                                     islWedge("IslandCrystalRock", Vector3.new(2.2,0.7,1.9), CFrame.new(cp[1],2.3,cp[2]), Color3.fromRGB(40,38,54), false)
                                                     for ci,ch in ipairs({1.5,2.4,1.8}) do
-                                                        local shard = islWedge("IslandCrystal", Vector3.new(0.85,ch,0.85), CFrame.new(cp[1]+(ci-2)*0.8, 2.5+ch/2, cp[2]+((ci%2)*0.6-0.3))*CFrame.Angles(math.rad((ci%2)*8-4), math.rad(45), math.rad((ci%3)*5-5)), cp[3], true)
+                                                        local shard = islCrys(Vector3.new(0.8, ch, 0.8), CFrame.new(cp[1]+(ci-2)*0.75, 2.55+ch/2, cp[2]+((ci%2)*0.6-0.3))*CFrame.Angles(math.rad((ci%2)*7-3), math.rad(ci*40), math.rad((ci%3)*5-5)), cp[3]:Lerp(Color3.fromRGB(255,255,255), (ci==2) and 0.35 or 0.1))
                                                         if ci == 2 then local cl = Instance.new("PointLight"); cl.Brightness=1.3; cl.Range=8; cl.Color=cp[3]; cl.Parent=shard end
                                                     end
                                                 end
@@ -495,6 +501,13 @@ end
                                                                                                                             end
 
                                                                                                                             -- Fondo oscuro propio + escenario (aisla el monumento de la luz dorada)
+                                                                                                                            -- Cristal de verdad: pirámide alta y fina con la punta arriba (nada de cuñas-tabla)
+                                                                                                                            local function crysShard(size, cf, col)
+                                                                                                                                local part = MP("CrystalShard", Vector3.new(1,1,1), cf, "White", Enum.Material.Neon, false)
+                                                                                                                                part.Color = col
+                                                                                                                                local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.Pyramid; mesh.Scale = size; mesh.Parent = part
+                                                                                                                                return part
+                                                                                                                            end
                                                                                                                             local back = MP("ClassBackdrop", Vector3.new(62,42,0.6), CFrame.new(0,21.5,30.6), "Dark stone grey", nil, false)
                                                                                                                             back.Color = Color3.fromRGB(17,16,27)
                                                                                                                             local stage = MP("ClassStage", Vector3.new(52,0.9,7.5), CFrame.new(0,2.2,28.0), "Dark stone grey", nil, true)
@@ -548,14 +561,18 @@ end
                                                                                                                                 end
 
                                                                                                                                 -- Llama magica sobre cristal, al frente interior del pilar (acento, sin bañar la piedra)
-                                                                                                                                local FX = PX - sd*3.15
-                                                                                                                                MP("FlameBase", Vector3.new(1.6,0.6,1.6), CFrame.new(FX,12.8,PZ-2.35), "Really black", nil, false)
-                                                                                                                                local fcry = wedge("FlameCrystal", Vector3.new(1.0,1.7,1.0), CFrame.new(FX,13.9,PZ-2.35), flameCol, true)
-                                                                                                                                local ff = Instance.new("Fire"); ff.Heat=6; ff.Size=2.4; ff.Color=flameCol; ff.SecondaryColor=Color3.fromRGB(255,255,255); ff.Parent=fcry
+                                                                                                                                local FX = PX - sd*4.6 -- fuegos SENTADOS en pedestal a los pies del pilar (antes flotaban a media columna)
+                                                                                                                                MP("FlamePedestal", Vector3.new(1.5,0.55,1.5), CFrame.new(FX,3.22,PZ-3.55), "Really black", nil, false)
+                                                                                                                                MP("FlameCup", Vector3.new(1.0,0.32,1.0), CFrame.new(FX,3.65,PZ-3.55), "Really black", nil, false)
+                                                                                                                                local fcry = MP("FlameOrb", Vector3.new(0.95,0.95,0.95), CFrame.new(FX,4.3,PZ-3.55), "White", Enum.Material.Neon, false)
+                                                                                                                                fcry.Shape = Enum.PartType.Ball; fcry.Color = flameCol
+                                                                                                                                local fcore = MP("FlameCore", Vector3.new(0.5,0.5,0.5), CFrame.new(FX,4.3,PZ-3.55), "White", Enum.Material.Neon, false)
+                                                                                                                                fcore.Shape = Enum.PartType.Ball; fcore.Color = Color3.fromRGB(255,244,214)
+                                                                                                                                local ff = Instance.new("Fire"); ff.Heat=5; ff.Size=2.0; ff.Color=flameCol; ff.SecondaryColor=Color3.fromRGB(255,255,255); ff.Parent=fcry
                                                                                                                                 local fs = Instance.new("ParticleEmitter"); fs.Color=ColorSequence.new(flameCol, Color3.fromRGB(255,255,255)); fs.LightEmission=1
                                                                                                                                 fs.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.3), NumberSequenceKeypoint.new(1,0)}
                                                                                                                                 fs.Speed=NumberRange.new(3,7); fs.Lifetime=NumberRange.new(0.35,0.75); fs.Rate=22; fs.SpreadAngle=Vector2.new(35,35); fs.Parent=fcry
-                                                                                                                                local fl = Instance.new("PointLight"); fl.Brightness=2.6; fl.Range=11; fl.Color=flameCol; fl.Parent=fcry
+                                                                                                                                local fl = Instance.new("PointLight"); fl.Brightness=1.8; fl.Range=9; fl.Color=flameCol; fl.Parent=fcry
 
                                                                                                                                 -- Farol colgante con luz suave
                                                                                                                                 local arm = MP("LanternArm", Vector3.new(0.55,0.55,4.4), CFrame.new(PX,21.6,PZ-3.7), "Reddish brown", Enum.Material.Wood, false); arm.Color = frameCol
@@ -667,12 +684,13 @@ signLbl2.Text="SORCERERS"; signLbl2.Parent=signGui
                                                                                                                                 local cc = (sd < 0) and Color3.fromRGB(130,235,255) or Color3.fromRGB(255,150,215)
                                                                                                                                 local CX = sd*24.0
                                                                                                                                 local rock = MP("CrystalRock", Vector3.new(3.6,0.8,2.6), CFrame.new(CX,2.9,26.2), "Dark stone grey", nil, false); rock.Color = STONE_CAP
-                                                                                                                                local heights = {2.4, 4.6, 3.2, 5.2}
+                                                                                                                                local heights = {1.7, 2.9, 2.2, 3.5, 1.4}
                                                                                                                                 for ci,ch in ipairs(heights) do
-                                                                                                                                    local cx2 = CX + (ci-2.5)*0.95
-                                                                                                                                    local shard = wedge("ClassCrystal", Vector3.new(1.25,ch,1.25), CFrame.new(cx2, 3.2+ch/2, 26.2+((ci%2)*0.5-0.25))*CFrame.Angles(math.rad((ci%2)*10-5), math.rad(45), math.rad((ci%3)*6-6)), cc, true)
+                                                                                                                                    local cx2 = CX + (ci-3)*0.8
+                                                                                                                                    local cc2 = cc:Lerp(Color3.fromRGB(255,255,255), (ci == 4) and 0.5 or 0.12)
+                                                                                                                                    local shard = crysShard(Vector3.new(0.85, ch, 0.85), CFrame.new(cx2, 3.25+ch/2, 26.2+((ci%2)*0.5-0.25))*CFrame.Angles(math.rad((ci%2)*7-3), math.rad(ci*40), math.rad((ci%3)*5-5)), cc2)
                                                                                                                                     if ci == 4 then
-                                                                                                                                        local cl = Instance.new("PointLight"); cl.Brightness=1.6; cl.Range=9; cl.Color=cc; cl.Parent=shard
+                                                                                                                                        local cl = Instance.new("PointLight"); cl.Brightness=1.3; cl.Range=8; cl.Color=cc; cl.Parent=shard
                                                                                                                                     end
                                                                                                                                 end
                                                                                                                             end
