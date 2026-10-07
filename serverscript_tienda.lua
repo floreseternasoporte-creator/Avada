@@ -11,8 +11,7 @@
 
 	NOTA AVADA: archivo 3 de 3 (JUEGO, ISLA, TIENDA). POSITION ajustado
 	a (0, 2, -40) para sentarla sobre la isla mirando al circulo, y
-	ADJUST_LIGHTING en false porque la isla ya fija la luz del mundo
-	(si lo pones en true, este archivo pasa a mandar en la luz).
+	ADJUST_LIGHTING en false porque la isla ya fija la luz del mundo.
 ]]
 
 --// ============ CONFIGURACIÓN ============
@@ -20,6 +19,8 @@ local POSITION = Vector3.new(0, 2, -40)
 local ROTATION_Y = 0 -- grados
 local SHOP_TEXT = "TIENDA"
 local ADJUST_LIGHTING = false -- true = ambiente de atardecer suave (ponlo en false si ya tienes tu propia iluminación)
+local CLASSIC_STUDS = true -- true = TODO en estilo clásico de Roblox: bloques de material Plastic con studs (hasta pociones, báculos y caldero)
+local STUDS_ON_SIDES = true -- true = studs en las 6 caras (arriba, abajo, izquierda, derecha, frente, atrás). false = solo arriba y abajo
 
 --// ============ BASE DEL SISTEMA ============
 local ORIGIN = CFrame.new(POSITION) * CFrame.Angles(0, math.rad(ROTATION_Y), 0)
@@ -77,8 +78,24 @@ local function P(name, size, cf, color, material, extra)
 	return p
 end
 
--- cilindro VERTICAL
+-- Esfera/elipsoide hecha de capas de bloques (estilo clásico: así sí llevan studs)
+local function layers(name, size, cf, color, material, extra)
+	local n = math.clamp(math.floor(size.Y / 0.4 + 0.5), 3, 9)
+	local h = size.Y / n
+	local last
+	for i = 1, n do
+		local t = ((i - 0.5) / n) * 2 - 1
+		local f = math.sqrt(math.max(1 - t * t, 0.05))
+		last = P(name, Vector3.new(math.max(size.X * f, 0.2), h, math.max(size.Z * f, 0.2)), cf * CFrame.new(0, t * size.Y / 2, 0), color, material, extra)
+	end
+	return last
+end
+
+-- cilindro VERTICAL (en modo clásico es un bloque vertical con studs arriba)
 local function cyl(name, height, diameter, cf, color, material, extra)
+	if CLASSIC_STUDS then
+		return P(name, Vector3.new(diameter, height, diameter), cf, color, material, extra)
+	end
 	local p = P(name, Vector3.new(height, diameter, diameter), cf * CFrame.Angles(0, 0, math.pi / 2), color, material, extra)
 	p.Shape = Enum.PartType.Cylinder
 	return p
@@ -87,17 +104,25 @@ end
 -- cilindro HORIZONTAL (eje X)
 local function cylX(name, length, diameter, cf, color, material, extra)
 	local p = P(name, Vector3.new(length, diameter, diameter), cf, color, material, extra)
-	p.Shape = Enum.PartType.Cylinder
+	if not CLASSIC_STUDS then
+		p.Shape = Enum.PartType.Cylinder
+	end
 	return p
 end
 
 local function ball(name, diameter, cf, color, material, extra)
+	if CLASSIC_STUDS then
+		return layers(name, Vector3.new(diameter, diameter, diameter), cf, color, material, extra)
+	end
 	local p = P(name, Vector3.new(diameter, diameter, diameter), cf, color, material, extra)
 	p.Shape = Enum.PartType.Ball
 	return p
 end
 
 local function ellipsoid(name, size, cf, color, material, extra)
+	if CLASSIC_STUDS then
+		return layers(name, size, cf, color, material, extra)
+	end
 	local p = P(name, size, cf, color, material, extra)
 	local m = Instance.new("SpecialMesh")
 	m.MeshType = Enum.MeshType.Sphere
@@ -321,10 +346,20 @@ local function cauldron(pos, s, withStick)
 		ellipsoid("CauldronHandle", Vector3.new(0.55 * s, 0.6 * s, 0.35 * s), CFrame.new(cx + sx * 1.85 * s, cy + 2.4 * s, cz), dark, M.Metal)
 	end
 	-- borde en anillo (hueco en el centro)
-	local ringN = 18
-	for i = 0, ringN - 1 do
-		local a = i / ringN * math.pi * 2
-		P("CauldronRim", Vector3.new(0.7 * s, 0.3 * s, 0.4 * s), CFrame.new(cx, cy + 3.12 * s, cz) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 1.5 * s), dark, M.Metal)
+	if CLASSIC_STUDS then
+		-- marco cuadrado (4 bloques) alrededor de la poción
+		for _, sz in ipairs({ -1, 1 }) do
+			P("CauldronRim", Vector3.new(3.3 * s, 0.3 * s, 0.4 * s), CFrame.new(cx, cy + 3.12 * s, cz + sz * 1.45 * s), dark, M.Metal)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			P("CauldronRim", Vector3.new(0.4 * s, 0.3 * s, 2.5 * s), CFrame.new(cx + sx * 1.45 * s, cy + 3.12 * s, cz), dark, M.Metal)
+		end
+	else
+		local ringN = 18
+		for i = 0, ringN - 1 do
+			local a = i / ringN * math.pi * 2
+			P("CauldronRim", Vector3.new(0.7 * s, 0.3 * s, 0.4 * s), CFrame.new(cx, cy + 3.12 * s, cz) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 1.5 * s), dark, M.Metal)
+		end
 	end
 	-- poción morada
 	local liquid = cyl("CauldronLiquid", 0.1 * s, 2.6 * s, CFrame.new(cx, cy + 3.06 * s, cz), C.POTION_PURPLE, M.Neon, { Transparency = 0.1 })
@@ -388,7 +423,8 @@ for _, p in ipairs(posts) do
 	local topY = roofY(z) - 0.45
 	local h = topY - (F + 1.2)
 	P("Post", Vector3.new(w, h, w), CFrame.new(x, F + 1.2 + h / 2, z), C.WOOD_DARK, M.Wood)
-	P("PostCap", Vector3.new(w + 0.4, 0.5, w + 0.4), CFrame.new(x, topY - 0.25, z), C.WOOD, M.Wood)
+	-- el capitel sobresale 0.05 para que su cara de arriba NO quede a ras con la viga (evita parpadeo de studs)
+	P("PostCap", Vector3.new(w + 0.4, 0.5, w + 0.4), CFrame.new(x, topY - 0.2, z), C.WOOD, M.Wood)
 end
 
 P("BeamFront", Vector3.new(27, 0.9, 1.2), CFrame.new(0, roofY(5.4) - 0.9, 5.4), C.WOOD_DARK, M.Wood)
@@ -468,7 +504,7 @@ local top = F + 4.0
 P("CounterTop", Vector3.new(13.4, 0.6, 3.6), CFrame.new(0, top - 0.3, 4), C.WOOD, M.Wood)
 P("CounterBack", Vector3.new(12.8, 3.4, 0.4), CFrame.new(0, F + 1.7, 2.4), C.WOOD_DARK, M.Wood)
 for i = 0, 12 do
-	local ph = 3.4 + rng:NextNumber(-0.08, 0.08)
+	local ph = 3.5 + rng:NextNumber(0, 0.1) -- siempre entra un poco en la tabla del mostrador (sin rendijas)
 	P("CounterPlank", Vector3.new(0.95, ph, 0.4), CFrame.new(-6 + i, F + ph / 2, 5.6), (i % 2 == 0) and C.WOOD or Color3.fromRGB(125, 74, 45), M.Wood)
 end
 for _, sx in ipairs({ -1, 1 }) do
@@ -542,6 +578,28 @@ if ADJUST_LIGHTING then
 	bloom.Size = 20
 	bloom.Threshold = 1.6
 	bloom.Parent = Lighting
+end
+
+--// ============ ESTILO CLÁSICO ROBLOX (STUDS) ============
+local function applyClassicStyle()
+	local S = Enum.SurfaceType
+	local side = STUDS_ON_SIDES and S.Studs or S.Smooth
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("Part") and p.Transparency < 1 then
+			p.Material = M.Plastic
+			p.Reflectance = 0
+			p.TopSurface = S.Studs
+			p.BottomSurface = S.Inlet
+			p.LeftSurface = side
+			p.RightSurface = side
+			p.FrontSurface = side
+			p.BackSurface = side
+		end
+	end
+end
+
+if CLASSIC_STUDS then
+	applyClassicStyle()
 end
 
 model.Parent = workspace
