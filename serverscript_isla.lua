@@ -552,6 +552,37 @@ end)
 -- de la luz dorada del lobby, piedra casi negra, luces suaves y arco de verdad.
 -- Solo Parts decorativas; no toca datos ni el refresco de la tabla.
 --===========================================================
+-- ESTILO CLÁSICO ROBLOX (igual que la tienda): todo Plastic con studs,
+-- bien hecho cara por cara; las formas curvas quedan lisas.
+local CLASSIC_STUDS = true
+local function clasicoEn(modelo)
+  if not CLASSIC_STUDS or not modelo then
+    return
+  end
+  local ST = Enum.SurfaceType.Studs
+  local SM = Enum.SurfaceType.Smooth
+  local INL = Enum.SurfaceType.Inlet
+  for _, p in ipairs(modelo:GetDescendants()) do
+    if p:IsA("BasePart") and p.Transparency < 1 then
+      local isBlock = (p.ClassName == "Part") and (p.Shape == Enum.PartType.Block)
+      p.Material = Enum.Material.Plastic
+      p.Reflectance = 0
+      if not isBlock then
+        p.TopSurface, p.BottomSurface = SM, SM
+        p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
+      else
+        local sx, sy, sz = p.Size.X, p.Size.Y, p.Size.Z
+        p.TopSurface = (sx >= 0.9 and sz >= 0.9) and ST or SM
+        p.BottomSurface = (sx >= 0.9 and sz >= 0.9) and INL or SM
+        p.FrontSurface = (sx >= 0.9 and sy >= 0.9) and ST or SM
+        p.BackSurface = p.FrontSurface
+        p.LeftSurface = (sz >= 0.9 and sy >= 0.9) and ST or SM
+        p.RightSurface = p.LeftSurface
+      end
+    end
+  end
+end
+
 do
   local BZ = 45.65
   local PZ = 45.3
@@ -783,29 +814,52 @@ do
       CFrame.new(PX, GY + 1.1, PZ + 2.1) * CFrame.Angles(math.rad(-20), 0, 0),
       STONE_CAP
     )
-    wedge(
-      "GargWingA",
-      Vector3.new(4.4, 3.4, 0.4),
-      CFrame.new(PX + sd * 2.6, GY + 5.6, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 24)),
-      Color3.fromRGB(10, 9, 16),
-      false
+    -- Alas de murciélago de BLOQUES: los dos lados, pegadas al cuerpo y al frente
+    local wingCol = Color3.fromRGB(18, 16, 26)
+    local boneCol = Color3.fromRGB(34, 31, 50)
+    local WZ = PZ - 1.55
+    GP(
+      "GargWingBone",
+      Vector3.new(2.7, 0.6, 0.6),
+      CFrame.new(PX + sd * 1.9, GY + 6.55, WZ) * CFrame.Angles(0, 0, math.rad(sd * 20)),
+      boneCol
     )
-    wedge(
-      "GargWingB",
-      Vector3.new(3.0, 2.2, 0.35),
-      CFrame.new(PX + sd * 5.1, GY + 6.7, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 44)),
-      Color3.fromRGB(10, 9, 16),
-      false
+    GP(
+      "GargWingBone",
+      Vector3.new(2.6, 0.55, 0.6),
+      CFrame.new(PX + sd * 3.95, GY + 7.55, WZ) * CFrame.Angles(0, 0, math.rad(sd * 36)),
+      boneCol
     )
-    local wingArm = MP(
-      "GargWingArm",
-      Vector3.new(4.9, 0.55, 0.55),
-      CFrame.new(PX + sd * 2.75, GY + 7.05, PZ - 2.3) * CFrame.Angles(0, 0, math.rad(sd * 24)),
-      "Dark stone grey",
-      nil,
-      false
+    GP(
+      "GargWingBone",
+      Vector3.new(2.1, 0.5, 0.6),
+      CFrame.new(PX + sd * 5.7, GY + 8.35, WZ) * CFrame.Angles(0, 0, math.rad(sd * 50)),
+      boneCol
     )
-    wingArm.Color = Color3.fromRGB(24, 22, 34)
+    GP(
+      "GargWingMem",
+      Vector3.new(2.3, 2.5, 0.35),
+      CFrame.new(PX + sd * 2.35, GY + 5.15, WZ) * CFrame.Angles(0, 0, math.rad(sd * 12)),
+      wingCol
+    )
+    GP(
+      "GargWingMem",
+      Vector3.new(2.2, 2.1, 0.35),
+      CFrame.new(PX + sd * 4.35, GY + 6.0, WZ) * CFrame.Angles(0, 0, math.rad(sd * 24)),
+      wingCol
+    )
+    GP(
+      "GargWingMem",
+      Vector3.new(1.9, 1.7, 0.35),
+      CFrame.new(PX + sd * 6.0, GY + 6.75, WZ) * CFrame.Angles(0, 0, math.rad(sd * 38)),
+      wingCol
+    )
+    GP(
+      "GargWingClaw",
+      Vector3.new(0.5, 1.0, 0.5),
+      CFrame.new(PX + sd * 6.9, GY + 9.0, WZ) * CFrame.Angles(0, 0, math.rad(sd * 55)),
+      boneCol
+    )
 
     -- Varita apoyada junto al pilar
     local wandCol = flameCol
@@ -1019,5 +1073,7 @@ do
   end
 end
 
+
+clasicoEn(LobbyModel)
 
 -- FIN ISLA (lobby visual: isla flotante + tabla TOP SORCERERS)

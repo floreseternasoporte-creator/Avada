@@ -1574,6 +1574,37 @@ local circleQueue = {}
 local lockedPair = {}
 local arenaBusy = { false, false, false, false }
 
+-- ESTILO CLÁSICO ROBLOX (igual que la tienda): todo Plastic con studs,
+-- bien hecho cara por cara; las formas curvas quedan lisas.
+local CLASSIC_STUDS = true
+local function clasicoEn(modelo)
+  if not CLASSIC_STUDS or not modelo then
+    return
+  end
+  local ST = Enum.SurfaceType.Studs
+  local SM = Enum.SurfaceType.Smooth
+  local INL = Enum.SurfaceType.Inlet
+  for _, p in ipairs(modelo:GetDescendants()) do
+    if p:IsA("BasePart") and p.Transparency < 1 then
+      local isBlock = (p.ClassName == "Part") and (p.Shape == Enum.PartType.Block)
+      p.Material = Enum.Material.Plastic
+      p.Reflectance = 0
+      if not isBlock then
+        p.TopSurface, p.BottomSurface = SM, SM
+        p.LeftSurface, p.RightSurface, p.FrontSurface, p.BackSurface = SM, SM, SM, SM
+      else
+        local sx, sy, sz = p.Size.X, p.Size.Y, p.Size.Z
+        p.TopSurface = (sx >= 0.9 and sz >= 0.9) and ST or SM
+        p.BottomSurface = (sx >= 0.9 and sz >= 0.9) and INL or SM
+        p.FrontSurface = (sx >= 0.9 and sy >= 0.9) and ST or SM
+        p.BackSurface = p.FrontSurface
+        p.LeftSurface = (sz >= 0.9 and sy >= 0.9) and ST or SM
+        p.RightSurface = p.LeftSurface
+      end
+    end
+  end
+end
+
 local circleAnchor = makePart(
   "CircleBoardAnchor",
   Vector3.new(1, 1, 1),
@@ -1687,6 +1718,8 @@ end)
 updateCircleBoard()
 print("[Avada] Circulo central listo: la partida se crea en el circulo magico")
 
+clasicoEn(LobbyModel)
+
 --===========================================================
 -- ARENAS
 --===========================================================
@@ -1793,6 +1826,7 @@ local function buildArena(idx)
     spawnB = center + Vector3.new(12, 3.8, 36),
     centerPos = center + Vector3.new(0, 3.5, 0),
   }
+  clasicoEn(model)
 end
 
 for i = 1, 4 do
