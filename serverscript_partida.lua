@@ -446,12 +446,12 @@ local function darEnMano(player, tipo)
     tool.ToolTip = "Tu Boletus del bosque: se come"
     local piezas = piezasBoletus(0.085, 10, 8)
     local baseP = piezas[1]
-    h = parteDeTool("Handle", baseP.size, CFrame.new(0, 3, 0), baseP.color, baseP.material)
-    h.Shape = Enum.PartType.Cylinder
-    h.CFrame = CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.rad(90))
+    -- bolita en la base del tallo como agarre: el Boletus queda DERECHO
+    h = parteDeTool("Handle", Vector3.new(0.34, 0.34, 0.34), CFrame.new(0, 3, 0), baseP.color, baseP.material)
+    h.Shape = Enum.PartType.Ball
     h.Parent = tool
     local baseY = baseP.y
-    for i = 2, #piezas do
+    for i = 1, #piezas do
       local pz = piezas[i]
       local extra = parteDeTool(pz.nombre, pz.size, CFrame.new(0, 3 + (pz.y - baseY), 0) * CFrame.Angles(0, 0, math.rad(90)), pz.color, pz.material)
       extra.Shape = Enum.PartType.Cylinder
@@ -625,11 +625,12 @@ local function darSacoMago(player)
   tool.ToolTip = "Tu saco de tela: guarda hasta " .. SACO_MAX .. " cosas"
   tool.CanBeDropped = false
   local piezas = piezasSaco(0.19, 7674 + (player.UserId % 97))
-  local pz0 = piezas[1]
-  local h = parteDeTool("Handle", pz0.size, pz0.cf, pz0.color, pz0.material)
-  h.Shape = Enum.PartType.Cylinder
+  -- se agarra por una bolita dentro del cuello: sin giro, para que el
+  -- saco quede DERECHO en la mano (colgando del cuello)
+  local h = parteDeTool("Handle", Vector3.new(0.5, 0.5, 0.5), CFrame.new(0, 8.0 * 0.19, 0), Color3.fromRGB(176, 124, 92), Enum.Material.Fabric)
+  h.Shape = Enum.PartType.Ball
   h.Parent = tool
-  for i = 2, #piezas do
+  for i = 1, #piezas do
     local pz = piezas[i]
     local extra = parteDeTool(pz.nombre, pz.size, pz.cf, pz.color, pz.material)
     extra.Shape = pz.bola and Enum.PartType.Ball or Enum.PartType.Cylinder
@@ -639,7 +640,6 @@ local function darSacoMago(player)
     w.Part1 = extra
     w.Parent = extra
   end
-  tool.GripPos = Vector3.new(0, -0.55, 0)
   tool.Parent = player:FindFirstChildOfClass("Backpack")
   d.toolSaco = tool
   tool.Equipped:Connect(function()

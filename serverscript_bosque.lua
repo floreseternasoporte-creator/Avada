@@ -546,7 +546,7 @@ for hi = 1, 14 do
   local r = rngBosque:NextNumber(36, 208)
   local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
   if lejosDeJaulas(x, z) then
-    crearHongoDelBosque(Vector3.new(x, 1.58, z), 0.3, 7665 + hi * 131, hi) -- enterrado un poco, pegado a la tierra
+    crearHongoDelBosque(Vector3.new(x, 1.78, z), 0.22, 7665 + hi * 131, hi) -- mas pequeno y enterrado un poco
   end
 end
 

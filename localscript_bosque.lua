@@ -69,6 +69,8 @@ Instance.new("UICorner", relleno).CornerRadius = UDim.new(0, 6)
 -- Contador grande del saco (X/5), como en la referencia
 local contador = etiqueta("0/5", 36, UDim2.new(0.60, -70, 0.40, 0), UDim2.new(140, 52), Color3.new(1, 1, 1), raiz)
 contador.Font = Enum.Font.GothamBlack
+contador.TextScaled = true
+contador.ZIndex = 5
 contador.Visible = false
 
 -- Botones circulares pegados a la esquina, alrededor del boton de salto
@@ -167,6 +169,31 @@ player.CharacterAdded:Connect(vigilaSaco)
 if player.Character then
   vigilaSaco(player.Character)
 end
+
+-- Red final del contador: cada instante se mira si el saco va en la
+-- mano y el numero se ve si o si, sin depender de avisos
+task.spawn(function()
+  while true do
+    task.wait(0.25)
+    if ultimoEstado and raiz.Visible then
+      local lleva = sacoEnManoLocal
+      if not lleva then
+        local ch = player.Character
+        if ch then
+          for _, c in ipairs(ch:GetChildren()) do
+            if c:IsA("Tool") and c.Name == "Saco mágico" then
+              lleva = true
+            end
+          end
+        end
+      end
+      contador.Visible = lleva or ultimoEstado.sacoEnMano == true
+      if contador.Visible then
+        contador.Text = tostring(ultimoEstado.saco or 0) .. "/" .. tostring(ultimoEstado.sacoMax or 5)
+      end
+    end
+  end
+end)
 
 RE_UI.OnClientEvent:Connect(function(st)
   if type(st) ~= "table" then
