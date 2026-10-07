@@ -52,11 +52,7 @@ LobbyModel = Instance.new("Model"); LobbyModel.Name="IslandLobby"; LobbyModel.Pa
                                                 Lighting.Brightness = 2
                                                 Lighting.Ambient = Color3.fromRGB(150,150,168)
                                                 Lighting.OutdoorAmbient = Color3.fromRGB(170,175,190)
-local baseplate = workspace:FindFirstChild("Baseplate")
-if baseplate then baseplate:Destroy() end
-local baseSpawn = workspace:FindFirstChild("SpawnLocation")
-if baseSpawn and baseSpawn:IsA("SpawnLocation") then baseSpawn:Destroy() end
-workspace.FallenPartsDestroyHeight = -60
+-- (El mundo base de Studio queda intacto: el usuario lo quita a mano si quiere)
 
                                                 local function islCyl(name, h, d, cf, col, collide)
                                                     local part = Instance.new("Part"); part.Name=name; part.Shape=Enum.PartType.Cylinder
