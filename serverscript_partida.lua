@@ -30,8 +30,7 @@ local RE_SFX = remotoBosque("AvadaSonidos")
 -- ENCARGADO DE SESIONES: reparte jugadores, mundos y avisos
 --===========================================================
 local SESIONES = {} -- [player] = sesion
-local PARTIDAS = {} -- sesiones vivas
-local MAX_MUNDOS = 3
+local PARTIDAS = {} -- sesiones vivas (sin limite: mundos los que hagan falta)
 local slotsEnUso = {}
 local tplBosque, tplFogata, tplCaldero
 local plantillasListas = false
@@ -1835,6 +1834,7 @@ local function iniciarPartida(lista)
       SE.players[player] = { vivo = true, lenos = 0, hambre = 100, saco = {}, sacoEnMano = false, enMano = nil, toolSaco = nil }
       darSacoMago(player)
       sonar(player, "MusicaBosque")
+      sincronizaUI(player)
       local char = player.Character
       if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -1933,15 +1933,9 @@ local function crearSesion(lista)
   if not plantillasListas then
     return false
   end
-  local slot
-  for i = 1, MAX_MUNDOS do
-    if not slotsEnUso[i] then
-      slot = i
-      break
-    end
-  end
-  if not slot then
-    return false
+  local slot = 1
+  while slotsEnUso[slot] do
+    slot += 1
   end
   slotsEnUso[slot] = true
   local delta = Vector3.new(3000 * slot, 0, 0)

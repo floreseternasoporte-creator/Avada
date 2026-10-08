@@ -86,7 +86,7 @@ local raiz = Instance.new("Frame")
 raiz.Name = "Raiz"
 raiz.Size = UDim2.new(1, 0, 1, 0)
 raiz.BackgroundTransparency = 1
-raiz.Visible = true
+raiz.Visible = false
 raiz.Parent = gui
 
 local function etiqueta(texto, size, pos, tam, color, padre)
@@ -143,12 +143,6 @@ contador.TextScaled = true
 contador.ZIndex = 5
 contador.Visible = false
 
--- Solo de partida: el hambre, los lenos y el Dia/Noche se esconden en
--- el lobby; los botones (CORRER sobre todo) quedan siempre a la vista
-local soloPartida = { diaLbl, hambreLbl, lenosLbl, barraFondo }
-for _, e in ipairs(soloPartida) do
-  e.Visible = false
-end
 
 -- Botones circulares pegados a la esquina, alrededor del boton de salto
 -- (como en 99 Noches: Comer arriba-izquierda, CORRER arriba-derecha,
@@ -511,17 +505,8 @@ RE_UI.OnClientEvent:Connect(function(st)
   ultimoEstado = st
   calNum.Text = tostring(st.calderoHongos or 0)
   calNumTop.Text = tostring(st.calderoHongos or 0)
-  raiz.Visible = true
-  local enP = st.enPartida == true
-  for _, e in ipairs(soloPartida) do
-    e.Visible = enP
-  end
-  if not enP then
-    comerBtn.Visible = false
-    desgarrarBtn.Visible = false
-    tiendaBtn.Visible = false
-    soltarBtn.Visible = false
-    contador.Visible = false
+  raiz.Visible = st.enPartida == true
+  if not raiz.Visible then
     return
   end
   relleno.Size = UDim2.new(math.clamp((st.hambre or 100) / 100, 0, 1), 0, 1, 0)
