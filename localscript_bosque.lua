@@ -46,19 +46,13 @@ local function etiqueta(texto, size, pos, tam, color, padre)
   return l
 end
 
--- Dia/Noche ANCLADO arriba en el centro (como el "Dia 1" de 99 Noches):
--- pastilla oscura fija a la parte superior, no flota con la pantalla
-local diaFondo = Instance.new("Frame")
-diaFondo.AnchorPoint = Vector2.new(0.5, 0)
-diaFondo.Position = UDim2.new(0.5, 0, 0, 8)
-diaFondo.Size = UDim2.new(0, 176, 0, 32)
-diaFondo.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
-diaFondo.BackgroundTransparency = 0.35
-diaFondo.BorderSizePixel = 0
-diaFondo.Parent = raiz
-Instance.new("UICorner", diaFondo).CornerRadius = UDim.new(0, 9)
-local diaLbl = etiqueta("Día 1", 18, UDim2.new(0.5, 0, 0, 12), UDim2.new(0, 176, 0, 24), Color3.new(1, 1, 1), raiz)
+-- Dia/Noche como la foto de referencia: texto chico en la letra
+-- clasica del juego, en cursiva, arriba en el centro y sin fondo.
+-- El numero sube solo: Dia 1, Dia 2... y de noche Noche X de 7.
+local diaLbl = etiqueta("Día 1", 19, UDim2.new(0.5, 0, 0, 6), UDim2.new(0, 240, 0, 26), Color3.new(1, 1, 1), raiz)
 diaLbl.AnchorPoint = Vector2.new(0.5, 0)
+diaLbl.Font = Enum.Font.Merriweather
+diaLbl.RichText = true
 diaLbl.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Barra de hambre: naranja, a la izquierda
@@ -78,13 +72,13 @@ relleno.BorderSizePixel = 0
 relleno.Parent = barraFondo
 Instance.new("UICorner", relleno).CornerRadius = UDim.new(0, 6)
 
--- Contador del saco (X/5): PEQUEÑO y pegado justo ENCIMA del boton del
--- saco (Tienda), como en la foto de referencia. Nada de numero gigante
--- flotando a media pantalla.
-local contador = etiqueta("0/5", 15, UDim2.new(1, -128, 1, -278), UDim2.new(0, 56, 0, 18), Color3.new(1, 1, 1), raiz)
-contador.AnchorPoint = Vector2.new(0.5, 1)
+-- Contador del saco (X/5) como la foto de referencia: numero grande
+-- y claro flotando a la derecha del personaje mientras el saco va en
+-- la mano. Solo se ve con el saco puesto, igual que en la referencia.
+local contador = etiqueta("0/5", 34, UDim2.new(0.57, 0, 0.42, 0), UDim2.new(0, 110, 0, 46), Color3.new(1, 1, 1), raiz)
+contador.AnchorPoint = Vector2.new(0.5, 0.5)
 contador.Font = Enum.Font.GothamBlack
-contador.TextScaled = false
+contador.TextScaled = true
 contador.ZIndex = 5
 contador.Visible = false
 
@@ -219,7 +213,7 @@ RE_UI.OnClientEvent:Connect(function(st)
     return
   end
   relleno.Size = UDim2.new(math.clamp((st.hambre or 100) / 100, 0, 1), 0, 1, 0)
-  diaLbl.Text = (st.fase == "noche") and ("Noche " .. tostring(st.noche or 1) .. " de 7") or ("Día " .. tostring((st.noche or 0) + 1))
+  diaLbl.Text = (st.fase == "noche") and ("<i>Noche " .. tostring(st.noche or 1) .. " de 7</i>") or ("<i>Día " .. tostring((st.noche or 0) + 1) .. "</i>")
   ultimoEstado = st
   if st.mano == true then
     accionComer = "Comer"

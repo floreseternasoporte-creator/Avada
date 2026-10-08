@@ -236,7 +236,9 @@ local function updateFireBoard()
   if not (llamaParts and llamaBase and fuegoPos) then
     return -- el bosque aun no se descubre: nada que actualizar
   end
-  if fireStatus then
+  if fireStatus and lobosFaltan and SE.on then
+    fireStatus.Text = "FALTAN LOS LOBOS: pega el Script LOBOS"
+  elseif fireStatus then
     fireStatus.Text = "Llama "
     .. math.floor(SE.llama)
     .. "% - Noche "
@@ -896,6 +898,8 @@ end)
 -- juego, archivo LOBOS; PARTIDA solo lo invoca al caer la noche y
 -- vigila las reglas del bosque: el fuego quema y el amanecer borra)
 --===========================================================
+local lobosFaltan = false
+local loboAvisoDado = false
 local function llamarLobos(accion, a, b)
   local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaLobos")
   if not bf then
@@ -907,6 +911,7 @@ local function llamarLobos(accion, a, b)
   if ok then
     return res
   end
+  warn("[Avada] El Script LOBOS respondio con error: " .. tostring(res))
   return nil
 end
 
@@ -953,9 +958,14 @@ local function crearLoboPartida(pos, tipo, jaulaIdx)
   end
   local modelo = llamarLobos("crear", pos, opts)
   if not modelo then
-    warn("[Avada] Falta el archivo LOBOS: los lobos no pueden salir")
+    lobosFaltan = true
+    if not loboAvisoDado then
+      loboAvisoDado = true
+      warn("[Avada] LOS LOBOS NO SALEN: falta el Script LOBOS completo en ServerScriptService (su ultima linea dice -- FIN LOBOS)")
+    end
     return nil
   end
+  lobosFaltan = false
   local som = {
     model = modelo,
     root = modelo:FindFirstChild("HumanoidRootPart"),
@@ -998,7 +1008,7 @@ local function destruirLobos(soloNocturnos)
   llamarLobos("sinReaparicion")
   for i = #SE.sombras, 1, -1 do
     local som = SE.sombras[i]
-    if (not soloNocturnos) or (not som.guardian) then
+    if (not soloNocturnos) or (not som.guardian and som.tipo ~= "bosque") then
       if som.model then
         som.model:Destroy()
       end
@@ -1132,6 +1142,22 @@ local function marcarMuerto(player)
   end
 end
 
+-- Lobos sueltos del bosque: pasean de dia por la parte profunda, como
+-- en 99 Noches (de dia tambien hay lobos). Se repuebla cada amanecer.
+local function asegurarLobosDelBosque()
+  local vivos = 0
+  for _, som in ipairs(SE.sombras) do
+    if som.tipo == "bosque" then
+      vivos += 1
+    end
+  end
+  for i = vivos + 1, 3 do
+    local a = i * 2.1 + 0.7
+    local r = 150 + (i % 2) * 30
+    crearLoboPartida(Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r), "bosque")
+  end
+end
+
 local function nocheLobos()
   local total
   if SE.noche == 1 then
@@ -1141,7 +1167,7 @@ local function nocheLobos()
   end
   for i = 1, total do
     local a = math.random() * math.pi * 2
-    local pos = Vector3.new(FC.X + math.cos(a) * 205, 2.0, FC.Z + math.sin(a) * 205)
+    local pos = Vector3.new(FC.X + math.cos(a) * 150, 2.0, FC.Z + math.sin(a) * 150)
     crearLoboPartida(pos, "normal")
   end
   -- incursiones: en las noches 3 y 6 algunos lobos entran hasta la fogata
@@ -1149,7 +1175,7 @@ local function nocheLobos()
     local n = (SE.noche == 3) and 2 or 4
     for i = 1, n do
       local a = math.random() * math.pi * 2
-      local pos = Vector3.new(FC.X + math.cos(a) * 175, 2.0, FC.Z + math.sin(a) * 175)
+      local pos = Vector3.new(FC.X + math.cos(a) * 130, 2.0, FC.Z + math.sin(a) * 130)
       crearLoboPartida(pos, "raider")
     end
   end
@@ -1164,7 +1190,7 @@ local function nocheLobos()
     end
     if not yaHay then
       local a = math.random() * math.pi * 2
-      crearLoboPartida(Vector3.new(FC.X + math.cos(a) * 215, 2.0, FC.Z + math.sin(a) * 215), "grande")
+      crearLoboPartida(Vector3.new(FC.X + math.cos(a) * 160, 2.0, FC.Z + math.sin(a) * 160), "grande")
     end
   end
 end
@@ -1175,6 +1201,7 @@ local function cicloPartida()
     SE.fase = "dia"
     LightingSvc.ClockTime = 13.2
     LightingSvc.FogEnd = 100000
+    asegurarLobosDelBosque()
     updateFireBoard()
     local tDia = 0
     while SE.on and tDia < DIA_LEN do
@@ -1244,17 +1271,29 @@ local function cicloPartida()
   end
 end
 
--- El lobo trae su propia IA (archivo LOBOS). Este bucle solo vigila
--- la regla del fuego: la llama quema a los lobos que entran al
--- campamento, salvo a los de las incursiones de las noches 3 y 6.
+-- El lobo trae su propia IA (archivo LOBOS). Este bucle vigila la
+-- regla de la fogata: el anillo de la llama es una PARED para los
+-- lobos (salvo los de las incursiones 3 y 6): el que lo cruza es
+-- empujado fuera al instante y el fuego lo quema.
 local function bucleLobos()
   while true do
-    task.wait(0.3)
-    if SE.on and SE.llama > 25 then
+    task.wait(0.15)
+    if SE.on then
+      local radio = 9 + SE.llama * 0.11
       for _, som in ipairs(SE.sombras) do
         if som.root and som.root.Parent and som.tipo ~= "raider" then
-          if (som.root.Position - fuegoPos).Magnitude < 7 then
-            danarLobo(som, 26, fuegoPos, nil)
+          local rp = som.root.Position
+          local dx, dz = rp.X - fuegoPos.X, rp.Z - fuegoPos.Z
+          local dist = math.sqrt(dx * dx + dz * dz)
+          if SE.llama > 0 and dist < radio + 4 then
+            local dm = math.max(dist, 0.01)
+            local nx = fuegoPos.X + (dx / dm) * (radio + 3)
+            local nz = fuegoPos.Z + (dz / dm) * (radio + 3)
+            local look = som.root.CFrame.LookVector
+            pcall(function()
+              som.root.CFrame = CFrame.new(Vector3.new(nx, rp.Y, nz), Vector3.new(nx + look.X, rp.Y, nz + look.Z))
+            end)
+            danarLobo(som, (dist < 7) and 26 or 8, fuegoPos, nil)
           end
         end
       end
@@ -1392,6 +1431,8 @@ local function conectarToques()
 end
 
 local function prepararMundo()
+  lobosFaltan = false
+  loboAvisoDado = false
   SE.llama = 100
   SE.noche = 0
   SE.aprendices = 0
