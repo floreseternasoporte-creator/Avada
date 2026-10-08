@@ -1,4 +1,4 @@
--- Archivo PARTIDA: la supervivencia en el Bosque Prohibido (llama, hambre, Sombras, rescates, 7 noches).
+-- Archivo PARTIDA: la supervivencia en el Bosque Prohibido (llama, hambre, lobos, rescates, 7 noches).
 local Players = game:GetService("Players")
 local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 
@@ -203,7 +203,7 @@ local function escanearBosque()
   return true
 end
 
--- Archivo PARTIDA: la supervivencia en el Bosque Prohibido (noche, llama, hambre, Sombras, rescates).
+-- Archivo PARTIDA: la supervivencia en el Bosque Prohibido (noche, llama, hambre, lobos, rescates).
 local Players = game:GetService("Players")
 local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 
@@ -892,121 +892,37 @@ task.spawn(function()
   end
 end)
 
--- SOMBRAS (las criaturas de la noche)
+-- LOBOS SOMBRÍOS (los enemigos de la noche: el lobo del dueno del
+-- juego, archivo LOBOS; PARTIDA solo lo invoca al caer la noche y
+-- vigila las reglas del bosque: el fuego quema y el amanecer borra)
 --===========================================================
-local function crearSombra(pos, esGuardian, jaulaIdx, tipo)
-  tipo = tipo or "normal"
-  local esc = (tipo == "gigante") and 1.9 or 1
-  local model = Instance.new("Model")
-  model.Name = "Sombra"
-  local root = Instance.new("Part")
-  root.Name = "Root"
-  root.Size = Vector3.new(2.1 * esc, 3.2 * esc, 1.1 * esc)
-  root.BrickColor = BrickColor.new("White")
-  root.Color = Color3.fromRGB(18, 16, 28)
-  root.Material = Enum.Material.SmoothPlastic
-  root.Anchored = true
-  root.CanCollide = false
-  root.CastShadow = false
-  root.CFrame = CFrame.new(pos)
-  root.Parent = model
-  local head = Instance.new("Part")
-  head.Name = "Head"
-  head.Size = Vector3.new(1.5 * esc, 1.3 * esc, 1.3 * esc)
-  head.BrickColor = BrickColor.new("White")
-  head.Color = Color3.fromRGB(13, 12, 22)
-  head.Material = Enum.Material.SmoothPlastic
-  head.Anchored = true
-  head.CanCollide = false
-  head.CastShadow = false
-  head.CFrame = CFrame.new(pos + Vector3.new(0, 2.25 * esc, 0))
-  head.Parent = model
-  local cuernos = {}
-  if tipo == "gigante" then
-    for _, sd in ipairs({ -1, 1 }) do
-      local cuerno = Instance.new("WedgePart")
-      cuerno.Name = "Cuerno"
-      cuerno.Size = Vector3.new(0.55, 1.7, 0.55)
-      cuerno.BrickColor = BrickColor.new("White")
-      cuerno.Color = Color3.fromRGB(230, 224, 210)
-      cuerno.Material = Enum.Material.SmoothPlastic
-      cuerno.Anchored = true
-      cuerno.CanCollide = false
-      cuerno.CastShadow = false
-      cuerno.CFrame = CFrame.new(pos + Vector3.new(sd * 1.25, 3.6, 0)) * CFrame.Angles(0, 0, math.rad(-sd * 34))
-      cuerno.Parent = model
-      table.insert(cuernos, { part = cuerno, off = Vector3.new(sd * 1.25, 3.6, 0), ang = math.rad(-sd * 34) })
-    end
+local function llamarLobos(accion, a, b)
+  local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaLobos")
+  if not bf then
+    return nil
   end
-  local ojos = {}
-  for _, sd in ipairs({ -0.35, 0.35 }) do
-    local eye = Instance.new("Part")
-    eye.Name = "Eye"
-    eye.Size = Vector3.new(0.28, 0.2, 0.1)
-    eye.BrickColor = BrickColor.new("White")
-    eye.Color = Color3.fromRGB(255, 64, 84)
-    eye.Material = Enum.Material.Neon
-    eye.Anchored = true
-    eye.CanCollide = false
-    eye.CastShadow = false
-    eye.CFrame = CFrame.new(pos + Vector3.new(sd * esc, 2.35 * esc, 0.68 * esc))
-    eye.Parent = model
-    table.insert(ojos, { part = eye, off = Vector3.new(sd * esc, 2.35 * esc, 0.68 * esc) })
+  local ok, res = pcall(function()
+    return bf:Invoke(accion, a, b)
+  end)
+  if ok then
+    return res
   end
-  local gl = Instance.new("BillboardGui")
-  gl.Size = UDim2.new(5, 0, 1, 0)
-  gl.StudsOffset = Vector3.new(0, 3.4, 0)
-  gl.AlwaysOnTop = true
-  gl.LightInfluence = 0
-  gl.MaxDistance = 90
-  gl.Parent = root
-  local glLbl = Instance.new("TextLabel")
-  glLbl.Size = UDim2.new(1, 0, 1, 0)
-  glLbl.BackgroundTransparency = 1
-  glLbl.Font = Enum.Font.GothamBold
-  glLbl.TextScaled = true
-  glLbl.TextColor3 = Color3.fromRGB(255, 120, 130)
-  glLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-  glLbl.TextStrokeTransparency = 0.3
-  glLbl.Text = (tipo == "gigante") and "EL SIN NOMBRE" or ((tipo == "raider") and "Adepto Sombra" or "Sombra")
-  glLbl.Parent = gl
-  model.Parent = workspace
-  clasicoEn(model)
-  local hp = esGuardian and 220 or (90 + SE.noche * 25)
-  if tipo == "gigante" then
-    hp = 100000 -- El Sin Nombre no muere: solo se aturde
-  elseif tipo == "raider" then
-    hp = 200
-  end
-  local som = {
-    model = model,
-    root = root,
-    head = head,
-    headOff = 2.25 * esc,
-    ojos = ojos,
-    cuernos = cuernos,
-    tipo = tipo,
-    aturdidoHasta = 0,
-    label = glLbl,
-    hp = hp,
-    hpMax = hp,
-    guardian = esGuardian,
-    jaula = jaulaIdx,
-    golpeEn = 0,
-  }
-  table.insert(SE.sombras, som)
-  return som
+  return nil
 end
 
-local function matarSombra(som, killer)
+local function quitarLoboDeLaLista(som)
   for i, s2 in ipairs(SE.sombras) do
     if s2 == som then
       table.remove(SE.sombras, i)
       break
     end
   end
-  if killer then
-    bajaKill(killer)
+end
+
+local function loboCayo(som)
+  quitarLoboDeLaLista(som)
+  if som.ultimoGolpe then
+    bajaKill(som.ultimoGolpe)
   end
   if som.guardian and som.jaula then
     local quedan = false
@@ -1028,55 +944,70 @@ local function matarSombra(som, killer)
       end
     end
   end
-  if som.model then
-    som.model:Destroy()
-  end
 end
 
-local function danarSombra(som, dmg, de, player)
-  if som.tipo == "gigante" then
-    som.aturdidoHasta = os.clock() + 2.2
-    if som.label then
-      som.label.Text = "EL SIN NOMBRE (aturdido)"
-    end
+local function crearLoboPartida(pos, tipo, jaulaIdx)
+  local opts = nil
+  if tipo == "grande" then
+    opts = { escala = 1.5, vida = 100000, dano = 26 }
   end
-  som.hp -= dmg
-  if som.label then
-    if som.tipo ~= "gigante" then som.label.Text = (som.tipo == "raider" and "Adepto " or "Sombra ") .. math.max(math.floor(som.hp), 0) .. "/" .. som.hpMax end
+  local modelo = llamarLobos("crear", pos, opts)
+  if not modelo then
+    warn("[Avada] Falta el archivo LOBOS: los lobos no pueden salir")
+    return nil
   end
-  if som.root and som.root.Parent then
-    local dir = (som.root.Position - de).Unit
-    dir = Vector3.new(dir.X, 0, dir.Z)
-    som.root.CFrame = som.root.CFrame + dir * 1.6
-    if som.head then
-      som.head.CFrame = som.head.CFrame + dir * 1.6
-    end
-    if som.ojos then
-      for _, oj in ipairs(som.ojos) do
-        oj.part.CFrame = oj.part.CFrame + dir * 1.6
-      end
-    end
-    local old = som.root.Color
-    som.root.Color = Color3.fromRGB(255, 240, 240)
-    task.delay(0.08, function()
+  local som = {
+    model = modelo,
+    root = modelo:FindFirstChild("HumanoidRootPart"),
+    hum = modelo:FindFirstChildOfClass("Humanoid"),
+    tipo = tipo or "normal",
+    guardian = jaulaIdx ~= nil,
+    jaula = jaulaIdx,
+    ultimoGolpe = nil,
+  }
+  table.insert(SE.sombras, som)
+  if som.hum then
+    som.hum.Died:Connect(function()
+      loboCayo(som)
+    end)
+  end
+  return som
+end
+
+local function danarLobo(som, dmg, de, player)
+  if player then
+    som.ultimoGolpe = player
+  end
+  if som.tipo == "grande" and som.root then
+    -- EL GRANDE no cae con hechizos: se clava en el sitio un momento
+    som.root.Anchored = true
+    task.delay(1.2, function()
       if som.root and som.root.Parent then
-        som.root.Color = old
+        som.root.Anchored = false
       end
     end)
   end
-  if som.hp <= 0 then
-    if som.tipo == "gigante" then
-      som.hp = som.hpMax -- nunca muere
-      if som.label then
-        som.label.Text = "EL SIN NOMBRE"
+  if som.hum then
+    pcall(function()
+      som.hum:TakeDamage(dmg)
+    end)
+  end
+end
+
+local function destruirLobos(soloNocturnos)
+  llamarLobos("sinReaparicion")
+  for i = #SE.sombras, 1, -1 do
+    local som = SE.sombras[i]
+    if (not soloNocturnos) or (not som.guardian) then
+      if som.model then
+        som.model:Destroy()
       end
-    else
-      matarSombra(som, player)
+      table.remove(SE.sombras, i)
     end
   end
 end
 
--- Hechizos contra las Sombras (sin duelo: golpea la mas cercana)
+-- Hechizos contra los lobos (sin duelo: golpea al mas cercano)
 local function golpeSombra(caster, spellName)
   if not jugadorEnPartida(caster) then
     return false
@@ -1125,7 +1056,7 @@ local function golpeSombra(caster, spellName)
     if spellName ~= "AvadaKedavra" then
       dmg = math.floor(dmg * 1.4)
     end
-    danarSombra(best, dmg, hrp.Position, caster)
+    danarLobo(best, dmg, hrp.Position, caster)
   end
   return true
 end
@@ -1138,6 +1069,7 @@ bfGolpe.OnInvoke = function(caster, spellName)
   return golpeSombra(caster, spellName)
 end
 
+--===========================================================
 -- FLUJO DE LA PARTIDA
 --===========================================================
 local LightingSvc = game:GetService("Lighting")
@@ -1162,13 +1094,7 @@ local function finPartida(victoria)
     return
   end
   SE.on = false
-  for i = #SE.sombras, 1, -1 do
-    local som = SE.sombras[i]
-    if som.model then
-      som.model:Destroy()
-    end
-    table.remove(SE.sombras, i)
-  end
+  destruirLobos(false)
   LightingSvc.ClockTime = 13.2
   LightingSvc.FogEnd = 100000
   if circleTitle and circleStatus and circleSub then
@@ -1206,39 +1132,39 @@ local function marcarMuerto(player)
   end
 end
 
-local function nocheSombras()
+local function nocheLobos()
   local total
   if SE.noche == 1 then
     total = 1 -- primera noche suave, como en 99 Noches
   else
-    total = math.min(2 + SE.noche, 10)
+    total = math.min(1 + SE.noche, 6)
   end
   for i = 1, total do
     local a = math.random() * math.pi * 2
-    local pos = Vector3.new(FC.X + math.cos(a) * 205, 5.5, FC.Z + math.sin(a) * 205)
-    crearSombra(pos, false, nil, "normal")
+    local pos = Vector3.new(FC.X + math.cos(a) * 205, 2.0, FC.Z + math.sin(a) * 205)
+    crearLoboPartida(pos, "normal")
   end
-  -- incursiones: en las noches 3 y 6 los Adeptos entran hasta la fogata
+  -- incursiones: en las noches 3 y 6 algunos lobos entran hasta la fogata
   if SE.noche == 3 or SE.noche == 6 then
     local n = (SE.noche == 3) and 2 or 4
     for i = 1, n do
       local a = math.random() * math.pi * 2
-      local pos = Vector3.new(FC.X + math.cos(a) * 175, 5.5, FC.Z + math.sin(a) * 175)
-      crearSombra(pos, false, nil, "raider")
+      local pos = Vector3.new(FC.X + math.cos(a) * 175, 2.0, FC.Z + math.sin(a) * 175)
+      crearLoboPartida(pos, "raider")
     end
   end
-  -- El Sin Nombre ronda desde la noche 2 (no muere: se aturde con hechizos)
+  -- EL GRANDE ronda desde la noche 2 (no muere: los hechizos lo clavan)
   if SE.noche >= 2 then
     local yaHay = false
     for _, som in ipairs(SE.sombras) do
-      if som.tipo == "gigante" then
+      if som.tipo == "grande" then
         yaHay = true
         break
       end
     end
     if not yaHay then
       local a = math.random() * math.pi * 2
-      crearSombra(Vector3.new(FC.X + math.cos(a) * 215, 7.5, FC.Z + math.sin(a) * 215), false, nil, "gigante")
+      crearLoboPartida(Vector3.new(FC.X + math.cos(a) * 215, 2.0, FC.Z + math.sin(a) * 215), "grande")
     end
   end
 end
@@ -1276,7 +1202,7 @@ local function cicloPartida()
     LightingSvc.FogColor = Color3.fromRGB(16, 18, 34)
     LightingSvc.FogStart = 20
     LightingSvc.FogEnd = 110
-    nocheSombras()
+    nocheLobos()
     updateFireBoard()
     updateCircleBoard()
     local tNoche = 0
@@ -1308,16 +1234,8 @@ local function cicloPartida()
     if not SE.on then
       break
     end
-    -- amanecer: las sombras de la noche se queman
-    for i = #SE.sombras, 1, -1 do
-      local som = SE.sombras[i]
-      if not som.guardian then
-        if som.model then
-          som.model:Destroy()
-        end
-        table.remove(SE.sombras, i)
-      end
-    end
+    -- amanecer: los lobos de la noche desaparecen
+    destruirLobos(true)
     if SE.noche >= NOCHES_META then
       finPartida(true)
       return
@@ -1326,99 +1244,24 @@ local function cicloPartida()
   end
 end
 
-local function bucleSombras()
+-- El lobo trae su propia IA (archivo LOBOS). Este bucle solo vigila
+-- la regla del fuego: la llama quema a los lobos que entran al
+-- campamento, salvo a los de las incursiones de las noches 3 y 6.
+local function bucleLobos()
   while true do
-    task.wait(0.25)
-    if SE.on then
+    task.wait(0.3)
+    if SE.on and SE.llama > 25 then
       for _, som in ipairs(SE.sombras) do
-        if som.root and som.root.Parent and os.clock() >= (som.aturdidoHasta or 0) then
-          -- objetivo: el mago vivo mas cercano
-          local bestP, bestD, bestPos
-          for player, d in pairs(SE.players) do
-            if d.vivo and player.Character then
-              local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-              if hrp then
-                local dist = (hrp.Position - som.root.Position).Magnitude
-                if not bestD or dist < bestD then
-                  bestP, bestD, bestPos = player, dist, hrp.Position
-                end
-              end
-            end
-          end
-          -- los guardianes no se alejan de su jaula
-          if som.guardian and som.jaula then
-            local jp = jaulas[som.jaula].pos
-            if (som.root.Position - jp).Magnitude > 60 then
-              bestPos = Vector3.new(jp.X, som.root.Position.Y, jp.Z)
-              bestD = (bestPos - som.root.Position).Magnitude
-            end
-          end
-          if bestPos then
-            local rp = som.root.Position
-            local dfx, dfz = rp.X - fuegoPos.X, rp.Z - fuegoPos.Z
-            local toFire = math.sqrt(dfx * dfx + dfz * dfz)
-            local destino = bestPos
-            -- la llama protege: no entran al anillo mientras arda
-            -- (los Adeptos de las incursiones SI entran, como en 99 Noches)
-            if SE.llama > 0 and som.tipo ~= "raider" then
-              local pfx, pfz = bestPos.X - fuegoPos.X, bestPos.Z - fuegoPos.Z
-              local pf = math.sqrt(pfx * pfx + pfz * pfz)
-              if pf < radioSeguro() + 1 then
-                local dx, dz = dfx, dfz
-                local dm = math.sqrt(dx * dx + dz * dz)
-                if dm < 1 then
-                  dx, dz, dm = 1, 0, 1
-                end
-                local rr = radioSeguro() + 2.5
-                destino = Vector3.new(fuegoPos.X + (dx / dm) * rr, rp.Y, fuegoPos.Z + (dz / dm) * rr)
-              end
-            end
-            local dir = destino - rp
-            dir = Vector3.new(dir.X, 0, dir.Z)
-            if dir.Magnitude > 0.15 then
-              local vel = (som.tipo == "gigante") and 13.5 or (11 + SE.noche * 0.5)
-              local paso = dir.Unit * math.min(dir.Magnitude, vel * 0.25)
-              local nuevo = rp + paso
-              local cf = CFrame.new(nuevo, nuevo + dir.Unit)
-              som.root.CFrame = cf
-              if som.head then
-                som.head.CFrame = cf * CFrame.new(0, som.headOff or 2.25, 0)
-              end
-              if som.ojos then
-                for _, oj in ipairs(som.ojos) do
-                  oj.part.CFrame = cf * CFrame.new(oj.off)
-                end
-              end
-              if som.cuernos then
-                for _, cu in ipairs(som.cuernos) do
-                  cu.part.CFrame = cf * CFrame.new(cu.off) * CFrame.Angles(0, 0, cu.ang)
-                end
-              end
-              rp = nuevo
-            end
-            -- golpe al mago
-            local alcanze = (som.tipo == "gigante") and 4.6 or 3.4
-            if bestP and bestD and bestD <= alcanze and SE.players[bestP] and SE.players[bestP].vivo then
-              local now = os.clock()
-              if now - (som.golpeEn or 0) >= 0.9 then
-                som.golpeEn = now
-                local hum = bestP.Character and bestP.Character:FindFirstChildOfClass("Humanoid")
-                if hum then
-                  hum:TakeDamage((som.tipo == "gigante") and 20 or ((som.tipo == "raider") and 10 or 8))
-                end
-              end
-            end
-            -- el fuego las quema si entran al campamento
-            if SE.llama > 25 and toFire < 6 then
-              danarSombra(som, 30, fuegoPos, nil)
-            end
+        if som.root and som.root.Parent and som.tipo ~= "raider" then
+          if (som.root.Position - fuegoPos).Magnitude < 7 then
+            danarLobo(som, 26, fuegoPos, nil)
           end
         end
       end
     end
   end
 end
-task.spawn(bucleSombras)
+task.spawn(bucleLobos)
 
 -- Recursos: recoger con el toque
 local function conectarToques()
@@ -1552,12 +1395,8 @@ local function prepararMundo()
   SE.llama = 100
   SE.noche = 0
   SE.aprendices = 0
-  for i = #SE.sombras, 1, -1 do
-    if SE.sombras[i].model then
-      SE.sombras[i].model:Destroy()
-    end
-    table.remove(SE.sombras, i)
-  end
+  destruirLobos(false)
+  llamarLobos("conReaparicion")
   for ci, j in ipairs(jaulas) do
     j.libre = false
     j.rescatado = false
@@ -1571,9 +1410,9 @@ local function prepararMundo()
       local offY = ({ Piernas = 0.55, Tunica = 1.95, Cabeza = 3.3, Sombrero = 4.05 })[pp.Name] or 1
       pp.CFrame = CFrame.new(j.pos.X, j.pos.Y + 0.8 + offY, j.pos.Z)
     end
-    -- guardianes de la jaula
-    crearSombra(j.pos + Vector3.new(-7, 3.5, -7), true, ci)
-    crearSombra(j.pos + Vector3.new(7, 3.5, -7), true, ci)
+    -- guardianes de la jaula: dos lobos sombrios
+    crearLoboPartida(Vector3.new(j.pos.X - 7, 2.0, j.pos.Z - 7), "guardian", ci)
+    crearLoboPartida(Vector3.new(j.pos.X + 7, 2.0, j.pos.Z - 7), "guardian", ci)
   end
   updateFireBoard()
 end
