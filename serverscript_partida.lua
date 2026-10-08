@@ -720,9 +720,28 @@ local function soltarAlSuelo(player, tipo)
         suelta:Destroy()
       end
     end
+    -- zona de toque grande e invisible sobre lo soltado: se toca
+    -- en cualquier parte y se levanta
+    local zonaS = Instance.new("Part")
+    zonaS.Name = "ZonaToque"
+    zonaS.Size = Vector3.new(2.4, 2.6, 2.4)
+    zonaS.CFrame = CFrame.new(pos.X, 3.1, pos.Z)
+    zonaS.Transparency = 1
+    zonaS.CanCollide = false
+    zonaS.CanTouch = false
+    zonaS.Anchored = true
+    zonaS.Parent = suelta
+    -- marco blanco que marca lo que esta tirado en el piso
+    local marca = Instance.new("Highlight")
+    marca.FillColor = Color3.new(1, 1, 1)
+    marca.FillTransparency = 0.88
+    marca.OutlineColor = Color3.new(1, 1, 1)
+    marca.OutlineTransparency = 0.1
+    marca.DepthMode = Enum.HighlightDepthMode.Occluded
+    marca.Parent = suelta
     local cdS = Instance.new("ClickDetector")
     cdS.MaxActivationDistance = 14
-    cdS.Parent = ancla
+    cdS.Parent = zonaS
     cdS.MouseClick:Connect(recogerSuelta)
     suelta.Parent = workspace
   end
@@ -787,6 +806,16 @@ local function entregarComida(player, tipo)
     return false
   end
   if not d.enMano then
+    local char = player.Character
+    if char and char:FindFirstChild("Saco mágico") then
+      -- con el saco puesto: tocar algo lo guarda directo en el saco
+      if #d.saco < SACO_MAX then
+        table.insert(d.saco, tipo)
+        sincronizaUI(player)
+        return true
+      end
+      return false
+    end
     darEnMano(player, tipo)
     return true
   end
@@ -843,6 +872,9 @@ local function recogerHongo(player, hg)
     return
   end
   hg.disponible = false
+  if hg.zona then
+    hg.zona.CanQuery = false
+  end
   for _, parte in ipairs(hg.partes) do
     if parte then
       parte.Transparency = 1
@@ -853,7 +885,6 @@ local function recogerHongo(player, hg)
   if hg.prompt then
     hg.prompt.Enabled = false
   end
-  darEnMano(player, "Hongo")
   task.delay(25, function()
     -- el hongo REBROTA en otro sitio del mapa
     if hg.cap and hg.cap.Parent then
@@ -864,8 +895,14 @@ local function recogerHongo(player, hg)
           parte.CFrame = parte.CFrame + d
         end
       end
+      if hg.zona and hg.zona.Parent then
+        hg.zona.CFrame = hg.zona.CFrame + d
+      end
     end
     hg.disponible = true
+    if hg.zona then
+      hg.zona.CanQuery = true
+    end
     for _, parte in ipairs(hg.partes) do
       if parte and parte.Parent then
         parte.Transparency = 0
@@ -1373,9 +1410,19 @@ local function conectarToques()
     end)
   end
   for _, hg in ipairs(hongos) do
+    local zona = Instance.new("Part")
+    zona.Name = "ZonaHongo"
+    zona.Size = Vector3.new(2.8, 3, 2.8)
+    zona.CFrame = CFrame.new(hg.cap.Position.X, hg.cap.Position.Y + 1.2, hg.cap.Position.Z)
+    zona.Transparency = 1
+    zona.CanCollide = false
+    zona.CanTouch = false
+    zona.Anchored = true
+    zona.Parent = workspace
+    hg.zona = zona
     local cd = Instance.new("ClickDetector")
     cd.MaxActivationDistance = 14
-    cd.Parent = hg.cap
+    cd.Parent = zona
     cd.MouseClick:Connect(function(player)
       recogerHongo(player, hg)
     end)
