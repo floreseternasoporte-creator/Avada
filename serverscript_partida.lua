@@ -90,7 +90,7 @@ end
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
 local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego
-local jaulas, jaulasPos, lenaNodos, fresas, hongos, cofres, fireStatus
+local jaulas, jaulasPos, lenaNodos, moras, hongos, cofres, fireStatus
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
 
@@ -105,8 +105,8 @@ local function escanearBosque()
     llamaParts = {}
     llamaBase = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
     anilloSeguro = {}
-    lenaNodos, fresas, hongos, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}, {}
-    local fresasPorClave = {}
+    lenaNodos, moras, hongos, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}, {}
+    local morasPorClave = {}
     local hongosPorId = {}
     for _, d in ipairs(Bosque:GetDescendants()) do
       if d:IsA("BasePart") then
@@ -125,12 +125,12 @@ local function escanearBosque()
         local tipo = d:GetAttribute("Tipo")
         if tipo == "Lena" then
           table.insert(lenaNodos, { part = d, pos = d.Position, listoEn = 0 })
-        elseif tipo == "Baya" or tipo == "Tapa" or tipo == "Tallo" then
+        elseif tipo == "Mora" or tipo == "MoraCorona" or tipo == "MoraRabito" then
           local gi = d:GetAttribute("Arbusto") or 1
-          local fj = d:GetAttribute("Fresa") or 1
-          local clave = gi .. "/" .. fj
-          fresasPorClave[clave] = fresasPorClave[clave] or {}
-          fresasPorClave[clave][tipo] = d
+          local mj = d:GetAttribute("MoraId") or 1
+          local clave = gi .. "/" .. mj
+          morasPorClave[clave] = morasPorClave[clave] or {}
+          morasPorClave[clave][tipo] = d
         elseif tipo == "Cofre" then
           table.insert(cofres, { pos = d.Position, listo = 0, base = d })
         elseif tipo == "Hongo" then
@@ -147,9 +147,9 @@ local function escanearBosque()
         -- se completa abajo junto con su ancla
       end
     end
-    for _, conj in pairs(fresasPorClave) do
-      if conj.Baya then
-        table.insert(fresas, { berry = conj.Baya, tapa = conj.Tapa, tallo = conj.Tallo, disponible = true })
+    for _, conj in pairs(morasPorClave) do
+      if conj.Mora then
+        table.insert(moras, { mora = conj.Mora, corona = conj.MoraCorona, rabito = conj.MoraRabito, disponible = true })
       end
     end
     for _, hg in pairs(hongosPorId) do
@@ -292,7 +292,7 @@ end
 --===========================================================
 
 --===========================================================
--- OBJETOS: comida en la mano (fresas y hongos), SACO MAGICO (x/5)
+-- OBJETOS: comida en la mano (moras y hongos), SACO MAGICO (x/5)
 -- y acciones como en 99 Noches: Comer, Desgarrar, Tienda, Desalmacenar
 --===========================================================
 local RSvc = game:GetService("ReplicatedStorage")
@@ -308,7 +308,7 @@ end
 local RE_UI = remotoBosque("AvadaBosqueUI")
 local RE_ACC = remotoBosque("AvadaBosqueAccion")
 local SACO_MAX = 5
-local COMIDA = { Fresa = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
+local COMIDA = { Mora = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
 
 local function sincronizaUI(player)
   local d = SE.players[player]
@@ -432,7 +432,7 @@ local function discoEn(parent, pieza, cfBase)
   return pt
 end
 
--- La comida en la mano: una fresa roja con coronita, o el Boletus mini
+-- La comida en la mano: una mora azul con corona oscura, o el Boletus mini
 local function darEnMano(player, tipo)
   local d = SE.players[player]
   if not d or d.enMano then
@@ -462,14 +462,19 @@ local function darEnMano(player, tipo)
       w.Parent = extra
     end
   else
-    tipo = "Fresa"
-    tool.ToolTip = "Fresa del Bosque Prohibido"
-    h = parteDeTool("Handle", Vector3.new(0.66, 0.8, 0.66), CFrame.new(0, 3, 0), Color3.fromRGB(232, 42, 52))
+    tipo = "Mora"
+    tool.ToolTip = "Mora del Bosque Prohibido"
+    h = parteDeTool("Handle", Vector3.new(0.62, 0.6, 0.62), CFrame.new(0, 3, 0), Color3.fromRGB(52, 60, 118))
     h.Shape = Enum.PartType.Ball
     h.Parent = tool
-    local tapa = parteDeTool("BerryCap", Vector3.new(0.46, 0.2, 0.46), CFrame.new(), Color3.fromRGB(40, 120, 44))
-    tapa.Shape = Enum.PartType.Ball
-    soldarA(tool, h, tapa, Vector3.new(0, 0.45, 0))
+    local corona = parteDeTool("MoraCorona", Vector3.new(0.1, 0.36, 0.36), CFrame.new(), Color3.fromRGB(22, 18, 38))
+    corona.Shape = Enum.PartType.Cylinder
+    corona.CFrame = h.CFrame * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90))
+    corona.Parent = tool
+    local wc = Instance.new("WeldConstraint")
+    wc.Part0 = h
+    wc.Part1 = corona
+    wc.Parent = corona
   end
   tool.Parent = player:FindFirstChildOfClass("Backpack")
   d.enMano = { tipo = tipo, tool = tool }
@@ -703,14 +708,14 @@ local function desgarrarEnMano(player)
         ancla = ancla or pt
       end
     else
-      local fb = parteDeTool("Berry", Vector3.new(0.6, 0.74, 0.6), CFrame.new(pos.X, 2.6, pos.Z), Color3.fromRGB(232, 42, 52))
+      local fb = parteDeTool("Mora", Vector3.new(0.58, 0.56, 0.58), CFrame.new(pos.X, 2.45, pos.Z), Color3.fromRGB(52, 60, 118))
       fb.Shape = Enum.PartType.Ball
       fb.Anchored = true
       fb.Parent = suelta
-      local tapa = parteDeTool("BerryCap", Vector3.new(0.44, 0.18, 0.44), CFrame.new(pos.X, 3.05, pos.Z), Color3.fromRGB(40, 120, 44))
-      tapa.Shape = Enum.PartType.Ball
-      tapa.Anchored = true
-      tapa.Parent = suelta
+      local corona = parteDeTool("MoraCorona", Vector3.new(0.09, 0.34, 0.34), CFrame.new(pos.X, 2.78, pos.Z) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(22, 18, 38))
+      corona.Shape = Enum.PartType.Cylinder
+      corona.Anchored = true
+      corona.Parent = suelta
       ancla = fb
     end
     local pr = Instance.new("ProximityPrompt")
@@ -793,15 +798,15 @@ local function entregarComida(player, tipo)
   return false
 end
 
-local function recogerFresaDelArbusto(player, fr)
+local function recogerMoraDelArbusto(player, fr)
   if not fr.disponible or not jugadorEnPartida(player) then
     return
   end
-  if not entregarComida(player, "Fresa") then
+  if not entregarComida(player, "Mora") then
     return
   end
   fr.disponible = false
-  for _, parte in ipairs({ fr.berry, fr.tapa, fr.tallo }) do
+  for _, parte in ipairs({ fr.mora, fr.corona, fr.rabito }) do
     if parte then
       parte.Transparency = 1
     end
@@ -809,10 +814,9 @@ local function recogerFresaDelArbusto(player, fr)
   if fr.prompt then
     fr.prompt.Enabled = false
   end
-  darEnMano(player, "Fresa")
   task.delay(18, function()
     fr.disponible = true
-    for _, parte in ipairs({ fr.berry, fr.tapa, fr.tallo }) do
+    for _, parte in ipairs({ fr.mora, fr.corona, fr.rabito }) do
       if parte and parte.Parent then
         parte.Transparency = 0
       end
@@ -1441,24 +1445,24 @@ local function conectarToques()
       end
     end)
   end
-  for _, fr in ipairs(fresas) do
+  for _, fr in ipairs(moras) do
     local pr = Instance.new("ProximityPrompt")
-    pr.Name = "RecogerFresa"
+    pr.Name = "RecogerMora"
     pr.ActionText = "Recoger"
-    pr.ObjectText = "Fresa"
+    pr.ObjectText = "Mora"
     pr.HoldDuration = 0
     pr.MaxActivationDistance = 9
     pr.RequiresLineOfSight = false
-    pr.Parent = fr.berry
+    pr.Parent = fr.mora
     fr.prompt = pr
     pr.Triggered:Connect(function(player)
-      recogerFresaDelArbusto(player, fr)
+      recogerMoraDelArbusto(player, fr)
     end)
     local cd = Instance.new("ClickDetector")
     cd.MaxActivationDistance = 14
-    cd.Parent = fr.berry
+    cd.Parent = fr.mora
     cd.MouseClick:Connect(function(player)
-      recogerFresaDelArbusto(player, fr)
+      recogerMoraDelArbusto(player, fr)
     end)
   end
   for _, hg in ipairs(hongos) do
