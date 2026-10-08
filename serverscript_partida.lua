@@ -687,6 +687,8 @@ local function comerDesdeSaco(player)
 end
 
 -- Desgarrar: lo de la mano cae al suelo y cualquiera lo puede recoger
+local entregarComida -- se define mas abajo; este aviso la hace visible aqui
+
 -- Suelta una comida en el suelo frente al jugador: ahi queda guardada
 -- (en la casa/fogata) y se recoge TOCANDOLA, sin letreros de recoger.
 local function soltarAlSuelo(player, tipo)
@@ -800,7 +802,7 @@ end
 
 -- Como en 99 Noches: lo que tocas entra a tu mano si esta libre, y si
 -- ya llevas algo (o el saco puesto), entra directo al saco si hay hueco
-local function entregarComida(player, tipo)
+entregarComida = function(player, tipo)
   local d = SE.players[player]
   if not d or not d.vivo then
     return false
