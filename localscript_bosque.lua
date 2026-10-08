@@ -9,67 +9,8 @@ local RS = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
-local SoundService = game:GetService("SoundService")
 local RE_UI = RS:WaitForChild("AvadaBosqueUI")
 local RE_ACC = RS:WaitForChild("AvadaBosqueAccion")
-local RE_SFX = RS:WaitForChild("AvadaSonidos")
-
--- Sonidos de Avada (locales: cada jugador escucha los suyos). Bosque y
--- musica como en los juegos de supervivencia: recoger/comer dan un
--- "clic" satisfactorio, al caer la noche aulla el lobo, y hay dos
--- pistas largas: una magica para el lobby y el ambiente del bosque
--- nocturno para la partida.
-local function nuevoSonido(nombre, id, volumen, loop, velocidad)
-  local sd = Instance.new("Sound")
-  sd.Name = "Avada_" .. nombre
-  sd.SoundId = "rbxassetid://" .. id
-  sd.Volume = volumen
-  sd.Looping = loop == true
-  sd.PlaybackSpeed = velocidad or 1
-  sd.Parent = SoundService
-  return sd
-end
-local SFX = {
-  Recoger = nuevoSonido("Recoger", 5068107976, 0.55, false, 1.05),
-  Guardar = nuevoSonido("Guardar", 5068107976, 0.45, false, 0.82),
-  Comer = nuevoSonido("Comer", 625712280, 0.65, false, 1),
-  Lena = nuevoSonido("Lena", 9120828958, 0.55, false, 0.95),
-  Depositar = nuevoSonido("Depositar", 9120828958, 0.6, false, 0.72),
-  Cofre = nuevoSonido("Cofre", 9015015702, 0.55, false, 1),
-  Aullido = nuevoSonido("Aullido", 710612141, 0.8, false, 0.92),
-  Amanecer = nuevoSonido("Amanecer", 5068107976, 0.4, false, 1.35),
-}
-local musicaLobby = nuevoSonido("MusicaLobby", 1848133094, 0.3, true, 1)
-local musicaBosque = nuevoSonido("MusicaBosque", 138089070, 0.42, true, 1)
-local musicaActual
-local function ponMusica(sd)
-  if musicaActual == sd then
-    if not sd.Playing then
-      sd:Play()
-    end
-    return
-  end
-  if musicaActual and musicaActual.Playing then
-    musicaActual:Stop()
-  end
-  musicaActual = sd
-  sd.TimePosition = 0
-  sd:Play()
-end
-ponMusica(musicaLobby)
-RE_SFX.OnClientEvent:Connect(function(nombre)
-  if nombre == "MusicaBosque" then
-    ponMusica(musicaBosque)
-  elseif nombre == "MusicaLobby" then
-    ponMusica(musicaLobby)
-  else
-    local sd = SFX[nombre]
-    if sd then
-      sd.TimePosition = 0
-      sd:Play()
-    end
-  end
-end)
 
 pcall(function()
   StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
@@ -116,7 +57,7 @@ diaLbl.RichText = true
 diaLbl.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Barra de hambre: naranja, a la izquierda
-local hambreLbl = etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
+etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
 local lenosLbl = etiqueta("Leños: 0", 12, UDim2.new(0, 16, 0.42, 18), UDim2.new(0, 160, 0, 18), Color3.fromRGB(255, 215, 150), raiz)
 local barraFondo = Instance.new("Frame")
 barraFondo.AnchorPoint = Vector2.new(0, 0.5)
@@ -142,7 +83,6 @@ contador.Font = Enum.Font.GothamBlack
 contador.TextScaled = true
 contador.ZIndex = 5
 contador.Visible = false
-
 
 -- Botones circulares pegados a la esquina, alrededor del boton de salto
 -- (como en 99 Noches: Comer arriba-izquierda, CORRER arriba-derecha,
@@ -292,13 +232,10 @@ task.spawn(function()
   end
 end)
 
-
-
 RE_UI.OnClientEvent:Connect(function(st)
   if type(st) ~= "table" then
     return
   end
-  ultimoEstado = st
   raiz.Visible = st.enPartida == true
   if not raiz.Visible then
     return
@@ -328,16 +265,6 @@ RE_UI.OnClientEvent:Connect(function(st)
   desgarrarBtn.Visible = st.mano == true
   tiendaBtn.Visible = st.mano == true and (st.sacoEnMano == true or sacoEnManoLocal == true) -- Tienda solo con el saco puesto
   revisaContador()
-end)
-
--- Latido de la interfaz: pedir el estado hasta que llegue
-task.spawn(function()
-  while true do
-    task.wait(2)
-    pcall(function()
-      RE_ACC:FireServer("VerCaldero")
-    end)
-  end
 end)
 
 -- FIN LOCAL BOSQUE

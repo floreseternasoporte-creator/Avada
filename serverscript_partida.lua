@@ -24,7 +24,6 @@ local function remotoBosque(nombre)
   return r
 end
 local RE_UI = remotoBosque("AvadaBosqueUI")
-local RE_SFX = remotoBosque("AvadaSonidos")
 
 --===========================================================
 -- ENCARGADO DE SESIONES: reparte jugadores, mundos y avisos
@@ -404,19 +403,6 @@ end
 local SACO_MAX = 5
 local COMIDA = { Mora = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
 
-local function sonar(player, nombre)
-  if player and player.Parent then
-    pcall(function()
-      RE_SFX:FireClient(player, nombre)
-    end)
-  end
-end
-local function sonarTodos(nombre)
-  for pl, _ in pairs(SE.players) do
-    sonar(pl, nombre)
-  end
-end
-
 local function sincronizaUI(player)
   local d = SE.players[player]
   if not (player and player.Parent) then
@@ -792,7 +778,6 @@ local function comerEnMano(player)
   d.enMano.tool:Destroy()
   d.enMano = nil
   d.hambre = math.min(100, d.hambre + valor)
-  sonar(player, "Comer")
   sincronizaUI(player)
 end
 
@@ -803,7 +788,6 @@ local function comerDesdeSaco(player)
   end
   local tipo = table.remove(d.saco, 1)
   d.hambre = math.min(100, d.hambre + (COMIDA[tipo] or 25))
-  sonar(player, "Comer")
   sincronizaUI(player)
 end
 
@@ -905,7 +889,6 @@ local function guardarEnSaco(player) -- boton "Tienda": mete lo de la mano al sa
   d.enMano.tool:Destroy()
   d.enMano = nil
   table.insert(d.saco, tipo)
-  sonar(player, "Guardar")
   sincronizaUI(player)
 end
 
@@ -967,7 +950,6 @@ local function depositarEnCaldero(player)
     return
   end
   SE.calderoHongos = (SE.calderoHongos or 0) + n
-  sonar(player, "Depositar")
   for pl, _ in pairs(SE.players) do
     sincronizaUI(pl)
   end
@@ -1003,20 +985,17 @@ entregarComida = function(player, tipo)
       -- con el saco puesto: tocar algo lo guarda directo en el saco
       if #d.saco < SACO_MAX then
         table.insert(d.saco, tipo)
-        sonar(player, "Recoger")
         sincronizaUI(player)
         return true
       end
       return false
     end
     darEnMano(player, tipo)
-    sonar(player, "Recoger")
     sincronizaUI(player)
     return true
   end
   if #d.saco < SACO_MAX then
     table.insert(d.saco, tipo)
-    sonar(player, "Recoger")
     sincronizaUI(player)
     return true
   end
@@ -1074,7 +1053,6 @@ local function tocarArbol(player, arb)
   end
   arb.listoEn = os.clock() + 25
   SE.players[player].lenos += 1
-  sonar(player, "Lena")
   sincronizaUI(player)
 end
 local function conectarArboles()
@@ -1458,7 +1436,6 @@ local function finPartida(victoria)
     end
   end
   for player, _ in pairs(SE.players) do
-    sonar(player, "MusicaLobby")
     sincronizaUI(player)
     volverAlLobby(player)
   end
@@ -1571,7 +1548,6 @@ local function cicloPartida()
     LightingSvc.FogStart = 20
     LightingSvc.FogEnd = 110
     nocheLobos()
-    sonarTodos("Aullido")
     updateFireBoard()
     if ctx.avisar then ctx.avisar() end
     local tNoche = 0
@@ -1611,7 +1587,6 @@ local function cicloPartida()
       end
     end
     -- amanecer: los lobos de la noche desaparecen
-    sonarTodos("Amanecer")
     destruirLobos(true)
     if SE.noche >= NOCHES_META then
       finPartida(true)
@@ -1720,7 +1695,6 @@ local function conectarToques()
         SE.llama = math.min(100, SE.llama + d.lenos * 18)
         SE.fogataXP = (SE.fogataXP or 0) + d.lenos
         d.lenos = 0
-        sonar(player, "Depositar")
         sincronizaUI(player)
         while (SE.nivel or 1) < NIVEL_MAX and SE.fogataXP >= lenosParaNivel(SE.nivel or 1) do
           SE.fogataXP = SE.fogataXP - lenosParaNivel(SE.nivel or 1)
@@ -1775,7 +1749,6 @@ local function conectarToques()
         else
           SE.players[player].hambre = math.min(100, SE.players[player].hambre + 40)
         end
-        sonar(player, "Cofre")
         sincronizaUI(player)
       end
     end)
@@ -1833,7 +1806,6 @@ local function iniciarPartida(lista)
       k += 1
       SE.players[player] = { vivo = true, lenos = 0, hambre = 100, saco = {}, sacoEnMano = false, enMano = nil, toolSaco = nil }
       darSacoMago(player)
-      sonar(player, "MusicaBosque")
       sincronizaUI(player)
       local char = player.Character
       if char then
