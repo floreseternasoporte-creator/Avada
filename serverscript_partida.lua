@@ -722,15 +722,15 @@ local function soltarAlSuelo(player, tipo)
         suelta:Destroy()
       end
     end
-    -- zona de toque grande e invisible sobre lo soltado: se toca
-    -- en cualquier parte y se levanta
+    -- zona de toque grande e invisible sobre lo soltado: con tap o
+    -- pisandola se levanta, sin punteria fina
     local zonaS = Instance.new("Part")
     zonaS.Name = "ZonaToque"
-    zonaS.Size = Vector3.new(2.4, 2.6, 2.4)
+    zonaS.Size = Vector3.new(2.6, 2.8, 2.6)
     zonaS.CFrame = CFrame.new(pos.X, 3.1, pos.Z)
     zonaS.Transparency = 1
     zonaS.CanCollide = false
-    zonaS.CanTouch = false
+    zonaS.CanTouch = true
     zonaS.Anchored = true
     zonaS.Parent = suelta
     -- marco blanco que marca lo que esta tirado en el piso
@@ -745,6 +745,19 @@ local function soltarAlSuelo(player, tipo)
     cdS.MaxActivationDistance = 14
     cdS.Parent = zonaS
     cdS.MouseClick:Connect(recogerSuelta)
+    local ultimoToqueS = 0
+    zonaS.Touched:Connect(function(hit)
+      local ahora = os.clock()
+      if ahora - ultimoToqueS < 0.35 then
+        return
+      end
+      ultimoToqueS = ahora
+      local modelo = hit and hit:FindFirstAncestorOfClass("Model")
+      local pl = modelo and Players:GetPlayerFromCharacter(modelo)
+      if pl then
+        recogerSuelta(pl)
+      end
+    end)
     suelta.Parent = workspace
   end
 end
@@ -1410,6 +1423,18 @@ local function conectarToques()
     cd.MouseClick:Connect(function(player)
       recogerMoraDelArbusto(player, fr)
     end)
+    local ultimoToqueM = 0
+    fr.mora.Touched:Connect(function(hit)
+      local ahora = os.clock()
+      if ahora - ultimoToqueM < 0.35 then
+        return
+      end
+      ultimoToqueM = ahora
+      local pl = jugadorDe(hit)
+      if pl then
+        recogerMoraDelArbusto(pl, fr)
+      end
+    end)
   end
   for _, hg in ipairs(hongos) do
     local zona = Instance.new("Part")
@@ -1418,7 +1443,7 @@ local function conectarToques()
     zona.CFrame = CFrame.new(hg.cap.Position.X, hg.cap.Position.Y + 1.2, hg.cap.Position.Z)
     zona.Transparency = 1
     zona.CanCollide = false
-    zona.CanTouch = false
+    zona.CanTouch = true
     zona.Anchored = true
     zona.Parent = workspace
     hg.zona = zona
@@ -1427,6 +1452,18 @@ local function conectarToques()
     cd.Parent = zona
     cd.MouseClick:Connect(function(player)
       recogerHongo(player, hg)
+    end)
+    local ultimoToqueH = 0
+    zona.Touched:Connect(function(hit)
+      local ahora = os.clock()
+      if ahora - ultimoToqueH < 0.35 then
+        return
+      end
+      ultimoToqueH = ahora
+      local pl = jugadorDe(hit)
+      if pl then
+        recogerHongo(pl, hg)
+      end
     end)
   end
   deposito.Touched:Connect(function(hit)
