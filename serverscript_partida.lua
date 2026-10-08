@@ -731,6 +731,7 @@ local function comerDesdeSaco(player)
 end
 
 -- Desgarrar: lo de la mano cae al suelo y cualquiera lo puede recoger
+local conectarTroncoGlobal
 local entregarComida -- se define mas abajo; este aviso la hace visible aqui
 
 -- Suelta una comida en el suelo frente al jugador: ahi queda guardada
@@ -922,6 +923,51 @@ local function posRebrote()
   local a = math.random() * math.pi * 2
   local r = 45 + math.random() * 150
   return Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
+end
+
+local function crearTroncoEnSuelo()
+  local pos = posRebrote()
+  local part = Instance.new("Part")
+  part.Name = "FallenLog"
+  part.Shape = Enum.PartType.Cylinder
+  part.Size = Vector3.new(5.2, 1.1, 1.1)
+  part.CFrame = CFrame.new(pos.X, 2.6, pos.Z) * CFrame.Angles(0, math.random() * math.pi, math.rad(90))
+  part.BrickColor = BrickColor.new("Reddish brown")
+  part.Color = Color3.fromRGB(128, 84, 46)
+  part.Material = Enum.Material.Plastic
+  part.Anchored = true
+  part.CanCollide = false
+  part.CastShadow = false
+  part:SetAttribute("Tipo", "Lena")
+  part.Parent = workspace
+  local nodo = { part = part, pos = part.Position, listoEn = 0 }
+  table.insert(lenaNodos, nodo)
+  if conectarTroncoGlobal then
+    conectarTroncoGlobal(nodo)
+  end
+  return nodo
+end
+
+local function sembrarTroncos()
+  task.spawn(function()
+    for _ = 1, 10 do
+      crearTroncoEnSuelo()
+      task.wait(0.1)
+    end
+    while true do
+      task.wait(20)
+      local visibles = 0
+      for _, n in ipairs(lenaNodos) do
+        if n.part and n.part.Parent and n.part.Transparency < 1 then
+          visibles += 1
+        end
+      end
+      if visibles < 14 then
+        crearTroncoEnSuelo()
+        crearTroncoEnSuelo()
+      end
+    end
+  end)
 end
 
 local function recogerHongo(player, hg)
@@ -1456,7 +1502,7 @@ local function conectarToques()
     local player = char and Players:GetPlayerFromCharacter(char)
     return player
   end
-  for _, nodo in ipairs(lenaNodos) do
+  local function conectarTronco(nodo)
     nodo.part.Touched:Connect(function(hit)
       if not SE.on or os.clock() < nodo.listoEn then
         return
@@ -1478,6 +1524,10 @@ local function conectarToques()
         end)
       end
     end)
+  end
+  conectarTroncoGlobal = conectarTronco
+  for _, nodo in ipairs(lenaNodos) do
+    conectarTronco(nodo)
   end
   for _, fr in ipairs(moras) do
     local cd = Instance.new("ClickDetector")
@@ -1783,6 +1833,7 @@ task.spawn(function()
   end
   conectarToques()
   updateFireBoard()
+  sembrarTroncos()
 end)
 
 -- cartel del circulo (lo construye BOSQUE dentro del lobby)

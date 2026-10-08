@@ -909,7 +909,7 @@ local function crearHongoDelBosque(posicion, escala, semilla, id)
   modelo.Parent = Bosque
   return modelo
 end
-for hi = 1, 14 do
+for hi = 1, 18 do
   local a = rngBosque:NextNumber(0, math.pi * 2)
   local r = rngBosque:NextNumber(36, 208)
   local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
@@ -920,23 +920,6 @@ end
 
 -- Cabanas (decoracion)
 Bosque:SetAttribute("Etapa", "moras")
-local function cabana(cx, cz, yaw)
-  local base = CFrame.new(cx, 2.0, cz) * CFrame.Angles(0, yaw, 0)
-  bp("HutFloor", Vector3.new(12, 0.7, 10), base * CFrame.new(0, 0.35, 0), Color3.fromRGB(126, 88, 54), true)
-  bp("HutWall", Vector3.new(12, 5, 0.7), base * CFrame.new(0, 3.1, -4.65), Color3.fromRGB(140, 96, 58), true)
-  bp("HutWall", Vector3.new(0.7, 5, 10), base * CFrame.new(-5.65, 3.1, 0), Color3.fromRGB(140, 96, 58), true)
-  bp("HutWall", Vector3.new(0.7, 5, 10), base * CFrame.new(5.65, 3.1, 0), Color3.fromRGB(140, 96, 58), true)
-  bwedge("HutRoof", Vector3.new(13.5, 4.5, 11), base * CFrame.new(0, 7.6, 0) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(94, 58, 42))
-  local lamp = bp("HutLamp", Vector3.new(0.7, 0.7, 0.7), base * CFrame.new(0, 4.2, 3.5), Color3.fromRGB(255, 200, 90), false)
-  local pl = Instance.new("PointLight")
-  pl.Color = Color3.fromRGB(255, 190, 100)
-  pl.Range = 12
-  pl.Brightness = 1
-  pl.Parent = lamp
-end
-cabana(FC.X - 40, FC.Z + 30, math.rad(30))
-cabana(FC.X + 48, FC.Z - 36, math.rad(-120))
-
 Bosque:SetAttribute("Etapa", "jaulas")
 -- Cofres (tocar: lenos o comida, con espera)
 local cofres = {}
@@ -947,17 +930,6 @@ for _, off in ipairs({ { -70, -20 }, { 30, 90 }, { 90, 40 } }) do
   bp("ChestGlow", Vector3.new(2.6, 0.3, 0.3), CFrame.new(cp.X, cp.Y + 1.6, cp.Z + 1.12), Color3.fromRGB(255, 205, 70), false)
   chestBase:SetAttribute("Tipo", "Cofre")
   table.insert(cofres, { pos = cp, listo = 0, base = chestBase })
-end
-
--- Nodos de lena (troncos caidos que se recogen tocandolos)
-local lenaNodos = {}
-for i = 1, 16 do
-  local a = (i / 16) * math.pi * 2 + 0.3
-  local r = 40 + (i % 4) * 45
-  local np = Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
-  local log = bcyl("FallenLog", 5.2, 1.1, CFrame.new(np.X, np.Y + 0.6, np.Z) * CFrame.Angles(math.rad(90), a, 0), Color3.fromRGB(128, 84, 46), false)
-  log:SetAttribute("Tipo", "Lena")
-  table.insert(lenaNodos, { part = log, pos = np, listoEn = 0 })
 end
 
 -- Arbusto de MORAS del dueno: cupula de hojas puntiagudas en capas como
@@ -1163,9 +1135,9 @@ local function crearArbustoMoras(posicion, escala, semilla, arbId)
   modelo.Parent = Bosque
   return modelo
 end
-for i = 1, 10 do
-  local a = (i / 10) * math.pi * 2 + 0.9
-  local r = 55 + (i % 3) * 50
+for i = 1, 14 do
+  local a = rngBosque:NextNumber(0, math.pi * 2)
+  local r = rngBosque:NextNumber(30, 205)
   local np = Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
   if lejosDeJaulas(np.X, np.Z) then
     crearArbustoMoras(np, 0.5, 7672 + i * 37, i)
@@ -1545,9 +1517,9 @@ end
 
 end
 local arbolesOk = 0
-for i = 1, 26 do
+for i = 1, 32 do
 	local a = rngBosque:NextNumber(0, math.pi * 2)
-	local r = rngBosque:NextNumber(34, 212)
+	local r = rngBosque:NextNumber(30, 215)
 	local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
 	if lejosDeJaulas(x, z) then
 		local ok = pcall(crearArbolCristal, x, z, rngBosque:NextNumber(0, math.pi * 2), 1100 + i * 17, i)
