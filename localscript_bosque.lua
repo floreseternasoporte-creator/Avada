@@ -1,7 +1,8 @@
 -- LocalScript del Bosque Prohibido (pegar en StarterPlayer > StarterPlayerScripts)
 -- Interfaz como en 99 Noches: barra de hambre naranja a la izquierda, botones
 -- circulares a la derecha (Comer, Desgarrar, Tienda/Desalmacenar, CORRER),
--- contador grande del saco y la noche arriba. NO toca el LocalScript principal.
+-- el Dia/Noche anclado arriba en el centro y el contador del saco pequeño
+-- justo encima del boton del saco. NO toca el LocalScript principal.
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -45,9 +46,20 @@ local function etiqueta(texto, size, pos, tam, color, padre)
   return l
 end
 
--- Noche arriba en el centro (como el "Dia 1" de referencia)
-local diaLbl = etiqueta("Día", 17, UDim2.new(0.5, -80, 0, 8), UDim2.new(0, 160, 0, 24), Color3.new(1, 1, 1), raiz)
-diaLbl.AnchorPoint = Vector2.new(0, 0)
+-- Dia/Noche ANCLADO arriba en el centro (como el "Dia 1" de 99 Noches):
+-- pastilla oscura fija a la parte superior, no flota con la pantalla
+local diaFondo = Instance.new("Frame")
+diaFondo.AnchorPoint = Vector2.new(0.5, 0)
+diaFondo.Position = UDim2.new(0.5, 0, 0, 8)
+diaFondo.Size = UDim2.new(0, 176, 0, 32)
+diaFondo.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
+diaFondo.BackgroundTransparency = 0.35
+diaFondo.BorderSizePixel = 0
+diaFondo.Parent = raiz
+Instance.new("UICorner", diaFondo).CornerRadius = UDim.new(0, 9)
+local diaLbl = etiqueta("Día 1", 18, UDim2.new(0.5, 0, 0, 12), UDim2.new(0, 176, 0, 24), Color3.new(1, 1, 1), raiz)
+diaLbl.AnchorPoint = Vector2.new(0.5, 0)
+diaLbl.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Barra de hambre: naranja, a la izquierda
 etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
@@ -66,10 +78,13 @@ relleno.BorderSizePixel = 0
 relleno.Parent = barraFondo
 Instance.new("UICorner", relleno).CornerRadius = UDim.new(0, 6)
 
--- Contador grande del saco (X/5), como en la referencia
-local contador = etiqueta("0/5", 36, UDim2.new(0.60, -70, 0.40, 0), UDim2.new(0, 140, 0, 52), Color3.new(1, 1, 1), raiz)
+-- Contador del saco (X/5): PEQUEÑO y pegado justo ENCIMA del boton del
+-- saco (Tienda), como en la foto de referencia. Nada de numero gigante
+-- flotando a media pantalla.
+local contador = etiqueta("0/5", 15, UDim2.new(1, -128, 1, -278), UDim2.new(0, 56, 0, 18), Color3.new(1, 1, 1), raiz)
+contador.AnchorPoint = Vector2.new(0.5, 1)
 contador.Font = Enum.Font.GothamBlack
-contador.TextScaled = true
+contador.TextScaled = false
 contador.ZIndex = 5
 contador.Visible = false
 
@@ -204,7 +219,7 @@ RE_UI.OnClientEvent:Connect(function(st)
     return
   end
   relleno.Size = UDim2.new(math.clamp((st.hambre or 100) / 100, 0, 1), 0, 1, 0)
-  diaLbl.Text = (st.fase == "noche") and ("Noche " .. tostring(st.noche or 1) .. " de 7") or "Día"
+  diaLbl.Text = (st.fase == "noche") and ("Noche " .. tostring(st.noche or 1) .. " de 7") or ("Día " .. tostring((st.noche or 0) + 1))
   ultimoEstado = st
   if st.mano == true then
     accionComer = "Comer"
