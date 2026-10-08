@@ -18,6 +18,8 @@ local SE = {
   noche = 0,
   fase = "dia",
   llama = 100,
+  nivel = 1,
+  fogataXP = 0,
   aprendices = 0,
 }
 local castCd = {}
@@ -89,7 +91,7 @@ end
 --===========================================================
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
-local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego
+local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego, paredes
 local jaulas, jaulasPos, lenaNodos, moras, hongos, cofres, fireStatus
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
@@ -105,6 +107,7 @@ local function escanearBosque()
     llamaParts = {}
     llamaBase = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
     anilloSeguro = {}
+    paredes = {}
     lenaNodos, moras, hongos, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}, {}
     local morasPorClave = {}
     local hongosPorId = {}
@@ -115,6 +118,8 @@ local function escanearBosque()
           llamaParts[d:GetAttribute("Idx") or 1] = d
         elseif g == "Anillo" then
           table.insert(anilloSeguro, { part = d, ang = d:GetAttribute("Ang") or 0 })
+        elseif g == "Pared" then
+          table.insert(paredes, { part = d, ang = d:GetAttribute("Ang") or 0, tapa = d:GetAttribute("Tapa") == true })
         end
         if d:GetAttribute("Rol") == "Deposito" then
           deposito = d
@@ -241,7 +246,9 @@ local function updateFireBoard()
   elseif fireStatus then
     fireStatus.Text = "Llama "
     .. math.floor(SE.llama)
-    .. "% - Noche "
+    .. "% - Fogata Nivel "
+    .. (SE.nivel or 1)
+    .. " - Noche "
     .. math.max(SE.noche, 1)
     .. "/"
     .. NOCHES_META
@@ -251,14 +258,37 @@ local function updateFireBoard()
   end
   -- el tamano y el baile de la llama los lleva el animador (abajo);
   -- aqui solo respira el anillo seguro en el suelo
-  local radio = 9 + SE.llama * 0.11
+  local radio = 10 + (SE.nivel or 1) * 2.5 + SE.llama * 0.09
   for _, sd in ipairs(anilloSeguro) do
     sd.part.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -sd.ang, 0) * CFrame.new(0, 0, radio)
   end
 end
 
 local function radioSeguro()
-  return 9 + SE.llama * 0.11
+  return 10 + (SE.nivel or 1) * 2.5 + SE.llama * 0.09
+end
+
+-- Fogata por NIVELES (como 99 Noches): depositar lenos la hace subir;
+-- cada nivel el anillo seguro crece y la PARED del mapa se expande,
+-- abriendo mas bosque para explorar. A cambio la llama dura mas.
+local NIVEL_MAX = 6
+local function lenosParaNivel(n)
+  return 4 + n * 2
+end
+local function paredRadio()
+  return 164 + (SE.nivel or 1) * 11
+end
+local function moverPared()
+  if not fuegoPos then
+    return
+  end
+  local R = paredRadio()
+  for _, pw in ipairs(paredes or {}) do
+    local px = fuegoPos.X + math.cos(pw.ang) * R
+    local pz = fuegoPos.Z + math.sin(pw.ang) * R
+    local y = pw.tapa and 20.4 or 11
+    pw.part.CFrame = CFrame.new(Vector3.new(px, y, pz), Vector3.new(fuegoPos.X, y, fuegoPos.Z))
+  end
 end
 
 --===========================================================
@@ -1334,7 +1364,7 @@ local function cicloPartida()
       task.wait(1)
       tNoche += 1
       -- la llama se consume mas rapido de noche
-      SE.llama = math.max(0, SE.llama - (100 / (NOCHE_LEN * 1.25)))
+      SE.llama = math.max(0, SE.llama - (100 / (NOCHE_LEN * 1.25)) * (1 - 0.07 * ((SE.nivel or 1) - 1)))
       for player, d in pairs(SE.players) do
         if d.vivo then
           d.hambre = math.max(0, d.hambre - 0.8)
@@ -1494,7 +1524,14 @@ local function conectarToques()
       local d = SE.players[player]
       if d.lenos > 0 then
         SE.llama = math.min(100, SE.llama + d.lenos * 18)
+        SE.fogataXP = (SE.fogataXP or 0) + d.lenos
         d.lenos = 0
+        while (SE.nivel or 1) < NIVEL_MAX and SE.fogataXP >= lenosParaNivel(SE.nivel or 1) do
+          SE.fogataXP = SE.fogataXP - lenosParaNivel(SE.nivel or 1)
+          SE.nivel = (SE.nivel or 1) + 1
+          moverPared()
+          print("[Avada] La fogata subio al nivel " .. SE.nivel .. ": el bosque se expande")
+        end
         updateFireBoard()
       end
     end
@@ -1552,6 +1589,9 @@ local function prepararMundo()
   lobosFaltan = false
   loboAvisoDado = false
   SE.llama = 100
+  SE.nivel = 1
+  SE.fogataXP = 0
+  moverPared()
   SE.noche = 0
   SE.aprendices = 0
   destruirLobos(false)
