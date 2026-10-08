@@ -1620,6 +1620,9 @@ end
 
 local function iniciarPartida(lista)
   if not bosqueListo then
+    escanearBosque()
+  end
+  if not bosqueListo then
     print("[Avada] La partida espera: falta descubrir el bosque (archivo BOSQUE)")
     return
   end
@@ -1642,7 +1645,7 @@ local function iniciarPartida(lista)
             marcarMuerto(player)
           end)
         end
-        if hrp then
+        if hrp and fuegoPos then
           local ang = (k / math.max(#lista, 1)) * math.pi * 2
           hrp.CFrame = CFrame.new(fuegoPos + Vector3.new(math.cos(ang) * 9, 1.5, math.sin(ang) * 9))
         end
