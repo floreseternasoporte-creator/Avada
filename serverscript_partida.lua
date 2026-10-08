@@ -21,6 +21,7 @@ local SE = {
   nivel = 1,
   fogataXP = 0,
   aprendices = 0,
+  calderoHongos = 0,
 }
 local castCd = {}
 
@@ -383,6 +384,16 @@ local function sincronizaUI(player)
   if d then
     d.sacoEnMano = sacoEnLaMano
   end
+  local hongosEnSaco = 0
+  local manoTipoCal = nil
+  if d then
+    manoTipoCal = d.enMano and d.enMano.tipo or nil
+    for _, tipoS in ipairs(d.saco or {}) do
+      if tipoS == "Hongo" then
+        hongosEnSaco += 1
+      end
+    end
+  end
   pcall(function()
     RE_UI:FireClient(player, {
       enPartida = SE.on and d ~= nil,
@@ -394,6 +405,9 @@ local function sincronizaUI(player)
       noche = SE.noche,
       fase = SE.fase,
       lenos = d and d.lenos or 0,
+      manoTipo = manoTipoCal,
+      hongosSaco = hongosEnSaco,
+      calderoHongos = SE.calderoHongos or 0,
     })
   end)
 end
@@ -857,6 +871,60 @@ local function desalmacenar(player) -- saca una comida del saco y cae al suelo
   sincronizaUI(player)
 end
 
+local calderoModelo
+local function posCaldero()
+  if not calderoModelo or not calderoModelo.Parent then
+    calderoModelo = workspace:FindFirstChild("Cauldron")
+  end
+  if not calderoModelo then
+    return nil
+  end
+  local ancla = calderoModelo:FindFirstChild("CalderoAncla")
+  if ancla then
+    return ancla.Position
+  end
+  return calderoModelo:GetPivot().Position
+end
+
+-- Soltar en el caldero: los hongos de la mano y del saco caen en el
+-- caldero y quedan guardados en la base (reserva de todo el equipo).
+local function depositarEnCaldero(player)
+  local d = SE.players[player]
+  if not d or not d.vivo then
+    return
+  end
+  local posC = posCaldero()
+  local char = player.Character
+  local hrp = char and char:FindFirstChild("HumanoidRootPart")
+  if not (posC and hrp) then
+    return
+  end
+  local dx, dz = hrp.Position.X - posC.X, hrp.Position.Z - posC.Z
+  if dx * dx + dz * dz > 18 * 18 then
+    return
+  end
+  local n = 0
+  if d.enMano and d.enMano.tipo == "Hongo" then
+    d.enMano.tool:Destroy()
+    d.enMano = nil
+    n += 1
+  end
+  for i = #d.saco, 1, -1 do
+    if d.saco[i] == "Hongo" then
+      table.remove(d.saco, i)
+      n += 1
+    end
+  end
+  if n <= 0 then
+    return
+  end
+  SE.calderoHongos = (SE.calderoHongos or 0) + n
+  sonar(player, "Depositar")
+  for pl, _ in pairs(SE.players) do
+    sincronizaUI(pl)
+  end
+end
+
 local function limpiarObjetos(player)
   local d = SE.players[player]
   if not d then
@@ -1084,6 +1152,10 @@ RE_ACC.OnServerEvent:Connect(function(player, accion)
     guardarEnSaco(player)
   elseif accion == "Desalmacenar" then
     desalmacenar(player)
+  elseif accion == "Caldero" then
+    depositarEnCaldero(player)
+  elseif accion == "VerCaldero" then
+    sincronizaUI(player)
   end
 end)
 
@@ -1682,6 +1754,7 @@ local function prepararMundo()
   SE.llama = 100
   SE.nivel = 1
   SE.fogataXP = 0
+  SE.calderoHongos = 0
   moverPared()
   SE.noche = 0
   SE.aprendices = 0
