@@ -695,7 +695,7 @@ local function soltarAlSuelo(player, tipo)
   local char = player.Character
   local hrp = char and char:FindFirstChild("HumanoidRootPart")
   if hrp then
-    local pos = hrp.Position + hrp.CFrame.LookVector * 2.5
+    local pos = hrp.Position + hrp.CFrame.LookVector * 4
     local suelta = Instance.new("Model")
     suelta.Name = tipo .. "Suelta"
     local ancla
@@ -746,9 +746,10 @@ local function soltarAlSuelo(player, tipo)
     cdS.Parent = zonaS
     cdS.MouseClick:Connect(recogerSuelta)
     local ultimoToqueS = 0
+    local nacioEn = os.clock()
     zonaS.Touched:Connect(function(hit)
       local ahora = os.clock()
-      if ahora - ultimoToqueS < 0.35 then
+      if ahora - nacioEn < 1.2 or ahora - ultimoToqueS < 0.35 then
         return
       end
       ultimoToqueS = ahora
@@ -947,6 +948,24 @@ RE_ACC.OnServerEvent:Connect(function(player, accion)
     guardarEnSaco(player)
   elseif accion == "Desalmacenar" then
     desalmacenar(player)
+  end
+end)
+
+-- La Fogata Magica (fogata nueva del dueno): encendida mientras la
+-- llama tenga nivel; al llegar a 0 se apaga sola (attribute Lit)
+local fogataModelo
+local function sincronizarFogata()
+  if not fogataModelo or not fogataModelo.Parent then
+    fogataModelo = workspace:FindFirstChild("FogataMagica")
+  end
+  if fogataModelo then
+    fogataModelo:SetAttribute("Lit", SE.llama > 0)
+  end
+end
+task.spawn(function()
+  while true do
+    task.wait(0.5)
+    sincronizarFogata()
   end
 end)
 

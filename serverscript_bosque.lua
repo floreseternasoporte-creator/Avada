@@ -212,76 +212,479 @@ for i = 0, 71 do
   )
 end
 
--- LA LLAMA MAGICA (el campamento)
-local fuegoPos = FC + Vector3.new(0, 2.0, 0)
-for i = 0, 11 do
-  local a = (i / 12) * math.pi * 2
-  bp(
-    "FireStone",
-    Vector3.new(1.8, 1.1, 1.2),
-    CFrame.new(fuegoPos.X + math.cos(a) * 5.6, fuegoPos.Y + 0.4, fuegoPos.Z + math.sin(a) * 5.6)
-      * CFrame.Angles(0, -a, 0),
-    Color3.fromRGB(88, 84, 96),
-    true
-  )
+-- LA FOGATA MAGICA (el campamento): la fogata NUEVA del dueno del
+-- juego, su codigo tal cual, solo cambia POSITION (al centro FC).
+-- El anillo seguro, el deposito de lenos y el cartel quedan abajo.
+do
+--[[
+	🔥 FOGATA MÁGICA - Constructor + animación para Roblox
+	-------------------------------------------------------
+	CÓMO USARLO:
+	1. En Roblox Studio abre ServerScriptService
+	2. Inserta un "Script" (NO LocalScript) y pega todo este código
+	3. Dale a Play: la fogata aparece en POSITION (por defecto a unos pasos de la tienda)
+
+	QUÉ INCLUYE:
+	- Anillo de 14 piedras oscuras con tapa café y astillas
+	- Troncos: base en estrella, travesaños y troncos inclinados tipo tipi
+	- Brasas brillantes entre los troncos
+	- Llama de bloques: 15 lenguas (violeta/azul por fuera, naranja y rosado por dentro)
+	  que se mecen, crecen y se encogen, y cambian un poco de color
+	- Chispas cuadradas moradas y naranjas que suben y se apagan
+	- Luz naranja + luz morada que parpadean
+	- 5 grupos de cristales morados y azules alrededor del anillo
+	- Se pausa sola cuando no hay jugadores cerca (ACTIVE_DIST)
+
+	APAGAR / ENCENDER desde otro script:
+	    workspace.FogataMagica:SetAttribute("Lit", false)  -- apagar
+	    workspace.FogataMagica:SetAttribute("Lit", true)   -- encender
+
+	Todo son Parts, sin assets externos. La llama es Neon (no muestra studs porque Neon
+	no los dibuja); el resto (piedras, troncos, cristales, ceniza) sí lleva studs.
+]]
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+--// ============ CONFIGURACIÓN ============
+local POSITION = Vector3.new(FC.X, 2, FC.Z) -- centro del Bosque Prohibido (el 0,0,-12 del codigo original, aqui)
+local ROTATION_Y = 0 -- grados
+local CLASSIC_STUDS = true -- true = piedras, troncos y cristales en Plastic con studs (estilo clásico)
+local STUDS_ON_SIDES = true -- true = studs en las 6 caras; false = solo arriba y abajo
+local RING_RADIUS = 9 -- radio del anillo de piedras
+local STONE_COUNT = 14
+local FLAME_FPS = 24 -- cuántas veces por segundo se anima la llama
+local ACTIVE_DIST = 160 -- si ningún jugador está a menos de esta distancia, la llama se pausa
+local MAX_EMBERS = 14 -- chispas cuadradas
+
+--// ============ BASE ============
+local ORIGIN = CFrame.new(POSITION) * CFrame.Angles(0, math.rad(ROTATION_Y), 0)
+local rng = Random.new(7)
+local M = Enum.Material
+local SU = Enum.SurfaceType
+local TAU = math.pi * 2
+
+local old = workspace:FindFirstChild("FogataMagica")
+if old then old:Destroy() end
+local model = Instance.new("Model")
+model.Name = "FogataMagica"
+
+local function rnd(a, b)
+	return rng:NextNumber(a, b)
 end
-local lenosFuego = {}
-for i = 1, 5 do
-  local a = (i / 5) * math.pi
-  local lg = bcyl(
-    "FireLog",
-    4.6,
-    0.85,
-    CFrame.new(fuegoPos.X, fuegoPos.Y + 0.55, fuegoPos.Z) * CFrame.Angles(0, a, math.rad(90)),
-    Color3.fromRGB(120, 78, 44),
-    false
-  )
-  table.insert(lenosFuego, lg)
+
+-- gira el sistema para que el eje +X apunte hacia afuera en el ángulo a
+local function radial(a)
+	return CFrame.Angles(0, -a, 0)
 end
-local llamaParts = {}
-local llamaBase = { Vector3.new(2.6, 2.2, 2.6), Vector3.new(1.9, 2.0, 1.9), Vector3.new(1.2, 1.8, 1.2) }
-local llamaCols = { Color3.fromRGB(255, 122, 26), Color3.fromRGB(255, 176, 32), Color3.fromRGB(255, 224, 92) }
-for i = 1, 3 do
-  local fp = bp(
-    "MagicFlame",
-    llamaBase[i],
-    CFrame.new(fuegoPos.X, fuegoPos.Y + 0.9 + (i - 1) * 1.5, fuegoPos.Z),
-    llamaCols[i],
-    false
-  )
-  fp:SetAttribute("Grupo", "Llama")
-  fp:SetAttribute("Idx", i)
-  llamaParts[i] = fp
+
+local function newPart(name, size, cf, color, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = material
+	p.Anchored = true
+	p.TopSurface = SU.Smooth
+	p.BottomSurface = SU.Smooth
+	p.Parent = model
+	return p
 end
-local llamaLight = Instance.new("PointLight")
-llamaLight.Color = Color3.fromRGB(255, 160, 60)
-llamaLight.Range = 30
-llamaLight.Brightness = 2.2
-llamaLight.Parent = llamaParts[1]
-local fuegoFire = Instance.new("Fire")
-fuegoFire.Heat = 6
-fuegoFire.Size = 5
-fuegoFire.Parent = llamaParts[1]
--- chispas vivas subiendo de la llama (se mueven solas, sin codigo)
-local chispas = Instance.new("ParticleEmitter")
-chispas.Name = "FireSparks"
-chispas.Color = ColorSequence.new({
-  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 214, 110)),
-  ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 130, 40)),
-  ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 40, 16)),
-})
-chispas.LightEmission = 1
-chispas.Rate = 16
-chispas.Lifetime = NumberRange.new(0.9, 2.0)
-chispas.Speed = NumberRange.new(2.6, 5.0)
-chispas.SpreadAngle = Vector2.new(24, 24)
-chispas.Acceleration = Vector3.new(0, 2.5, 0)
-chispas.Size = NumberSequence.new({
-  NumberSequenceKeypoint.new(0, 0.42),
-  NumberSequenceKeypoint.new(0.7, 0.26),
-  NumberSequenceKeypoint.new(1, 0.02),
-})
-chispas.Parent = llamaParts[1]
+
+-- pieza sólida: en modo clásico es Plastic con studs; si no, usa su material natural
+local function solid(name, size, cf, color, natural)
+	local p = newPart(name, size, ORIGIN * cf, color, CLASSIC_STUDS and M.Plastic or natural)
+	if CLASSIC_STUDS then
+		p.TopSurface = SU.Studs
+		p.BottomSurface = SU.Inlet
+		if STUDS_ON_SIDES then
+			p.LeftSurface = SU.Studs
+			p.RightSurface = SU.Studs
+			p.FrontSurface = SU.Studs
+			p.BackSurface = SU.Studs
+		end
+	end
+	return p
+end
+
+-- pieza luminosa (llama, brasas, chispas): siempre Neon, sin colisión
+local function glowPart(name, size, cf, color, transparency)
+	local p = newPart(name, size, ORIGIN * cf, color, M.Neon)
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Transparency = transparency or 0
+	return p
+end
+
+local function addLight(parent, color, range, brightness)
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Range = range
+	l.Brightness = brightness
+	l.Shadows = false
+	l.Parent = parent
+	return l
+end
+
+local root = newPart("Root", Vector3.new(1, 0.2, 1), ORIGIN * CFrame.new(0, 0.1, 0), Color3.new(0, 0, 0), M.SmoothPlastic)
+root.Transparency = 1
+root.CanCollide = false
+root.CanTouch = false
+root.CanQuery = false
+model.PrimaryPart = root
+
+--// ============ CENIZA (suelo oscuro dentro del anillo) ============
+solid("Ceniza", Vector3.new(9.4, 0.2, 9.4), CFrame.new(0, 0.1, 0) * CFrame.Angles(0, math.rad(15), 0), Color3.fromRGB(46, 38, 42), M.Slate)
+
+--// ============ ANILLO DE PIEDRAS ============
+local STONE_SIDE = {
+	Color3.fromRGB(60, 54, 62), Color3.fromRGB(74, 60, 62),
+	Color3.fromRGB(54, 50, 60), Color3.fromRGB(82, 64, 62),
+}
+local STONE_TOP = {
+	Color3.fromRGB(112, 86, 78), Color3.fromRGB(98, 78, 74), Color3.fromRGB(120, 92, 82),
+}
+for i = 1, STONE_COUNT do
+	local a = (i - 1) / STONE_COUNT * TAU + rnd(-0.05, 0.05)
+	local w = rnd(3.1, 4.2) -- ancho (tangente)
+	local d = rnd(2.5, 3.1) -- fondo (radial)
+	local h = rnd(1.9, 2.9) -- alto total
+	local r = RING_RADIUS + rnd(-0.35, 0.35)
+	local base = radial(a) * CFrame.new(r, 0, 0)
+		* CFrame.Angles(rnd(-0.025, 0.025), rnd(-0.1, 0.1), rnd(-0.025, 0.025))
+	local side = STONE_SIDE[rng:NextInteger(1, #STONE_SIDE)]
+	local top = STONE_TOP[rng:NextInteger(1, #STONE_TOP)]
+	local bh = h - 0.3
+	solid("Stone", Vector3.new(d, bh, w), base * CFrame.new(0, bh / 2, 0), side, M.Slate)
+	solid("StoneTop", Vector3.new(d * 0.9, 0.3, w * 0.94), base * CFrame.new(0, bh + 0.15, 0), top, M.Slate)
+	if rng:NextNumber() < 0.55 then
+		solid("StoneChip", Vector3.new(0.8, 0.5, 0.8),
+			base * CFrame.new(rnd(-d * 0.25, d * 0.25), h + 0.25, rnd(-w * 0.3, w * 0.3)) * CFrame.Angles(0, rnd(0, TAU), 0),
+			side:Lerp(top, 0.5), M.Slate)
+	end
+end
+
+--// ============ TRONCOS ============
+local LOG_BODY = { Color3.fromRGB(94, 58, 42), Color3.fromRGB(84, 52, 40), Color3.fromRGB(106, 66, 46) }
+local LOG_END = Color3.fromRGB(150, 100, 66)
+
+-- tronco con sección octagonal (dos bloques cruzados a 45°) y tapas claras en las puntas
+local function log(cf, length, thick, body)
+	solid("Log", Vector3.new(length, thick, thick), cf, body, M.Wood)
+	solid("Log", Vector3.new(length, thick, thick), cf * CFrame.Angles(math.pi / 4, 0, 0), body, M.Wood)
+	for _, s in ipairs({ -1, 1 }) do
+		solid("LogEnd", Vector3.new(0.14, thick * 0.8, thick * 0.8), cf * CFrame.new(s * (length / 2 + 0.05), 0, 0) * CFrame.Angles(math.pi / 8, 0, 0), LOG_END, M.Wood)
+	end
+end
+
+-- tronco inclinado hacia el centro (base en el suelo)
+local function leanLog(a, baseR, tilt, length, thick, body)
+	local B = Vector3.new(math.cos(a) * baseR, thick * 0.45 + 0.2, math.sin(a) * baseR)
+	local inward = Vector3.new(-math.cos(a), 0, -math.sin(a))
+	local dir = (inward * math.sin(tilt) + Vector3.new(0, math.cos(tilt), 0)).Unit
+	local pos = B + dir * (length / 2)
+	local zV = dir:Cross(Vector3.new(0, 1, 0)).Unit
+	local yV = zV:Cross(dir)
+	log(CFrame.fromMatrix(pos, dir, yV, zV), length, thick, body)
+end
+
+-- capa de abajo: 6 troncos en estrella
+for k = 0, 5 do
+	local a = k / 6 * TAU + rnd(-0.1, 0.1)
+	log(radial(a) * CFrame.new(2.1, 0.7, 0) * CFrame.Angles(0, 0, rnd(-0.05, 0.05)), 4.8, 1.0, LOG_BODY[rng:NextInteger(1, 3)])
+end
+-- capa del medio: 3 troncos cruzados
+for k = 0, 2 do
+	local a = k / 3 * TAU + 0.5
+	log(radial(a) * CFrame.new(1.4, 1.75, 0) * CFrame.Angles(0, math.pi / 2, rnd(-0.04, 0.04)), 4.0, 0.95, LOG_BODY[rng:NextInteger(1, 3)])
+end
+-- capa de arriba: 5 troncos inclinados (tipi)
+for k = 0, 4 do
+	local a = k / 5 * TAU + 0.3
+	local big = (k % 2 == 0)
+	leanLog(a, big and 2.9 or 2.6, big and 0.5 or 0.42, big and 6.0 or 5.4, big and 1.2 or 1.05, LOG_BODY[(k % 3) + 1])
+end
+
+--// ============ BRASAS EN EL SUELO ============
+local coals = {}
+for i = 1, 6 do
+	local a = (i - 1) / 6 * TAU + rnd(-0.3, 0.3)
+	local s = rnd(0.5, 0.8)
+	local c = glowPart("Coal", Vector3.new(s, s * 0.8, s),
+		radial(a) * CFrame.new(rnd(1.2, 2.5), rnd(0.5, 0.85), 0) * CFrame.Angles(rnd(0, TAU), rnd(0, TAU), rnd(0, TAU)),
+		Color3.fromRGB(255, 140, 40), 0.1)
+	coals[#coals + 1] = c
+end
+
+--// ============ CRISTALES ============
+local CRYSTAL_COLORS = {
+	purple = Color3.fromRGB(150, 70, 230),
+	violet = Color3.fromRGB(110, 70, 225),
+	blue = Color3.fromRGB(60, 85, 235),
+}
+
+local function crystal(cf, h, w, color)
+	local rot = CFrame.Angles(0, math.rad(45), 0)
+	local bodyH = h * 0.58
+	solid("Crystal", Vector3.new(w, bodyH, w), cf * CFrame.new(0, bodyH / 2, 0) * rot, color, M.Glass)
+	local tiers = 5
+	local step = (h - bodyH) / tiers
+	for i = 1, tiers do
+		local f = 1 - i / (tiers + 0.7)
+		solid("CrystalTip", Vector3.new(w * f, step + 0.02, w * f), cf * CFrame.new(0, bodyH + (i - 0.5) * step, 0) * rot, color, M.Glass)
+	end
+	-- núcleo brillante suave
+	local core = glowPart("CrystalCore", Vector3.new(w * 0.3, h * 0.75, w * 0.3), cf * CFrame.new(0, h * 0.4, 0) * rot, color, 0.45)
+	core.CanCollide = false
+end
+
+-- ángulo (grados), color, cantidad
+local clusters = {
+	{ 200, "purple", 3 }, { 158, "violet", 3 }, { 338, "violet", 2 }, { 18, "blue", 3 }, { 244, "purple", 2 },
+}
+for _, c in ipairs(clusters) do
+	local a = math.rad(c[1])
+	local color = CRYSTAL_COLORS[c[2]]
+	local n = c[3]
+	for j = 1, n do
+		local oz = (j - (n + 1) / 2) * 0.9 + rnd(-0.2, 0.2)
+		local ox = rnd(-0.3, 0.4)
+		local cf = radial(a) * CFrame.new(RING_RADIUS + 1.7 + ox, 0, oz)
+			* CFrame.Angles(rnd(-0.15, 0.15), 0, -rnd(0.25, 0.6))
+			* CFrame.Angles(0, rnd(0, TAU), 0)
+		crystal(cf, rnd(2.2, 4.4), rnd(0.7, 1.0), color)
+	end
+	local lp = glowPart("CrystalLight", Vector3.new(0.5, 0.5, 0.5), radial(a) * CFrame.new(RING_RADIUS + 1.7, 1.5, 0), color, 1)
+	addLight(lp, color, 8, 0.4)
+end
+
+--// ============ LLAMA ============
+local FLAME_BASE_Y = 0.9
+local TIERS = 4
+local KINDS = {
+	outer = { cols = { Color3.fromRGB(88, 70, 235), Color3.fromRGB(150, 84, 226), Color3.fromRGB(220, 104, 190) }, transp = 0.12 },
+	mid = { cols = { Color3.fromRGB(140, 82, 228), Color3.fromRGB(250, 128, 110), Color3.fromRGB(255, 160, 80) }, transp = 0.05 },
+	core = { cols = { Color3.fromRGB(255, 206, 96), Color3.fromRGB(255, 150, 60), Color3.fromRGB(238, 112, 128) }, transp = 0 },
+	base = { cols = { Color3.fromRGB(255, 196, 84), Color3.fromRGB(255, 142, 52), Color3.fromRGB(255, 110, 60) }, transp = 0 },
+}
+local HOT = Color3.fromRGB(255, 150, 70)
+
+local function kindColor(kind, t)
+	local c = KINDS[kind].cols
+	if t < 0.5 then
+		return c[1]:Lerp(c[2], t * 2)
+	end
+	return c[2]:Lerp(c[3], (t - 0.5) * 2)
+end
+
+local tongues = {}
+local function addTongue(kind, a, r0, H, W, lean, speed)
+	local tg = {
+		kind = kind, a = a, r0 = r0, H = H, W = W, lean = lean, speed = speed,
+		phase = rnd(0, TAU), parts = {}, transp = KINDS[kind].transp,
+	}
+	for i = 1, TIERS do
+		tg.parts[i] = glowPart("Flame_" .. kind, Vector3.new(W, H / TIERS, W), CFrame.new(0, 1, 0), kindColor(kind, (i - 0.5) / TIERS), tg.transp)
+	end
+	tongues[#tongues + 1] = tg
+end
+
+for i = 1, 7 do
+	addTongue("outer", (i - 1) / 7 * TAU + rnd(-0.2, 0.2), rnd(1.2, 1.7), rnd(3.4, 5.0), rnd(1.5, 1.9), 0.55, rnd(2.0, 3.2))
+end
+for i = 1, 4 do
+	addTongue("mid", (i - 1) / 4 * TAU + 0.4, rnd(0.5, 0.9), rnd(5.0, 6.8), rnd(1.3, 1.6), 0.3, rnd(2.2, 3.4))
+end
+addTongue("core", 0, 0.0, 8.6, 1.7, 0.0, 2.4)
+addTongue("core", 2.2, 0.35, 7.2, 1.5, 0.1, 2.8)
+addTongue("base", 1.0, 0.7, 2.8, 1.3, 0.2, 3.6)
+addTongue("base", 4.1, 0.9, 2.4, 1.2, 0.2, 4.0)
+
+local function offsets(tg, tm, t)
+	local ox = -tg.lean * t * t * tg.H * 0.45 + math.sin(tm * tg.speed + tg.phase + t * 2.2) * 0.16 * tg.H * t
+	local oz = math.cos(tm * tg.speed * 0.8 + tg.phase * 1.3 + t * 2.0) * 0.13 * tg.H * t
+	return ox, oz
+end
+
+local function updateTongue(tg, tm, doColor)
+	local pulse = 1 + 0.16 * math.sin(tm * tg.speed * 1.7 + tg.phase) + 0.09 * math.sin(tm * tg.speed * 3.1 + tg.phase * 2)
+	local H = tg.H * pulse
+	local F = ORIGIN * radial(tg.a) * CFrame.new(tg.r0, FLAME_BASE_Y, 0)
+	for i = 1, TIERS do
+		local t0, t1 = (i - 1) / TIERS, i / TIERS
+		local tmid = (t0 + t1) / 2
+		local y0, y1 = H * t0, H * t1
+		local ox0, oz0 = offsets(tg, tm, t0)
+		local ox1, oz1 = offsets(tg, tm, t1)
+		local w = tg.W * (1 - tmid) ^ 0.85 + 0.14
+		local part = tg.parts[i]
+		part.Size = Vector3.new(w, (y1 - y0) * 1.12, w)
+		local tiltZ = -math.atan2(ox1 - ox0, y1 - y0)
+		local tiltX = math.atan2(oz1 - oz0, y1 - y0)
+		part.CFrame = F * CFrame.new((ox0 + ox1) / 2, (y0 + y1) / 2, (oz0 + oz1) / 2)
+			* CFrame.Angles(tiltX, 0, tiltZ)
+			* CFrame.Angles(0, (i % 2) * math.pi / 4 + tg.phase, 0)
+		if doColor then
+			local flick = 0.5 + 0.5 * math.sin(tm * tg.speed * 2.3 + tg.phase + i)
+			part.Color = kindColor(tg.kind, (i - 0.5) / TIERS):Lerp(HOT, 0.12 * flick)
+		end
+	end
+end
+
+--// ============ LUCES Y PARTÍCULAS ============
+local lightPart = glowPart("FireLight", Vector3.new(1, 1, 1), CFrame.new(0, 3.2, 0), Color3.fromRGB(255, 150, 70), 1)
+local fireLight = addLight(lightPart, Color3.fromRGB(255, 150, 70), 28, 1.15)
+local purpleLight = addLight(lightPart, Color3.fromRGB(150, 90, 255), 20, 0.5)
+
+local motes = Instance.new("ParticleEmitter")
+motes.Color = ColorSequence.new(Color3.fromRGB(255, 170, 80), Color3.fromRGB(170, 100, 255))
+motes.LightEmission = 1
+motes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+motes.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+motes.Lifetime = NumberRange.new(1.2, 2.4)
+motes.Speed = NumberRange.new(2, 4)
+motes.Rate = 6
+motes.SpreadAngle = Vector2.new(25, 25)
+motes.EmissionDirection = Enum.NormalId.Top
+motes.Parent = lightPart
+
+--// ============ CHISPAS CUADRADAS ============
+local embers = {}
+local EMBER_ORANGE = Color3.fromRGB(255, 150, 60)
+local EMBER_PURPLE = Color3.fromRGB(176, 96, 255)
+
+local function respawn(e, initial)
+	local a = rnd(0, TAU)
+	local r = rnd(0, 1.6)
+	e.x, e.y, e.z = math.cos(a) * r, rnd(2.5, 5.5), math.sin(a) * r
+	e.vx, e.vy, e.vz = rnd(-0.9, 0.9), rnd(2.4, 5.2), rnd(-0.9, 0.9)
+	e.max = rnd(1.6, 3.4)
+	e.life = initial and rnd(0.2, e.max) or e.max
+	e.size = rnd(0.22, 0.5)
+	e.rot = rnd(0, TAU)
+	e.spin = rnd(-3, 3)
+	e.part.Color = (rng:NextNumber() < 0.5) and EMBER_PURPLE or EMBER_ORANGE
+end
+
+for i = 1, MAX_EMBERS do
+	local e = { part = glowPart("Ember", Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 3, 0), EMBER_ORANGE, 0) }
+	respawn(e, true)
+	embers[i] = e
+end
+
+--// ============ BUCLE DE ANIMACIÓN ============
+model:SetAttribute("Lit", true)
+model.Parent = workspace
+
+local function setLit(on)
+	for _, tg in ipairs(tongues) do
+		for _, p in ipairs(tg.parts) do
+			p.Transparency = on and tg.transp or 1
+		end
+	end
+	for _, c in ipairs(coals) do
+		c.Transparency = on and 0.1 or 0.85
+	end
+	for _, e in ipairs(embers) do
+		e.part.Transparency = 1
+	end
+	fireLight.Enabled = on
+	purpleLight.Enabled = on
+	motes.Enabled = on
+end
+
+local function anyPlayerNear()
+	local center = ORIGIN.Position
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local ch = plr.Character
+		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+		if hrp and (hrp.Position - center).Magnitude < ACTIVE_DIST then
+			return true
+		end
+	end
+	return false
+end
+
+local acc, tm, scanT, frame = 0, 0, 1, 0
+local active = true
+local wasLit = true
+local interval = 1 / FLAME_FPS
+
+RunService.Heartbeat:Connect(function(dt)
+	if not model.Parent then
+		return
+	end
+	local lit = model:GetAttribute("Lit") ~= false
+	if lit ~= wasLit then
+		wasLit = lit
+		if lit then
+			setLit(true)
+		else
+			setLit(false)
+		end
+	end
+	if not lit then
+		return
+	end
+
+	scanT = scanT + dt
+	if scanT > 0.5 then
+		scanT = 0
+		active = anyPlayerNear()
+	end
+	if not active then
+		acc = 0
+		return
+	end
+
+	acc = acc + dt
+	if acc < interval then
+		return
+	end
+	local step = math.min(acc, 0.1)
+	acc = 0
+	tm = tm + step
+	frame = frame + 1
+
+	local doColor = (frame % 4 == 0)
+	for _, tg in ipairs(tongues) do
+		updateTongue(tg, tm, doColor)
+	end
+
+	-- luces que parpadean
+	fireLight.Brightness = 1.15 + 0.25 * math.sin(tm * 9) + 0.15 * math.sin(tm * 17.3)
+	purpleLight.Brightness = 0.5 + 0.15 * math.sin(tm * 6 + 1)
+
+	-- brasas del suelo
+	for i, c in ipairs(coals) do
+		c.Transparency = 0.1 + 0.2 * (0.5 + 0.5 * math.sin(tm * 3 + i * 1.7))
+	end
+
+	-- chispas cuadradas
+	for _, e in ipairs(embers) do
+		e.life = e.life - step
+		if e.life <= 0 then
+			respawn(e, false)
+		end
+		local p = 1 - e.life / e.max
+		e.x = e.x + e.vx * step + math.sin(tm * 3 + e.rot) * 0.4 * step
+		e.y = e.y + e.vy * step
+		e.z = e.z + e.vz * step
+		e.rot = e.rot + e.spin * step
+		local s = e.size * (1 - p * 0.6)
+		e.part.Size = Vector3.new(s, s, s)
+		e.part.CFrame = ORIGIN * CFrame.new(e.x, e.y, e.z) * CFrame.Angles(e.rot, e.rot * 0.7, 0)
+		e.part.Transparency = (p < 0.65) and 0 or (p - 0.65) / 0.35
+	end
+end)
+
+print("🔥 Fogata mágica encendida en " .. tostring(POSITION))
+
+end
+
 -- Pared gris que CIERRA el circulo del bosque (como el borde rocoso
 -- de 99 Noches): nadie sale del mapa hasta que la fogata crezca.
 for i = 1, 48 do
@@ -294,6 +697,7 @@ for i = 1, 48 do
 end
 
 -- Anillo del radio seguro (se ve en el suelo, marca hasta donde llegan las Sombras)
+local fuegoPos = FC + Vector3.new(0, 2.0, 0)
 local anilloSeguro = {}
 for i = 0, 23 do
   local a = (i / 24) * math.pi * 2
