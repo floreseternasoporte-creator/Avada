@@ -221,9 +221,15 @@ local function updateCircleBoard()
     return -- el cartel aun no aparece: el hilo del circulo sigue vivo
   end
   if not bosqueListo then
+    local bq = workspace:FindFirstChild("BosqueProhibido")
     circleTitle.Text = "AVADA"
-    circleStatus.Text = "EL BOSQUE NO TERMINO DE CARGAR"
-    circleSub.Text = "Revisa el Script BOSQUE en el Output"
+    if not bq then
+      circleStatus.Text = "EL BOSQUE NO EXISTE EN EL MAPA"
+      circleSub.Text = "El Script BOSQUE no esta corriendo"
+    else
+      circleStatus.Text = "BOSQUE CARGANDO: " .. tostring(bq:GetAttribute("Etapa") or "inicio")
+      circleSub.Text = "Si no avanza, mandame una captura"
+    end
     return
   end
   if SE.on then

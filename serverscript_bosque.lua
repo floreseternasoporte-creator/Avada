@@ -34,7 +34,12 @@ local function clasicoEn(modelo)
   local ST = Enum.SurfaceType.Studs
   local SM = Enum.SurfaceType.Smooth
   local INL = Enum.SurfaceType.Inlet
+  local cuentaC = 0
   for _, p in ipairs(modelo:GetDescendants()) do
+    cuentaC += 1
+    if cuentaC % 500 == 0 then
+      task.wait()
+    end
     if p:IsA("BasePart") and p.Transparency < 1 and not p:GetAttribute("SinClasico") then
       -- el suelo del bosque NO va clasico: hierba oscura con textura,
       -- como en 99 Noches (la referencia del dueno)
@@ -685,6 +690,7 @@ print("🔥 Fogata mágica encendida en " .. tostring(POSITION))
 
 end
 
+Bosque:SetAttribute("Etapa", "campamento")
 -- Pared gris que CIERRA el circulo del bosque (como el borde rocoso
 -- de 99 Noches): nadie sale del mapa hasta que la fogata crezca.
 for i = 1, 48 do
@@ -780,311 +786,7 @@ local verdesCopa = {
   Color3.fromRGB(66, 152, 58),
   Color3.fromRGB(80, 170, 66),
 }
--- Arboles de CRISTALES del dueno del juego (sustituyen a los arboles
--- anteriores): su constructor tal cual, envuelto en una funcion para
--- plantar varios por el bosque; solo cambian posicion, giro, semilla
--- y el padre (el modelo Bosque) de cada arbol.
-local function crearArbolCristal(xArbol, zArbol, rotArbol, semillaArbol, numArbol)
---[[
-	💎 ÁRBOL DE CRISTALES - Constructor para Roblox
-	------------------------------------------------
-	CÓMO USARLO:
-	1. En Roblox Studio abre ServerScriptService
-	2. Inserta un "Script" (NO LocalScript) y pega todo este código
-	3. Dale a Play: el árbol aparece en POSITION (el frente mira hacia +Z)
-
-	QUÉ INCLUYE (según la imagen):
-	- Tronco oscuro que se afina hacia arriba, con una curva suave y base ensanchada
-	- 3 ramas: una corta arriba a la izquierda, una principal a la izquierda y una larga a la derecha
-	- Racimo grande de cristales en la punta del tronco
-	- Racimos de cristales en la punta de cada rama
-	- Dos tipos de cristal: "prisma" (alargado con punta) y "gema" (facetado y redondeado)
-	- Colores cuarzo: blanco cálido, crema, gris y gris azulado
-
-	"BIEN SOLDADO":
-	- Cada rama nace dentro del tronco y cada cristal nace dentro de su rama (se solapan),
-	  así no queda ninguna rendija ni pieza flotando.
-	- Con WELD_ALL = true todas las piezas se sueldan a una pieza raíz invisible
-	  (WeldConstraint), así el árbol se mueve y se mantiene como un solo bloque.
-
-	Todo son Parts, sin assets externos.
-]]
-
---// ============ CONFIGURACIÓN ============
-local POSITION = Vector3.new(xArbol, 2, zArbol) -- el suelo del bosque esta en Y = 2
-local ROTATION_Y = math.deg(rotArbol) -- grados
-local CLASSIC_STUDS = true -- true = Plastic con studs (estilo clásico); false = madera y mármol lisos
-local STUDS_ON_SIDES = true -- true = studs en las 6 caras; false = solo arriba y abajo
-local WELD_ALL = true -- true = suelda todas las piezas a una raíz invisible
-
---// ============ BASE ============
-local ORIGIN = CFrame.new(POSITION) * CFrame.Angles(0, math.rad(ROTATION_Y), 0)
-local rng = Random.new(semillaArbol)
-local M = Enum.Material
-local SU = Enum.SurfaceType
-local TAU = math.pi * 2
-local UP = Vector3.new(0, 1, 0)
-
-local model = Instance.new("Model")
-model.Name = "ArbolCristal" .. numArbol
-
-local function rnd(a, b)
-	return rng:NextNumber(a, b)
-end
-
-local function newPart(name, size, cf, color, material)
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cf
-	p.Color = color
-	p.Material = material
-	p.Anchored = true
-	p.TopSurface = SU.Smooth
-	p.BottomSurface = SU.Smooth
-	p.Parent = model
-	return p
-end
-
--- pieza sólida: en modo clásico es Plastic con studs; si no, usa su material natural
-local function solid(name, size, cf, color, natural)
-	local p = newPart(name, size, ORIGIN * cf, color, CLASSIC_STUDS and M.Plastic or natural)
-	if CLASSIC_STUDS then
-		p.TopSurface = SU.Studs
-		p.BottomSurface = SU.Inlet
-		if STUDS_ON_SIDES then
-			p.LeftSurface = SU.Studs
-			p.RightSurface = SU.Studs
-			p.FrontSurface = SU.Studs
-			p.BackSurface = SU.Studs
-		end
-	end
-	return p
-end
-
--- CFrame cuyo eje local +Y apunta hacia yDir (para ramas y cristales inclinados)
-local function frameAlong(pos, yDir)
-	local xV = yDir:Cross(UP)
-	if xV.Magnitude < 1e-3 then
-		xV = Vector3.new(1, 0, 0)
-	else
-		xV = xV.Unit
-	end
-	local zV = xV:Cross(yDir).Unit
-	return CFrame.fromMatrix(pos, xV, yDir, zV)
-end
-
--- bloque con sección casi octagonal: un bloque + otro girado 45° y un poco más bajo
--- (más bajo para que sus caras de arriba no se pisen y no parpadeen los studs)
-local function octBlock(name, cf, w, h, color, natural)
-	solid(name, Vector3.new(w, h, w), cf, color, natural)
-	solid(name, Vector3.new(w * 0.9, h - 0.1, w * 0.9), cf * CFrame.Angles(0, math.pi / 4, 0), color, natural)
-end
-
-local root = newPart("Root", Vector3.new(1, 0.2, 1), ORIGIN * CFrame.new(0, 0.1, 0), Color3.new(0, 0, 0), M.SmoothPlastic)
-root.Transparency = 1
-root.CanCollide = false
-root.CanTouch = false
-root.CanQuery = false
-model.PrimaryPart = root
-
---// ============ COLORES ============
-local TRUNK_A = Color3.fromRGB(84, 62, 50)
-local TRUNK_B = Color3.fromRGB(94, 70, 56)
-local BRANCH_C = Color3.fromRGB(88, 64, 50)
-
-local WARM = Color3.fromRGB(230, 222, 204) -- blanco cálido
-local CREAM = Color3.fromRGB(232, 220, 190) -- crema
-local GREY = Color3.fromRGB(208, 206, 210) -- gris claro
-local COOL = Color3.fromRGB(192, 194, 202) -- gris azulado
-local PEARL = Color3.fromRGB(222, 220, 218) -- perla
-
---// ============ TRONCO ============
-local TRUNK_H = 18
-local TRUNK_SEGS = 10
-
--- línea central del tronco (curva suave, empieza en 0,0,0)
-local function curve(t)
-	return Vector3.new(
-		0.5 * (math.sin(t * 2.6 + 0.3) - math.sin(0.3)),
-		t * TRUNK_H,
-		0.25 * (math.sin(t * 1.9 + 1.0) - math.sin(1.0))
-	)
-end
-
--- ancho del tronco: 2.2 abajo, 1.35 arriba
-local function trunkW(t)
-	return 2.2 - 0.85 * t ^ 0.9
-end
-
--- base ensanchada
-octBlock("TrunkBase", CFrame.new(0, 0.35, 0), 2.5, 0.7, TRUNK_A, M.Wood)
-
-for i = 1, TRUNK_SEGS do
-	local t0, t1 = (i - 1) / TRUNK_SEGS, i / TRUNK_SEGS
-	local p0, p1 = curve(t0), curve(t1)
-	local mid = (p0 + p1) / 2
-	local dy = p1.Y - p0.Y
-	local tiltZ = -math.atan2(p1.X - p0.X, dy)
-	local tiltX = math.atan2(p1.Z - p0.Z, dy)
-	local w = trunkW((t0 + t1) / 2)
-	-- 15% más largo que su tramo para que cada segmento se meta en el siguiente
-	local segH = (p1 - p0).Magnitude * 1.15
-	octBlock("Trunk", CFrame.new(mid) * CFrame.Angles(tiltX, 0, tiltZ), w, segH, (i % 2 == 0) and TRUNK_A or TRUNK_B, M.Wood)
-end
-
---// ============ RAMAS ============
--- t = altura en el tronco (0 a 1), az = dirección horizontal (0 = +X, π = -X),
--- pitchDeg = inclinación hacia arriba, L = largo desde el centro del tronco
-local function branch(t, az, pitchDeg, L, w0, w1, bendDeg, segs)
-	local pos = curve(t) -- nace en el centro del tronco: queda metida dentro
-	local segLen = L / segs
-	local pitch = math.rad(pitchDeg)
-	local bend = math.rad(bendDeg)
-	local dir = Vector3.new(1, 0, 0)
-	for i = 1, segs do
-		local f = (i - 0.5) / segs
-		local p = pitch + bend * f
-		dir = Vector3.new(math.cos(az) * math.cos(p), math.sin(p), math.sin(az) * math.cos(p))
-		local w = w0 + (w1 - w0) * f
-		octBlock("Branch", frameAlong(pos + dir * (segLen / 2), dir), w, segLen * 1.15, BRANCH_C, M.Wood)
-		pos = pos + dir * segLen
-	end
-	return pos, dir
-end
-
-local EB1, DB1 = branch(0.86, math.pi + 0.12, 16, 3.2, 0.62, 0.34, 6, 3) -- corta, arriba izquierda
-local EB2, DB2 = branch(0.50, math.pi + 0.05, 26, 7.4, 1.0, 0.55, 6, 5) -- principal izquierda
-local EB3, DB3 = branch(0.63, -0.05, 28, 8.4, 1.05, 0.55, 8, 5) -- larga derecha
-
---// ============ CRISTALES ============
--- cf: origen en la base del cristal, eje +Y hacia la punta.
--- kind "prism": alargado con base achaflanada, cuerpo octagonal y punta escalonada
--- kind "gem": gema facetada tipo bipirámide
-local function shade(color, i)
-	return color:Lerp(Color3.new(1, 1, 1), (i % 2) * 0.07)
-end
-
-local function crystal(cf, h, w, color, kind, spin)
-	local rot = CFrame.Angles(0, spin, 0)
-	if kind == "gem" then
-		local prof = { 0.42, 0.78, 1.0, 0.86, 0.55, 0.22 }
-		local n = #prof
-		local step = h / n
-		for i = 1, n do
-			local s = w * prof[i]
-			solid("Gem", Vector3.new(s, step + 0.03, s),
-				cf * CFrame.new(0, (i - 0.5) * step, 0) * rot * CFrame.Angles(0, (i % 2) * math.pi / 4, 0),
-				shade(color, i), M.Marble)
-		end
-	else
-		local baseH = 0.07 * h
-		local bodyH = 0.5 * h
-		solid("CrystalBase", Vector3.new(w * 0.78, baseH + 0.03, w * 0.78), cf * CFrame.new(0, baseH / 2, 0) * rot, shade(color, 1), M.Marble)
-		-- cuerpo octagonal (dos bloques; el girado es un poco más bajo)
-		local bodyCF = cf * CFrame.new(0, baseH + bodyH / 2, 0) * rot
-		solid("Crystal", Vector3.new(w, bodyH + 0.03, w), bodyCF, color, M.Marble)
-		solid("Crystal", Vector3.new(w * 0.9, bodyH - 0.07, w * 0.9), bodyCF * CFrame.Angles(0, math.pi / 4, 0), shade(color, 1), M.Marble)
-		-- punta escalonada
-		local tipStart = baseH + bodyH
-		local tiers = 5
-		local step = (h - tipStart) / tiers
-		for i = 1, tiers do
-			local s = w * (1 - i / (tiers + 0.8))
-			solid("CrystalTip", Vector3.new(s, step + 0.03, s),
-				cf * CFrame.new(0, tipStart + (i - 0.5) * step, 0) * rot * CFrame.Angles(0, (i % 2) * math.pi / 4, 0),
-				shade(color, i), M.Marble)
-		end
-	end
-end
-
--- coloca un cristal en el extremo E de una rama que apunta hacia d.
--- az/el = hacia dónde crece el cristal (el = 90 es vertical), s = cuánto se retrasa hacia el tronco,
--- lu/lv = desplazamiento lateral/vertical (siempre pequeño para que nazca dentro de la rama).
--- La base se mete 0.3 dentro de la rama para que quede soldado.
-local function place(E, d, spec)
-	local u = d:Cross(UP)
-	if u.Magnitude < 1e-3 then
-		u = Vector3.new(1, 0, 0)
-	else
-		u = u.Unit
-	end
-	local v = u:Cross(d)
-	local base = E - d * (spec.s or 0) + u * (spec.lu or 0) + v * (spec.lv or 0)
-	local el = math.rad(spec.el)
-	local c = Vector3.new(math.cos(spec.az) * math.cos(el), math.sin(el), math.sin(spec.az) * math.cos(el))
-	crystal(frameAlong(base - c * 0.3, c), spec.h, spec.w, spec.color, spec.kind, rnd(0, TAU))
-end
-
-local PI = math.pi
-
--- cima del tronco: dos cristales grandes, uno chico en medio, uno acostado a la izquierda y gemas abajo
-local TOP = curve(1)
-local topSpecs = {
-	{ az = 0, el = 80, h = 7.2, w = 2.8, kind = "prism", color = WARM, lu = 0.15, lv = 0.1 },
-	{ az = PI, el = 76, h = 6.4, w = 1.7, kind = "prism", color = PEARL, lu = -0.25 },
-	{ az = PI + 0.5, el = 84, h = 3.6, w = 1.0, kind = "prism", color = CREAM, lv = 0.2 },
-	{ az = PI, el = 22, h = 4.8, w = 1.9, kind = "prism", color = GREY, lu = -0.3, s = 0.4 },
-	{ az = 0.5, el = -30, h = 3.0, w = 2.1, kind = "gem", color = GREY, lu = 0.3, s = 0.5 },
-	{ az = 0, el = -8, h = 2.0, w = 1.2, kind = "gem", color = CREAM, lu = 0.3, s = 0.7 },
-	{ az = PI / 2, el = -28, h = 2.4, w = 1.8, kind = "gem", color = GREY, lv = 0.3, s = 0.5 },
-}
-for _, sp in ipairs(topSpecs) do
-	place(TOP, UP, sp)
-end
-
--- rama corta (arriba izquierda)
-place(EB1, DB1, { az = 0.2, el = 70, h = 2.6, w = 1.1, kind = "prism", color = CREAM, s = 0.5, lv = 0.1 })
-place(EB1, DB1, { az = PI, el = -40, h = 1.5, w = 1.4, kind = "gem", color = GREY, s = 0.1, lv = -0.1 })
-
--- rama principal izquierda
-place(EB2, DB2, { az = 0.3, el = 75, h = 3.4, w = 2.8, kind = "gem", color = GREY, s = 1.0 })
-place(EB2, DB2, { az = PI, el = 62, h = 4.3, w = 1.2, kind = "prism", color = PEARL, s = 0.2, lu = -0.1 })
-place(EB2, DB2, { az = PI, el = -12, h = 3.2, w = 0.95, kind = "prism", color = CREAM, s = 0.0, lv = -0.1 })
-place(EB2, DB2, { az = PI / 2, el = -62, h = 3.2, w = 2.5, kind = "gem", color = COOL, s = 0.6, lv = -0.15 })
-place(EB2, DB2, { az = 0.4, el = -50, h = 2.2, w = 1.5, kind = "gem", color = CREAM, s = 1.6 })
-place(EB2, DB2, { az = PI, el = 14, h = 3.4, w = 1.5, kind = "prism", color = GREY, s = 0.0, lu = 0.2 })
-
--- rama larga derecha
-place(EB3, DB3, { az = 0, el = 62, h = 5.2, w = 2.9, kind = "prism", color = WARM, s = 0.5 })
-place(EB3, DB3, { az = PI, el = 68, h = 3.8, w = 2.6, kind = "gem", color = GREY, s = 1.4, lv = 0.1 })
-place(EB3, DB3, { az = PI / 2, el = 80, h = 2.4, w = 1.4, kind = "gem", color = CREAM, s = 1.0 })
-place(EB3, DB3, { az = 0, el = 18, h = 4.6, w = 1.8, kind = "prism", color = CREAM, s = 0.0 })
-place(EB3, DB3, { az = PI / 2, el = -68, h = 3.6, w = 2.6, kind = "gem", color = GREY, s = 0.8 })
-
---// ============ SOLDAR TODO ============
-model.Parent = Bosque
-
-if WELD_ALL then
-	for _, p in ipairs(model:GetChildren()) do
-		if p:IsA("BasePart") and p ~= root then
-			local w = Instance.new("WeldConstraint")
-			w.Part0 = root
-			w.Part1 = p
-			w.Parent = p
-			p.Anchored = false
-		end
-	end
-end
-
-
-
-end
-local arbolesOk = 0
-for i = 1, 26 do
-	local a = rngBosque:NextNumber(0, math.pi * 2)
-	local r = rngBosque:NextNumber(34, 212)
-	local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
-	if lejosDeJaulas(x, z) then
-		local ok = pcall(crearArbolCristal, x, z, rngBosque:NextNumber(0, math.pi * 2), 1100 + i * 17, i)
-		if ok then
-			arbolesOk += 1
-		end
-	end
-end
-print("[Avada] Arboles de cristales plantados: " .. arbolesOk)
-
-
+Bosque:SetAttribute("Etapa", "hongos")
 -- Hongos comestibles: el Boletus del dueno del juego, en su version
 -- corregida (derecho, pegado al piso, escala de jugador 0.3). Se integra
 -- al bosque con semilla distinta por hongo y las piezas etiquetadas para
@@ -1217,6 +919,7 @@ for hi = 1, 14 do
 end
 
 -- Cabanas (decoracion)
+Bosque:SetAttribute("Etapa", "moras")
 local function cabana(cx, cz, yaw)
   local base = CFrame.new(cx, 2.0, cz) * CFrame.Angles(0, yaw, 0)
   bp("HutFloor", Vector3.new(12, 0.7, 10), base * CFrame.new(0, 0.35, 0), Color3.fromRGB(126, 88, 54), true)
@@ -1234,6 +937,7 @@ end
 cabana(FC.X - 40, FC.Z + 30, math.rad(30))
 cabana(FC.X + 48, FC.Z - 36, math.rad(-120))
 
+Bosque:SetAttribute("Etapa", "jaulas")
 -- Cofres (tocar: lenos o comida, con espera)
 local cofres = {}
 for _, off in ipairs({ { -70, -20 }, { 30, 90 }, { 90, 40 } }) do
@@ -1546,6 +1250,318 @@ for ci = 1, 4 do
   jLbl.Parent = jGui
   table.insert(jaulas, { pos = jp, fig = fig, barrotes = barrotes, label = jLbl, libre = false, rescatado = false })
 end
+
+Bosque:SetAttribute("Etapa", "listo")
+Bosque:SetAttribute("Listo", true)
+
+-- Arboles de CRISTALES del dueno del juego (sustituyen a los arboles
+-- anteriores): su constructor tal cual, envuelto en una funcion para
+-- plantar varios por el bosque; solo cambian posicion, giro, semilla
+-- y el padre (el modelo Bosque) de cada arbol.
+local function crearArbolCristal(xArbol, zArbol, rotArbol, semillaArbol, numArbol)
+--[[
+	💎 ÁRBOL DE CRISTALES - Constructor para Roblox
+	------------------------------------------------
+	CÓMO USARLO:
+	1. En Roblox Studio abre ServerScriptService
+	2. Inserta un "Script" (NO LocalScript) y pega todo este código
+	3. Dale a Play: el árbol aparece en POSITION (el frente mira hacia +Z)
+
+	QUÉ INCLUYE (según la imagen):
+	- Tronco oscuro que se afina hacia arriba, con una curva suave y base ensanchada
+	- 3 ramas: una corta arriba a la izquierda, una principal a la izquierda y una larga a la derecha
+	- Racimo grande de cristales en la punta del tronco
+	- Racimos de cristales en la punta de cada rama
+	- Dos tipos de cristal: "prisma" (alargado con punta) y "gema" (facetado y redondeado)
+	- Colores cuarzo: blanco cálido, crema, gris y gris azulado
+
+	"BIEN SOLDADO":
+	- Cada rama nace dentro del tronco y cada cristal nace dentro de su rama (se solapan),
+	  así no queda ninguna rendija ni pieza flotando.
+	- Con WELD_ALL = true todas las piezas se sueldan a una pieza raíz invisible
+	  (WeldConstraint), así el árbol se mueve y se mantiene como un solo bloque.
+
+	Todo son Parts, sin assets externos.
+]]
+
+--// ============ CONFIGURACIÓN ============
+local POSITION = Vector3.new(xArbol, 2, zArbol) -- el suelo del bosque esta en Y = 2
+local ROTATION_Y = math.deg(rotArbol) -- grados
+local CLASSIC_STUDS = true -- true = Plastic con studs (estilo clásico); false = madera y mármol lisos
+local STUDS_ON_SIDES = true -- true = studs en las 6 caras; false = solo arriba y abajo
+local WELD_ALL = true -- true = suelda todas las piezas a una raíz invisible
+
+--// ============ BASE ============
+local ORIGIN = CFrame.new(POSITION) * CFrame.Angles(0, math.rad(ROTATION_Y), 0)
+local rng = Random.new(semillaArbol)
+local M = Enum.Material
+local SU = Enum.SurfaceType
+local TAU = math.pi * 2
+local UP = Vector3.new(0, 1, 0)
+
+local model = Instance.new("Model")
+model.Name = "ArbolCristal" .. numArbol
+
+local function rnd(a, b)
+	return rng:NextNumber(a, b)
+end
+
+local function newPart(name, size, cf, color, material)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = material
+	p.Anchored = true
+	p.TopSurface = SU.Smooth
+	p.BottomSurface = SU.Smooth
+	p.Parent = model
+	return p
+end
+
+-- pieza sólida: en modo clásico es Plastic con studs; si no, usa su material natural
+local function solid(name, size, cf, color, natural)
+	local p = newPart(name, size, ORIGIN * cf, color, CLASSIC_STUDS and M.Plastic or natural)
+	if CLASSIC_STUDS then
+		p.TopSurface = SU.Studs
+		p.BottomSurface = SU.Inlet
+		if STUDS_ON_SIDES then
+			p.LeftSurface = SU.Studs
+			p.RightSurface = SU.Studs
+			p.FrontSurface = SU.Studs
+			p.BackSurface = SU.Studs
+		end
+	end
+	return p
+end
+
+-- CFrame cuyo eje local +Y apunta hacia yDir (para ramas y cristales inclinados)
+local function frameAlong(pos, yDir)
+	local xV = yDir:Cross(UP)
+	if xV.Magnitude < 1e-3 then
+		xV = Vector3.new(1, 0, 0)
+	else
+		xV = xV.Unit
+	end
+	local zV = xV:Cross(yDir).Unit
+	return CFrame.fromMatrix(pos, xV, yDir, zV)
+end
+
+-- bloque con sección casi octagonal: un bloque + otro girado 45° y un poco más bajo
+-- (más bajo para que sus caras de arriba no se pisen y no parpadeen los studs)
+local function octBlock(name, cf, w, h, color, natural)
+	solid(name, Vector3.new(w, h, w), cf, color, natural)
+	solid(name, Vector3.new(w * 0.9, h - 0.1, w * 0.9), cf * CFrame.Angles(0, math.pi / 4, 0), color, natural)
+end
+
+local root = newPart("Root", Vector3.new(1, 0.2, 1), ORIGIN * CFrame.new(0, 0.1, 0), Color3.new(0, 0, 0), M.SmoothPlastic)
+root.Transparency = 1
+root.CanCollide = false
+root.CanTouch = false
+root.CanQuery = false
+model.PrimaryPart = root
+
+--// ============ COLORES ============
+local TRUNK_A = Color3.fromRGB(84, 62, 50)
+local TRUNK_B = Color3.fromRGB(94, 70, 56)
+local BRANCH_C = Color3.fromRGB(88, 64, 50)
+
+local WARM = Color3.fromRGB(230, 222, 204) -- blanco cálido
+local CREAM = Color3.fromRGB(232, 220, 190) -- crema
+local GREY = Color3.fromRGB(208, 206, 210) -- gris claro
+local COOL = Color3.fromRGB(192, 194, 202) -- gris azulado
+local PEARL = Color3.fromRGB(222, 220, 218) -- perla
+
+--// ============ TRONCO ============
+local TRUNK_H = 18
+local TRUNK_SEGS = 10
+
+-- línea central del tronco (curva suave, empieza en 0,0,0)
+local function curve(t)
+	return Vector3.new(
+		0.5 * (math.sin(t * 2.6 + 0.3) - math.sin(0.3)),
+		t * TRUNK_H,
+		0.25 * (math.sin(t * 1.9 + 1.0) - math.sin(1.0))
+	)
+end
+
+-- ancho del tronco: 2.2 abajo, 1.35 arriba
+local function trunkW(t)
+	return 2.2 - 0.85 * t ^ 0.9
+end
+
+-- base ensanchada
+octBlock("TrunkBase", CFrame.new(0, 0.35, 0), 2.5, 0.7, TRUNK_A, M.Wood)
+
+for i = 1, TRUNK_SEGS do
+	local t0, t1 = (i - 1) / TRUNK_SEGS, i / TRUNK_SEGS
+	local p0, p1 = curve(t0), curve(t1)
+	local mid = (p0 + p1) / 2
+	local dy = p1.Y - p0.Y
+	local tiltZ = -math.atan2(p1.X - p0.X, dy)
+	local tiltX = math.atan2(p1.Z - p0.Z, dy)
+	local w = trunkW((t0 + t1) / 2)
+	-- 15% más largo que su tramo para que cada segmento se meta en el siguiente
+	local segH = (p1 - p0).Magnitude * 1.15
+	octBlock("Trunk", CFrame.new(mid) * CFrame.Angles(tiltX, 0, tiltZ), w, segH, (i % 2 == 0) and TRUNK_A or TRUNK_B, M.Wood)
+end
+
+--// ============ RAMAS ============
+-- t = altura en el tronco (0 a 1), az = dirección horizontal (0 = +X, π = -X),
+-- pitchDeg = inclinación hacia arriba, L = largo desde el centro del tronco
+local function branch(t, az, pitchDeg, L, w0, w1, bendDeg, segs)
+	local pos = curve(t) -- nace en el centro del tronco: queda metida dentro
+	local segLen = L / segs
+	local pitch = math.rad(pitchDeg)
+	local bend = math.rad(bendDeg)
+	local dir = Vector3.new(1, 0, 0)
+	for i = 1, segs do
+		local f = (i - 0.5) / segs
+		local p = pitch + bend * f
+		dir = Vector3.new(math.cos(az) * math.cos(p), math.sin(p), math.sin(az) * math.cos(p))
+		local w = w0 + (w1 - w0) * f
+		octBlock("Branch", frameAlong(pos + dir * (segLen / 2), dir), w, segLen * 1.15, BRANCH_C, M.Wood)
+		pos = pos + dir * segLen
+	end
+	return pos, dir
+end
+
+local EB1, DB1 = branch(0.86, math.pi + 0.12, 16, 3.2, 0.62, 0.34, 6, 3) -- corta, arriba izquierda
+local EB2, DB2 = branch(0.50, math.pi + 0.05, 26, 7.4, 1.0, 0.55, 6, 5) -- principal izquierda
+local EB3, DB3 = branch(0.63, -0.05, 28, 8.4, 1.05, 0.55, 8, 5) -- larga derecha
+
+--// ============ CRISTALES ============
+-- cf: origen en la base del cristal, eje +Y hacia la punta.
+-- kind "prism": alargado con base achaflanada, cuerpo octagonal y punta escalonada
+-- kind "gem": gema facetada tipo bipirámide
+local function shade(color, i)
+	return color:Lerp(Color3.new(1, 1, 1), (i % 2) * 0.07)
+end
+
+local function crystal(cf, h, w, color, kind, spin)
+	local rot = CFrame.Angles(0, spin, 0)
+	if kind == "gem" then
+		local prof = { 0.42, 0.78, 1.0, 0.86, 0.55, 0.22 }
+		local n = #prof
+		local step = h / n
+		for i = 1, n do
+			local s = w * prof[i]
+			solid("Gem", Vector3.new(s, step + 0.03, s),
+				cf * CFrame.new(0, (i - 0.5) * step, 0) * rot * CFrame.Angles(0, (i % 2) * math.pi / 4, 0),
+				shade(color, i), M.Marble)
+		end
+	else
+		local baseH = 0.07 * h
+		local bodyH = 0.5 * h
+		solid("CrystalBase", Vector3.new(w * 0.78, baseH + 0.03, w * 0.78), cf * CFrame.new(0, baseH / 2, 0) * rot, shade(color, 1), M.Marble)
+		-- cuerpo octagonal (dos bloques; el girado es un poco más bajo)
+		local bodyCF = cf * CFrame.new(0, baseH + bodyH / 2, 0) * rot
+		solid("Crystal", Vector3.new(w, bodyH + 0.03, w), bodyCF, color, M.Marble)
+		solid("Crystal", Vector3.new(w * 0.9, bodyH - 0.07, w * 0.9), bodyCF * CFrame.Angles(0, math.pi / 4, 0), shade(color, 1), M.Marble)
+		-- punta escalonada
+		local tipStart = baseH + bodyH
+		local tiers = 5
+		local step = (h - tipStart) / tiers
+		for i = 1, tiers do
+			local s = w * (1 - i / (tiers + 0.8))
+			solid("CrystalTip", Vector3.new(s, step + 0.03, s),
+				cf * CFrame.new(0, tipStart + (i - 0.5) * step, 0) * rot * CFrame.Angles(0, (i % 2) * math.pi / 4, 0),
+				shade(color, i), M.Marble)
+		end
+	end
+end
+
+-- coloca un cristal en el extremo E de una rama que apunta hacia d.
+-- az/el = hacia dónde crece el cristal (el = 90 es vertical), s = cuánto se retrasa hacia el tronco,
+-- lu/lv = desplazamiento lateral/vertical (siempre pequeño para que nazca dentro de la rama).
+-- La base se mete 0.3 dentro de la rama para que quede soldado.
+local function place(E, d, spec)
+	local u = d:Cross(UP)
+	if u.Magnitude < 1e-3 then
+		u = Vector3.new(1, 0, 0)
+	else
+		u = u.Unit
+	end
+	local v = u:Cross(d)
+	local base = E - d * (spec.s or 0) + u * (spec.lu or 0) + v * (spec.lv or 0)
+	local el = math.rad(spec.el)
+	local c = Vector3.new(math.cos(spec.az) * math.cos(el), math.sin(el), math.sin(spec.az) * math.cos(el))
+	crystal(frameAlong(base - c * 0.3, c), spec.h, spec.w, spec.color, spec.kind, rnd(0, TAU))
+end
+
+local PI = math.pi
+
+-- cima del tronco: dos cristales grandes, uno chico en medio, uno acostado a la izquierda y gemas abajo
+local TOP = curve(1)
+local topSpecs = {
+	{ az = 0, el = 80, h = 7.2, w = 2.8, kind = "prism", color = WARM, lu = 0.15, lv = 0.1 },
+	{ az = PI, el = 76, h = 6.4, w = 1.7, kind = "prism", color = PEARL, lu = -0.25 },
+	{ az = PI + 0.5, el = 84, h = 3.6, w = 1.0, kind = "prism", color = CREAM, lv = 0.2 },
+	{ az = PI, el = 22, h = 4.8, w = 1.9, kind = "prism", color = GREY, lu = -0.3, s = 0.4 },
+	{ az = 0.5, el = -30, h = 3.0, w = 2.1, kind = "gem", color = GREY, lu = 0.3, s = 0.5 },
+	{ az = 0, el = -8, h = 2.0, w = 1.2, kind = "gem", color = CREAM, lu = 0.3, s = 0.7 },
+	{ az = PI / 2, el = -28, h = 2.4, w = 1.8, kind = "gem", color = GREY, lv = 0.3, s = 0.5 },
+}
+for _, sp in ipairs(topSpecs) do
+	place(TOP, UP, sp)
+end
+
+-- rama corta (arriba izquierda)
+place(EB1, DB1, { az = 0.2, el = 70, h = 2.6, w = 1.1, kind = "prism", color = CREAM, s = 0.5, lv = 0.1 })
+place(EB1, DB1, { az = PI, el = -40, h = 1.5, w = 1.4, kind = "gem", color = GREY, s = 0.1, lv = -0.1 })
+
+-- rama principal izquierda
+place(EB2, DB2, { az = 0.3, el = 75, h = 3.4, w = 2.8, kind = "gem", color = GREY, s = 1.0 })
+place(EB2, DB2, { az = PI, el = 62, h = 4.3, w = 1.2, kind = "prism", color = PEARL, s = 0.2, lu = -0.1 })
+place(EB2, DB2, { az = PI, el = -12, h = 3.2, w = 0.95, kind = "prism", color = CREAM, s = 0.0, lv = -0.1 })
+place(EB2, DB2, { az = PI / 2, el = -62, h = 3.2, w = 2.5, kind = "gem", color = COOL, s = 0.6, lv = -0.15 })
+place(EB2, DB2, { az = 0.4, el = -50, h = 2.2, w = 1.5, kind = "gem", color = CREAM, s = 1.6 })
+place(EB2, DB2, { az = PI, el = 14, h = 3.4, w = 1.5, kind = "prism", color = GREY, s = 0.0, lu = 0.2 })
+
+-- rama larga derecha
+place(EB3, DB3, { az = 0, el = 62, h = 5.2, w = 2.9, kind = "prism", color = WARM, s = 0.5 })
+place(EB3, DB3, { az = PI, el = 68, h = 3.8, w = 2.6, kind = "gem", color = GREY, s = 1.4, lv = 0.1 })
+place(EB3, DB3, { az = PI / 2, el = 80, h = 2.4, w = 1.4, kind = "gem", color = CREAM, s = 1.0 })
+place(EB3, DB3, { az = 0, el = 18, h = 4.6, w = 1.8, kind = "prism", color = CREAM, s = 0.0 })
+place(EB3, DB3, { az = PI / 2, el = -68, h = 3.6, w = 2.6, kind = "gem", color = GREY, s = 0.8 })
+
+--// ============ SOLDAR TODO ============
+model.Parent = Bosque
+
+if WELD_ALL then
+	for _, p in ipairs(model:GetChildren()) do
+		if p:IsA("BasePart") and p ~= root then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = p
+			p.Anchored = false
+		end
+	end
+end
+
+
+
+end
+local arbolesOk = 0
+for i = 1, 26 do
+	local a = rngBosque:NextNumber(0, math.pi * 2)
+	local r = rngBosque:NextNumber(34, 212)
+	local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
+	if lejosDeJaulas(x, z) then
+		local ok = pcall(crearArbolCristal, x, z, rngBosque:NextNumber(0, math.pi * 2), 1100 + i * 17, i)
+		if ok then
+			arbolesOk += 1
+		end
+		if i % 3 == 0 then
+			task.wait()
+		end
+	end
+end
+print("[Avada] Arboles de cristales plantados: " .. arbolesOk)
+
+
 
 -- Todo el bosque en estilo clasico (studs), de una pasada. El bosque
 -- ya esta COMPLETO en piezas y atributos: se marca Listo ANTES de este
