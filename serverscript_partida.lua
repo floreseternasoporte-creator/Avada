@@ -331,14 +331,16 @@ local function updateFireBoard()
   end
   -- el tamano y el baile de la llama los lleva el animador (abajo);
   -- aqui solo respira el anillo seguro en el suelo
-  local radio = 10 + (SE.nivel or 1) * 2.5 + SE.llama * 0.09
+  local radio = 16 + (SE.nivel or 1) * 3 + SE.llama * 0.08
+  local largoSeg = math.max(3.4, radio * 0.22)
   for _, sd in ipairs(anilloSeguro) do
+    sd.part.Size = Vector3.new(largoSeg, 0.25, 0.8)
     sd.part.CFrame = CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -sd.ang, 0) * CFrame.new(0, 0, radio)
   end
 end
 
 local function radioSeguro()
-  return 10 + (SE.nivel or 1) * 2.5 + SE.llama * 0.09
+  return 16 + (SE.nivel or 1) * 3 + SE.llama * 0.08
 end
 
 -- Fogata por NIVELES (como 99 Noches): depositar lenos la hace subir;
@@ -1604,7 +1606,7 @@ local function bucleLobos()
   while not SE.terminada do
     task.wait(0.15)
     if SE.on then
-      local radio = 9 + SE.llama * 0.11
+      local radio = radioSeguro()
       for _, som in ipairs(SE.sombras) do
         if som.root and som.root.Parent and som.tipo ~= "raider" then
           local rp = som.root.Position

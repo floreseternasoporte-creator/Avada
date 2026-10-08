@@ -716,7 +716,7 @@ for i = 0, 23 do
   local seg = bp(
     "SafeRing",
     Vector3.new(3.4, 0.25, 0.8),
-    CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -a, 0) * CFrame.new(0, 0, 17),
+    CFrame.new(fuegoPos.X, fuegoPos.Y + 0.12, fuegoPos.Z) * CFrame.Angles(0, -a, 0) * CFrame.new(0, 0, 19),
     Color3.fromRGB(255, 190, 70),
     false
   )
