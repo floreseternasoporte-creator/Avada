@@ -1544,6 +1544,9 @@ Bosque:SetAttribute("Listo", true)
 pcall(function()
   clasicoEn(Bosque)
 end)
+-- COMPLETO = suelo con hierba, arboles y estilo ya aplicados. PARTIDA
+-- no clona ningun mundo hasta ver esta marca: nada de suelos a medias.
+Bosque:SetAttribute("Completo", true)
 -- y el lobby tambien, por si el archivo ISLA muere antes de su pasada:
 -- asi el estilo clasico nunca depende de un solo archivo
 if LobbyModel then

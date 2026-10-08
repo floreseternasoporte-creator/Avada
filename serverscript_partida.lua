@@ -2083,7 +2083,7 @@ task.spawn(function()
     local b = workspace:FindFirstChild("BosqueProhibido")
     local f = workspace:FindFirstChild("FogataMagica")
     local c = workspace:FindFirstChild("Cauldron")
-    if b and b:GetAttribute("Listo") and f and c then
+    if b and b:GetAttribute("Completo") and f and c then
       tplBosque, tplFogata, tplCaldero = b, f, c
       plantillasListas = true
       print("[Avada] Mundos listos: cada partida tendra su propio bosque")

@@ -292,6 +292,8 @@ task.spawn(function()
   end
 end)
 
+local calNum, calNumTop
+pcall(function()
 -- Caldero de la base: prompt "Ver" y panel de reserva estilo 99
 -- Noches (panel oscuro translucido, contadores arriba, X roja). Por
 -- ahora guarda solo hongos; los diamantes llegaran con los arboles.
@@ -364,7 +366,7 @@ calCerrar.MouseButton1Click:Connect(function()
 end)
 
 iconoHongo(calPanel, 24, 68, 1)
-local calNumTop = etiqueta("0", 30, UDim2.new(0, 70, 0, 66), UDim2.new(0, 100, 0, 36), Color3.new(1, 1, 1), calPanel)
+calNumTop = etiqueta("0", 30, UDim2.new(0, 70, 0, 66), UDim2.new(0, 100, 0, 36), Color3.new(1, 1, 1), calPanel)
 calNumTop.Font = Enum.Font.GothamBlack
 calNumTop.TextXAlignment = Enum.TextXAlignment.Left
 etiqueta("HONGOS", 11, UDim2.new(0, 72, 0, 100), UDim2.new(0, 100, 0, 16), Color3.fromRGB(210, 190, 170), calPanel).TextXAlignment = Enum.TextXAlignment.Left
@@ -390,7 +392,7 @@ calCardBorde.Thickness = 1.5
 calCardBorde.Parent = calCard
 iconoHongo(calCard, 91, 22, 1.9)
 etiqueta("Hongos guardados", 16, UDim2.new(0, 20, 0, 104), UDim2.new(0, 210, 0, 24), Color3.new(1, 1, 1), calCard).TextXAlignment = Enum.TextXAlignment.Center
-local calNum = etiqueta("0", 42, UDim2.new(0, 20, 0, 132), UDim2.new(0, 210, 0, 48), Color3.fromRGB(255, 230, 170), calCard)
+calNum = etiqueta("0", 42, UDim2.new(0, 20, 0, 132), UDim2.new(0, 210, 0, 48), Color3.fromRGB(255, 230, 170), calCard)
 calNum.Font = Enum.Font.GothamBlack
 calNum.TextXAlignment = Enum.TextXAlignment.Center
 local calPista = etiqueta("Toca SOLTAR junto al caldero para echar los hongos que llevas.", 12, UDim2.new(0, 24, 1, -48), UDim2.new(1, -48, 0, 36), Color3.fromRGB(215, 205, 195), calPanel)
@@ -498,13 +500,19 @@ RunCal.RenderStepped:Connect(function()
   end
 end)
 
+end) -- fin del bloque protegido del caldero
+
 RE_UI.OnClientEvent:Connect(function(st)
   if type(st) ~= "table" then
     return
   end
   ultimoEstado = st
-  calNum.Text = tostring(st.calderoHongos or 0)
-  calNumTop.Text = tostring(st.calderoHongos or 0)
+  if calNum then
+    calNum.Text = tostring(st.calderoHongos or 0)
+  end
+  if calNumTop then
+    calNumTop.Text = tostring(st.calderoHongos or 0)
+  end
   raiz.Visible = st.enPartida == true
   if not raiz.Visible then
     return
@@ -534,6 +542,16 @@ RE_UI.OnClientEvent:Connect(function(st)
   desgarrarBtn.Visible = st.mano == true
   tiendaBtn.Visible = st.mano == true and (st.sacoEnMano == true or sacoEnManoLocal == true) -- Tienda solo con el saco puesto
   revisaContador()
+end)
+
+-- Latido de la interfaz: pedir el estado hasta que llegue
+task.spawn(function()
+  while true do
+    task.wait(2)
+    pcall(function()
+      RE_ACC:FireServer("VerCaldero")
+    end)
+  end
 end)
 
 -- FIN LOCAL BOSQUE
