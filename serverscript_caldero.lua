@@ -9,7 +9,7 @@ local CollectionService = game:GetService("CollectionService")
 
 ------------------------------------------------------------------ CONFIG
 local CONFIG = {
-	Position = Vector3.new(-9.5, 2, 4208), -- junto a la fogata, dentro del circulo del campamento
+	Position = Vector3.new(-13, 2, 4206), -- al lado de la fogata, separado y dentro del circulo
 	Scale = 0.32,                       -- ~11 studs de ancho y ~5.5 de alto
 	LiquidCanCollide = true,            -- true: el liquido es una superficie solida
 	Seed = 7,                           -- cambia para otra variacion de piedra/objetos

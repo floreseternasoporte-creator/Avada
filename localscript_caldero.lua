@@ -2,8 +2,9 @@
 -- El panel de la reserva como el menu de la imagen de referencia (panel
 -- oscuro translucido, contadores arriba, tarjetas con icono y numero,
 -- titulos amarillos en cursiva y la X roja en la esquina), el prompt
--- "Ver" y la animacion del liquido. Vive aparte del HUD para que
--- ningun fallo aqui pueda tocar la interfaz de la partida.
+-- "Ver". Vive aparte del HUD para que ningun fallo aqui pueda tocar
+-- la interfaz de la partida. La animacion del liquido va en su propio
+-- LocalScript (CALDERO ANIM), asi este queda corto y no se corta.
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -268,93 +269,21 @@ local function abrirCaldero()
   calPanel.Visible = true
   RE_ACC:FireServer("VerCaldero")
 end
-local function enganchaCaldero(modeloCal)
-  local ancla = modeloCal:WaitForChild("CalderoAncla", 20)
-  local prompt = ancla and ancla:WaitForChild("CalderoPrompt", 20)
-  if prompt then
-    prompt.Triggered:Connect(function(pl)
-      if pl == player then
-        abrirCaldero()
-      end
-    end)
-  end
-end
-for _, mCal in ipairs(workspace:GetChildren()) do
-  if mCal.Name == "Cauldron" then
-    task.spawn(enganchaCaldero, mCal)
-  end
-end
-workspace.ChildAdded:Connect(function(mCal)
-  if mCal.Name == "Cauldron" then
-    enganchaCaldero(mCal)
-  end
-end)
-
--- Animacion del caldero (la del dueno): liquido que cambia de color,
--- objetos flotando y burbujas que suben, todo en el cliente.
-local ColeccionCal = game:GetService("CollectionService")
-local RunCal = game:GetService("RunService")
-local calItems = {}
-local function registraCaldero(p)
-  if not p:IsA("BasePart") then
-    return
-  end
-  local base = p.CFrame -- la base es donde esta la pieza (vale tambien en mundos clonados)
-  if not base then
-    return
-  end
-  calItems[p] = {
-    kind = p:GetAttribute("Kind"),
-    base = base,
-    size = p.Size,
-    escala = p:GetAttribute("Scale") or 1,
-    fase = p:GetAttribute("Phase") or 0,
-    velocidad = p:GetAttribute("Speed") or 1,
-    amplitud = p:GetAttribute("Amp") or 0.3,
-    giro = p:GetAttribute("Spin") or 0,
-    altura = p:GetAttribute("Height") or 10,
-    colA = p:GetAttribute("ColorA"),
-    colB = p:GetAttribute("ColorB"),
-  }
-end
-for _, p in ipairs(ColeccionCal:GetTagged("CauldronAnim")) do
-  registraCaldero(p)
-end
-ColeccionCal:GetInstanceAddedSignal("CauldronAnim"):Connect(function(p)
-  task.defer(registraCaldero, p)
-end)
-ColeccionCal:GetInstanceRemovedSignal("CauldronAnim"):Connect(function(p)
-  calItems[p] = nil
-end)
-RunCal.RenderStepped:Connect(function()
-  local t = os.clock()
-  for p, dd in pairs(calItems) do
-    if not p.Parent then
-      calItems[p] = nil
-    else
-      local kind = dd.kind
-      if kind == "Liquid" then
-        local a = (math.sin(t * 0.5) + 1) / 2
-        if dd.colA and dd.colB then
-          p.Color = dd.colA:Lerp(dd.colB, a)
-        end
-      elseif kind == "Overlay" then
-        p.CFrame = dd.base + Vector3.new(math.cos(t * 0.35) * 3.2 * dd.escala, math.sin(t * 1.3) * 0.04 * dd.escala, math.sin(t * 0.5) * 3.2 * dd.escala)
-        p.Transparency = 0.5 + math.sin(t * 0.8) * 0.12
-      elseif kind == "Float" then
-        local w = t * dd.velocidad + dd.fase
-        local pos = dd.base.Position + Vector3.new(0, math.sin(w) * dd.amplitud, 0)
-        p.CFrame = CFrame.new(pos) * CFrame.Angles(math.sin(w * 0.7) * 0.12, t * dd.giro + dd.fase, math.cos(w * 0.9) * 0.12)
-      elseif kind == "Rise" then
-        local u = (t * dd.velocidad + dd.fase) % 1
-        local pos = dd.base.Position + Vector3.new(math.sin(u * math.pi * 4 + dd.fase * 6) * 0.9 * dd.escala, u * dd.altura, math.cos(u * math.pi * 3 + dd.fase * 6) * 0.9 * dd.escala)
-        p.CFrame = CFrame.new(pos) * CFrame.Angles(t * dd.giro * 0.6, t * dd.giro, t * dd.giro * 0.4)
-        p.Size = dd.size * (1 - 0.45 * u)
-        local fadeIn = (u < 0.08) and (1 - u / 0.08) or 0
-        local fadeOut = (u > 0.65) and ((u - 0.65) / 0.35) or 0
-        p.Transparency = math.clamp(math.max(fadeIn, fadeOut), 0, 1)
-      end
+local function enganchaPrompt(pr)
+  pr.Triggered:Connect(function(pl)
+    if pl == player then
+      abrirCaldero()
     end
+  end)
+end
+for _, d in ipairs(workspace:GetDescendants()) do
+  if d:IsA("ProximityPrompt") and d.Name == "CalderoPrompt" then
+    enganchaPrompt(d)
+  end
+end
+workspace.DescendantAdded:Connect(function(d)
+  if d:IsA("ProximityPrompt") and d.Name == "CalderoPrompt" then
+    enganchaPrompt(d)
   end
 end)
 
