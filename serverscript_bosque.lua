@@ -1532,6 +1532,7 @@ for i = 1, 32 do
 	end
 end
 print("[Avada] Arboles de cristales plantados: " .. arbolesOk)
+Bosque:SetAttribute("ArbolesListos", true)
 
 
 

@@ -92,7 +92,7 @@ end
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
 local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego, paredes
-local jaulas, jaulasPos, lenaNodos, moras, hongos, cofres, fireStatus = {}, {}, {}, {}, {}, {}, nil
+local jaulas, jaulasPos, moras, hongos, cofres, fireStatus = {}, {}, {}, {}, {}, nil
 local bosqueListo = false
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
@@ -109,7 +109,7 @@ local function escanearBosque()
     llamaBase = { [1] = Vector3.new(2.6, 2.2, 2.6), [2] = Vector3.new(1.9, 2.0, 1.9), [3] = Vector3.new(1.2, 1.8, 1.2) }
     anilloSeguro = {}
     paredes = {}
-    lenaNodos, moras, hongos, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}, {}
+    moras, hongos, cofres, jaulas, jaulasPos = {}, {}, {}, {}, {}
     local morasPorClave = {}
     local hongosPorId = {}
     for _, d in ipairs(Bosque:GetDescendants()) do
@@ -129,9 +129,7 @@ local function escanearBosque()
           fuegoPos = d.Position - Vector3.new(0, 11, 0)
         end
         local tipo = d:GetAttribute("Tipo")
-        if tipo == "Lena" then
-          table.insert(lenaNodos, { part = d, pos = d.Position, listoEn = 0 })
-        elseif tipo == "Mora" or tipo == "MoraCorona" or tipo == "MoraRabito" then
+        if tipo == "Mora" or tipo == "MoraCorona" or tipo == "MoraRabito" then
           local gi = d:GetAttribute("Arbusto") or 1
           local mj = d:GetAttribute("MoraId") or 1
           local clave = gi .. "/" .. mj
@@ -353,8 +351,22 @@ local function remotoBosque(nombre)
 end
 local RE_UI = remotoBosque("AvadaBosqueUI")
 local RE_ACC = remotoBosque("AvadaBosqueAccion")
+local RE_SFX = remotoBosque("AvadaSonidos")
 local SACO_MAX = 5
 local COMIDA = { Mora = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
+
+local function sonar(player, nombre)
+  if player and player.Parent then
+    pcall(function()
+      RE_SFX:FireClient(player, nombre)
+    end)
+  end
+end
+local function sonarTodos(nombre)
+  for pl, _ in pairs(SE.players) do
+    sonar(pl, nombre)
+  end
+end
 
 local function sincronizaUI(player)
   local d = SE.players[player]
@@ -381,6 +393,7 @@ local function sincronizaUI(player)
       sacoEnMano = sacoEnLaMano,
       noche = SE.noche,
       fase = SE.fase,
+      lenos = d and d.lenos or 0,
     })
   end)
 end
@@ -717,6 +730,7 @@ local function comerEnMano(player)
   d.enMano.tool:Destroy()
   d.enMano = nil
   d.hambre = math.min(100, d.hambre + valor)
+  sonar(player, "Comer")
   sincronizaUI(player)
 end
 
@@ -727,11 +741,11 @@ local function comerDesdeSaco(player)
   end
   local tipo = table.remove(d.saco, 1)
   d.hambre = math.min(100, d.hambre + (COMIDA[tipo] or 25))
+  sonar(player, "Comer")
   sincronizaUI(player)
 end
 
 -- Desgarrar: lo de la mano cae al suelo y cualquiera lo puede recoger
-local conectarTroncoGlobal
 local entregarComida -- se define mas abajo; este aviso la hace visible aqui
 
 -- Suelta una comida en el suelo frente al jugador: ahi queda guardada
@@ -829,6 +843,7 @@ local function guardarEnSaco(player) -- boton "Tienda": mete lo de la mano al sa
   d.enMano.tool:Destroy()
   d.enMano = nil
   table.insert(d.saco, tipo)
+  sonar(player, "Guardar")
   sincronizaUI(player)
 end
 
@@ -872,16 +887,20 @@ entregarComida = function(player, tipo)
       -- con el saco puesto: tocar algo lo guarda directo en el saco
       if #d.saco < SACO_MAX then
         table.insert(d.saco, tipo)
+        sonar(player, "Recoger")
         sincronizaUI(player)
         return true
       end
       return false
     end
     darEnMano(player, tipo)
+    sonar(player, "Recoger")
+    sincronizaUI(player)
     return true
   end
   if #d.saco < SACO_MAX then
     table.insert(d.saco, tipo)
+    sonar(player, "Recoger")
     sincronizaUI(player)
     return true
   end
@@ -925,50 +944,77 @@ local function posRebrote()
   return Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
 end
 
-local function crearTroncoEnSuelo()
-  local pos = posRebrote()
-  local part = Instance.new("Part")
-  part.Name = "FallenLog"
-  part.Shape = Enum.PartType.Cylinder
-  part.Size = Vector3.new(5.2, 1.1, 1.1)
-  part.CFrame = CFrame.new(pos.X, 2.6, pos.Z) * CFrame.Angles(0, math.random() * math.pi, math.rad(90))
-  part.BrickColor = BrickColor.new("Reddish brown")
-  part.Color = Color3.fromRGB(128, 84, 46)
-  part.Material = Enum.Material.Plastic
-  part.Anchored = true
-  part.CanCollide = false
-  part.CastShadow = false
-  part:SetAttribute("Tipo", "Lena")
-  part.Parent = workspace
-  local nodo = { part = part, pos = part.Position, listoEn = 0 }
-  table.insert(lenaNodos, nodo)
-  if conectarTroncoGlobal then
-    conectarTroncoGlobal(nodo)
+-- Los arboles de cristales dan lena: tocas el tronco (o le das tap)
+-- y sale un leno para tu cuenta; el arbol vuelve a dar a los 25 s.
+-- Nada de madera tirada por el suelo.
+local arbolesListos = false
+local arbolesZona = {}
+local function tocarArbol(player, arb)
+  if not arb or os.clock() < (arb.listoEn or 0) then
+    return
   end
-  return nodo
+  if not (SE.on and jugadorEnPartida(player) and SE.players[player].vivo) then
+    return
+  end
+  arb.listoEn = os.clock() + 25
+  SE.players[player].lenos += 1
+  sonar(player, "Lena")
+  sincronizaUI(player)
 end
-
-local function sembrarTroncos()
-  task.spawn(function()
-    for _ = 1, 10 do
-      crearTroncoEnSuelo()
-      task.wait(0.1)
-    end
-    while true do
-      task.wait(20)
-      local visibles = 0
-      for _, n in ipairs(lenaNodos) do
-        if n.part and n.part.Parent and n.part.Transparency < 1 then
-          visibles += 1
-        end
+local function conectarArboles()
+  if arbolesListos or not Bosque then
+    return arbolesListos
+  end
+  if Bosque:GetAttribute("ArbolesListos") ~= true then
+    return false
+  end
+  for _, modelo in ipairs(Bosque:GetChildren()) do
+    if modelo:IsA("Model") and string.match(modelo.Name, "^ArbolCristal%d+$") then
+      local raiz = modelo:FindFirstChild("Root", true)
+      if raiz and raiz:IsA("BasePart") then
+        local arb = { listoEn = 0 }
+        local zona = Instance.new("Part")
+        zona.Name = "ZonaArbol"
+        zona.Shape = Enum.PartType.Cylinder
+        zona.Size = Vector3.new(10, 9, 9)
+        zona.CFrame = CFrame.new(raiz.Position.X, 6, raiz.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
+        zona.Transparency = 1
+        zona.CanCollide = false
+        zona.CanTouch = true
+        zona.Anchored = true
+        zona.Parent = workspace
+        table.insert(arbolesZona, zona)
+        local cd = Instance.new("ClickDetector")
+        cd.MaxActivationDistance = 16
+        cd.Parent = zona
+        cd.MouseClick:Connect(function(player)
+          tocarArbol(player, arb)
+        end)
+        local ultimoToqueA = 0
+        zona.Touched:Connect(function(hit)
+          local ahora = os.clock()
+          if ahora - ultimoToqueA < 0.35 then
+            return
+          end
+          ultimoToqueA = ahora
+          local modeloChar = hit and hit:FindFirstAncestorOfClass("Model")
+          local player = modeloChar and Players:GetPlayerFromCharacter(modeloChar)
+          if player then
+            tocarArbol(player, arb)
+          end
+        end)
       end
-      if visibles < 14 then
-        crearTroncoEnSuelo()
-        crearTroncoEnSuelo()
-      end
     end
-  end)
+  end
+  arbolesListos = true
+  print("[Avada] Arboles listos para dar lena: " .. #arbolesZona)
+  return true
 end
+task.spawn(function()
+  while not conectarArboles() do
+    task.wait(1)
+  end
+end)
 
 local function recogerHongo(player, hg)
   if not hg.disponible or not jugadorEnPartida(player) then
@@ -1304,6 +1350,8 @@ local function finPartida(victoria)
     circleSub.Text = "Párate en el círculo para jugar otra vez"
   end
   for player, _ in pairs(SE.players) do
+    sonar(player, "MusicaLobby")
+    sincronizaUI(player)
     volverAlLobby(player)
   end
   SE.players = {}
@@ -1416,6 +1464,7 @@ local function cicloPartida()
     LightingSvc.FogStart = 20
     LightingSvc.FogEnd = 110
     nocheLobos()
+    sonarTodos("Aullido")
     updateFireBoard()
     updateCircleBoard()
     local tNoche = 0
@@ -1455,6 +1504,7 @@ local function cicloPartida()
       end
     end
     -- amanecer: los lobos de la noche desaparecen
+    sonarTodos("Amanecer")
     destruirLobos(true)
     if SE.noche >= NOCHES_META then
       finPartida(true)
@@ -1501,33 +1551,6 @@ local function conectarToques()
     local char = hit and hit.Parent
     local player = char and Players:GetPlayerFromCharacter(char)
     return player
-  end
-  local function conectarTronco(nodo)
-    nodo.part.Touched:Connect(function(hit)
-      if not SE.on or os.clock() < nodo.listoEn then
-        return
-      end
-      local player = jugadorDe(hit)
-      if player and jugadorEnPartida(player) and SE.players[player].vivo then
-        SE.players[player].lenos += 1
-        nodo.listoEn = os.clock() + 25
-        nodo.part.Transparency = 1
-        nodo.part.CanCollide = false
-        task.delay(25, function()
-          -- el tronco tambien rebrota en otro sitio
-          local destino = posRebrote()
-          local d = Vector3.new(destino.X - nodo.pos.X, 0, destino.Z - nodo.pos.Z)
-          nodo.part.CFrame = nodo.part.CFrame + d
-          nodo.pos = nodo.pos + d
-          nodo.part.Transparency = 0
-          nodo.part.CanCollide = false
-        end)
-      end
-    end)
-  end
-  conectarTroncoGlobal = conectarTronco
-  for _, nodo in ipairs(lenaNodos) do
-    conectarTronco(nodo)
   end
   for _, fr in ipairs(moras) do
     local cd = Instance.new("ClickDetector")
@@ -1590,6 +1613,8 @@ local function conectarToques()
         SE.llama = math.min(100, SE.llama + d.lenos * 18)
         SE.fogataXP = (SE.fogataXP or 0) + d.lenos
         d.lenos = 0
+        sonar(player, "Depositar")
+        sincronizaUI(player)
         while (SE.nivel or 1) < NIVEL_MAX and SE.fogataXP >= lenosParaNivel(SE.nivel or 1) do
           SE.fogataXP = SE.fogataXP - lenosParaNivel(SE.nivel or 1)
           SE.nivel = (SE.nivel or 1) + 1
@@ -1643,6 +1668,8 @@ local function conectarToques()
         else
           SE.players[player].hambre = math.min(100, SE.players[player].hambre + 40)
         end
+        sonar(player, "Cofre")
+        sincronizaUI(player)
       end
     end)
   end
@@ -1697,6 +1724,7 @@ local function iniciarPartida(lista)
       k += 1
       SE.players[player] = { vivo = true, lenos = 0, hambre = 100, saco = {}, sacoEnMano = false, enMano = nil, toolSaco = nil }
       darSacoMago(player)
+      sonar(player, "MusicaBosque")
       local char = player.Character
       if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -1833,7 +1861,6 @@ task.spawn(function()
   end
   conectarToques()
   updateFireBoard()
-  sembrarTroncos()
 end)
 
 -- cartel del circulo (lo construye BOSQUE dentro del lobby)
