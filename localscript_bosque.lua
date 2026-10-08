@@ -46,11 +46,11 @@ local function etiqueta(texto, size, pos, tam, color, padre)
 end
 
 -- Noche arriba en el centro (como el "Dia 1" de referencia)
-local diaLbl = etiqueta("Día", 17, UDim2.new(0.5, -80, 0, 8), UDim2.new(160, 24), Color3.new(1, 1, 1), raiz)
+local diaLbl = etiqueta("Día", 17, UDim2.new(0.5, -80, 0, 8), UDim2.new(0, 160, 0, 24), Color3.new(1, 1, 1), raiz)
 diaLbl.AnchorPoint = Vector2.new(0, 0)
 
 -- Barra de hambre: naranja, a la izquierda
-etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(120, 14), Color3.new(1, 1, 1), raiz)
+etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
 local barraFondo = Instance.new("Frame")
 barraFondo.AnchorPoint = Vector2.new(0, 0.5)
 barraFondo.Position = UDim2.new(0, 14, 0.42, 0)
@@ -67,7 +67,7 @@ relleno.Parent = barraFondo
 Instance.new("UICorner", relleno).CornerRadius = UDim.new(0, 6)
 
 -- Contador grande del saco (X/5), como en la referencia
-local contador = etiqueta("0/5", 36, UDim2.new(0.60, -70, 0.40, 0), UDim2.new(140, 52), Color3.new(1, 1, 1), raiz)
+local contador = etiqueta("0/5", 36, UDim2.new(0.60, -70, 0.40, 0), UDim2.new(0, 140, 0, 52), Color3.new(1, 1, 1), raiz)
 contador.Font = Enum.Font.GothamBlack
 contador.TextScaled = true
 contador.ZIndex = 5

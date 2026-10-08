@@ -720,12 +720,16 @@ local function desgarrarEnMano(player)
     pr.MaxActivationDistance = 9
     pr.RequiresLineOfSight = false
     pr.Parent = ancla
-    pr.Triggered:Connect(function(otro)
-      if jugadorEnPartida(otro) and SE.players[otro].vivo and not SE.players[otro].enMano then
+    local function recogerSuelta(otro)
+      if jugadorEnPartida(otro) and entregarComida(otro, tipo) then
         suelta:Destroy()
-        darEnMano(otro, tipo)
       end
-    end)
+    end
+    pr.Triggered:Connect(recogerSuelta)
+    local cdS = Instance.new("ClickDetector")
+    cdS.MaxActivationDistance = 14
+    cdS.Parent = ancla
+    cdS.MouseClick:Connect(recogerSuelta)
     suelta.Parent = workspace
   end
   sincronizaUI(player)
@@ -770,12 +774,30 @@ local function limpiarObjetos(player)
   d.sacoEnMano = false
 end
 
+-- Como en 99 Noches: lo que tocas entra a tu mano si esta libre, y si
+-- ya llevas algo (o el saco puesto), entra directo al saco si hay hueco
+local function entregarComida(player, tipo)
+  local d = SE.players[player]
+  if not d or not d.vivo then
+    return false
+  end
+  if not d.enMano then
+    darEnMano(player, tipo)
+    return true
+  end
+  if #d.saco < SACO_MAX then
+    table.insert(d.saco, tipo)
+    sincronizaUI(player)
+    return true
+  end
+  return false
+end
+
 local function recogerFresaDelArbusto(player, fr)
   if not fr.disponible or not jugadorEnPartida(player) then
     return
   end
-  local d = SE.players[player]
-  if not d.vivo or d.enMano then
+  if not entregarComida(player, "Fresa") then
     return
   end
   fr.disponible = false
@@ -805,8 +827,7 @@ local function recogerHongo(player, hg)
   if not hg.disponible or not jugadorEnPartida(player) then
     return
   end
-  local d = SE.players[player]
-  if not d.vivo or d.enMano then
+  if not entregarComida(player, "Hongo") then
     return
   end
   hg.disponible = false
@@ -1433,6 +1454,12 @@ local function conectarToques()
     pr.Triggered:Connect(function(player)
       recogerFresaDelArbusto(player, fr)
     end)
+    local cd = Instance.new("ClickDetector")
+    cd.MaxActivationDistance = 14
+    cd.Parent = fr.berry
+    cd.MouseClick:Connect(function(player)
+      recogerFresaDelArbusto(player, fr)
+    end)
   end
   for _, hg in ipairs(hongos) do
     local pr = Instance.new("ProximityPrompt")
@@ -1445,6 +1472,12 @@ local function conectarToques()
     pr.Parent = hg.cap
     hg.prompt = pr
     pr.Triggered:Connect(function(player)
+      recogerHongo(player, hg)
+    end)
+    local cd = Instance.new("ClickDetector")
+    cd.MaxActivationDistance = 14
+    cd.Parent = hg.cap
+    cd.MouseClick:Connect(function(player)
       recogerHongo(player, hg)
     end)
   end
