@@ -86,7 +86,7 @@ local raiz = Instance.new("Frame")
 raiz.Name = "Raiz"
 raiz.Size = UDim2.new(1, 0, 1, 0)
 raiz.BackgroundTransparency = 1
-raiz.Visible = false
+raiz.Visible = true
 raiz.Parent = gui
 
 local function etiqueta(texto, size, pos, tam, color, padre)
@@ -116,7 +116,7 @@ diaLbl.RichText = true
 diaLbl.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Barra de hambre: naranja, a la izquierda
-etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
+local hambreLbl = etiqueta("HAMBRE", 10, UDim2.new(0, 16, 0.40, -18), UDim2.new(0, 120, 0, 14), Color3.new(1, 1, 1), raiz)
 local lenosLbl = etiqueta("Leños: 0", 12, UDim2.new(0, 16, 0.42, 18), UDim2.new(0, 160, 0, 18), Color3.fromRGB(255, 215, 150), raiz)
 local barraFondo = Instance.new("Frame")
 barraFondo.AnchorPoint = Vector2.new(0, 0.5)
@@ -142,6 +142,13 @@ contador.Font = Enum.Font.GothamBlack
 contador.TextScaled = true
 contador.ZIndex = 5
 contador.Visible = false
+
+-- Solo de partida: el hambre, los lenos y el Dia/Noche se esconden en
+-- el lobby; los botones (CORRER sobre todo) quedan siempre a la vista
+local soloPartida = { diaLbl, hambreLbl, lenosLbl, barraFondo }
+for _, e in ipairs(soloPartida) do
+  e.Visible = false
+end
 
 -- Botones circulares pegados a la esquina, alrededor del boton de salto
 -- (como en 99 Noches: Comer arriba-izquierda, CORRER arriba-derecha,
@@ -269,14 +276,22 @@ task.spawn(function()
         contador.Text = tostring(ultimoEstado.saco or 0) .. "/" .. tostring(ultimoEstado.sacoMax or 5)
       end
       local cercaCal = false
-      local calM = workspace:FindFirstChild("Cauldron")
-      local anclaCal = calM and calM:FindFirstChild("CalderoAncla")
       local ch2 = player.Character
       local hrp2 = ch2 and ch2:FindFirstChild("HumanoidRootPart")
-      if anclaCal and hrp2 then
-        local dxC = hrp2.Position.X - anclaCal.Position.X
-        local dzC = hrp2.Position.Z - anclaCal.Position.Z
-        cercaCal = (dxC * dxC + dzC * dzC) <= 15 * 15
+      if hrp2 then
+        for _, mCal in ipairs(workspace:GetChildren()) do
+          if mCal.Name == "Cauldron" then
+            local anclaCal = mCal:FindFirstChild("CalderoAncla")
+            if anclaCal then
+              local dxC = hrp2.Position.X - anclaCal.Position.X
+              local dzC = hrp2.Position.Z - anclaCal.Position.Z
+              if (dxC * dxC + dzC * dzC) <= 15 * 15 then
+                cercaCal = true
+                break
+              end
+            end
+          end
+        end
       end
       soltarBtn.Visible = cercaCal and (ultimoEstado.manoTipo == "Hongo" or (ultimoEstado.hongosSaco or 0) > 0)
     end
@@ -399,9 +414,8 @@ local function abrirCaldero()
   calPanel.Visible = true
   RE_ACC:FireServer("VerCaldero")
 end
-task.spawn(function()
-  local cal = workspace:WaitForChild("Cauldron", 60)
-  local ancla = cal and cal:WaitForChild("CalderoAncla", 20)
+local function enganchaCaldero(modeloCal)
+  local ancla = modeloCal:WaitForChild("CalderoAncla", 20)
   local prompt = ancla and ancla:WaitForChild("CalderoPrompt", 20)
   if prompt then
     prompt.Triggered:Connect(function(pl)
@@ -409,6 +423,16 @@ task.spawn(function()
         abrirCaldero()
       end
     end)
+  end
+end
+for _, mCal in ipairs(workspace:GetChildren()) do
+  if mCal.Name == "Cauldron" then
+    task.spawn(enganchaCaldero, mCal)
+  end
+end
+workspace.ChildAdded:Connect(function(mCal)
+  if mCal.Name == "Cauldron" then
+    enganchaCaldero(mCal)
   end
 end)
 
@@ -421,7 +445,7 @@ local function registraCaldero(p)
   if not p:IsA("BasePart") then
     return
   end
-  local base = p:GetAttribute("BaseCFrame")
+  local base = p.CFrame -- la base es donde esta la pieza (vale tambien en mundos clonados)
   if not base then
     return
   end
@@ -487,8 +511,17 @@ RE_UI.OnClientEvent:Connect(function(st)
   ultimoEstado = st
   calNum.Text = tostring(st.calderoHongos or 0)
   calNumTop.Text = tostring(st.calderoHongos or 0)
-  raiz.Visible = st.enPartida == true
-  if not raiz.Visible then
+  raiz.Visible = true
+  local enP = st.enPartida == true
+  for _, e in ipairs(soloPartida) do
+    e.Visible = enP
+  end
+  if not enP then
+    comerBtn.Visible = false
+    desgarrarBtn.Visible = false
+    tiendaBtn.Visible = false
+    soltarBtn.Visible = false
+    contador.Visible = false
     return
   end
   relleno.Size = UDim2.new(math.clamp((st.hambre or 100) / 100, 0, 1), 0, 1, 0)

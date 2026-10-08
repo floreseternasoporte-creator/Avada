@@ -1,4 +1,7 @@
--- Archivo PARTIDA: la supervivencia en el Bosque Prohibido (llama, hambre, lobos, rescates, 7 noches).
+-- Archivo PARTIDA: la supervivencia en el Bosque Prohibido. Como en 99
+-- Noches, nadie espera a nadie: cada grupo que entra al circulo juega SU
+-- partida en SU propio mundo (un clon del bosque plantilla), asi que
+-- puede haber varias partidas a la vez, cada una en su bosque.
 local Players = game:GetService("Players")
 local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 
@@ -7,7 +10,101 @@ local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 local NOCHES_META = 7
 local NOCHE_LEN = 140
 local DIA_LEN = 50
-local FC = Vector3.new(0, 0, 4200) -- centro del bosque (lejos del lobby)
+local FC = Vector3.new(0, 0, 4200) -- centro del bosque plantilla
+
+-- Remotos compartidos por todas las sesiones
+local RSvc = game:GetService("ReplicatedStorage")
+local function remotoBosque(nombre)
+  local r = RSvc:FindFirstChild(nombre)
+  if not r then
+    r = Instance.new("RemoteEvent")
+    r.Name = nombre
+    r.Parent = RSvc
+  end
+  return r
+end
+local RE_UI = remotoBosque("AvadaBosqueUI")
+local RE_SFX = remotoBosque("AvadaSonidos")
+
+--===========================================================
+-- ENCARGADO DE SESIONES: reparte jugadores, mundos y avisos
+--===========================================================
+local SESIONES = {} -- [player] = sesion
+local PARTIDAS = {} -- sesiones vivas
+local MAX_MUNDOS = 3
+local slotsEnUso = {}
+local tplBosque, tplFogata, tplCaldero
+local plantillasListas = false
+local lobby = { cuentaAtras = 0, enCirculo = {} }
+local circleTitle, circleStatus, circleSub
+local ultimoCartel
+
+local function pintarCartel(t, e, s)
+  if circleTitle and circleStatus and circleSub then
+    circleTitle.Text = t
+    circleStatus.Text = e
+    circleSub.Text = s
+  end
+end
+
+local function refrescarCartelCirculo(titulo, estado, sub)
+  if titulo ~= nil then
+    ultimoCartel = { t = titulo, e = estado or "", s = sub or "", hasta = os.clock() + 6 }
+    pintarCartel(titulo, estado or "", sub or "")
+    return
+  end
+  if ultimoCartel and os.clock() < ultimoCartel.hasta and lobby.cuentaAtras <= 0 then
+    pintarCartel(ultimoCartel.t, ultimoCartel.e, ultimoCartel.s)
+    return
+  end
+  if not plantillasListas then
+    local bq = workspace:FindFirstChild("BosqueProhibido")
+    if not bq then
+      pintarCartel("AVADA", "EL BOSQUE NO EXISTE EN EL MAPA", "El Script BOSQUE no esta corriendo")
+    else
+      pintarCartel("AVADA", "BOSQUE CARGANDO: " .. tostring(bq:GetAttribute("Etapa") or "inicio"), "Si no avanza, mandame una captura")
+    end
+    return
+  end
+  if lobby.cuentaAtras > 0 then
+    local n = 0
+    for _ in pairs(lobby.enCirculo) do
+      n += 1
+    end
+    pintarCartel("BOSQUE PROHIBIDO", "La partida empieza en " .. math.ceil(lobby.cuentaAtras) .. "...", n .. " mago(s) entrando - entra tu tambien")
+  elseif #PARTIDAS > 0 then
+    pintarCartel("BOSQUE PROHIBIDO", #PARTIDAS .. " partida(s) en curso", "Párate en el círculo y empieza la tuya")
+  else
+    pintarCartel("BOSQUE PROHIBIDO", "Párate en el círculo para entrar", "Sobrevive 7 noches - Rescata a los 4 aprendices")
+  end
+end
+
+-- El golpe de hechizo a los lobos llega aqui y se reparte a la sesion
+-- del lanzador (cada partida tiene sus propios lobos)
+local bfGolpeSesion = Instance.new("BindableFunction")
+bfGolpeSesion.Name = "AvadaGolpeSombra"
+bfGolpeSesion.Parent = game:GetService("ServerScriptService")
+bfGolpeSesion.OnInvoke = function(caster, spellName)
+  local s = SESIONES[caster]
+  if s and s.golpe then
+    return s.golpe(caster, spellName)
+  end
+  return false
+end
+
+-- Las acciones de los botones llegan aqui y van a la sesion del jugador
+local RE_ACCION = remotoBosque("AvadaBosqueAccion")
+RE_ACCION.OnServerEvent:Connect(function(player, accion)
+  local s = SESIONES[player]
+  if s and s.accion then
+    s.accion(player, accion)
+  end
+end)
+
+--===========================================================
+-- UNA SESION = UNA PARTIDA EN SU PROPIO MUNDO
+--===========================================================
+local function crearPartida(ctx)
 
 local SE = {
   on = false,
@@ -95,11 +192,11 @@ end
 local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego, paredes
 local jaulas, jaulasPos, moras, hongos, cofres, fireStatus = {}, {}, {}, {}, {}, nil
 local bosqueListo = false
-local circleTitle, circleStatus, circleSub
+local lobosFaltan, loboAvisoDado = false, false
 local fireBoardAnchor
 
 local function escanearBosque()
-  Bosque = workspace:FindFirstChild("BosqueProhibido")
+  Bosque = ctx.modelo
   if not (Bosque and Bosque:GetAttribute("Listo")) then
     return false
   end
@@ -215,41 +312,6 @@ local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 
 -- CARTELES
 --===========================================================
-local function updateCircleBoard()
-  if not (circleTitle and circleStatus and circleSub) then
-    return -- el cartel aun no aparece: el hilo del circulo sigue vivo
-  end
-  if not bosqueListo then
-    local bq = workspace:FindFirstChild("BosqueProhibido")
-    circleTitle.Text = "AVADA"
-    if not bq then
-      circleStatus.Text = "EL BOSQUE NO EXISTE EN EL MAPA"
-      circleSub.Text = "El Script BOSQUE no esta corriendo"
-    else
-      circleStatus.Text = "BOSQUE CARGANDO: " .. tostring(bq:GetAttribute("Etapa") or "inicio")
-      circleSub.Text = "Si no avanza, mandame una captura"
-    end
-    return
-  end
-  if SE.on then
-    circleTitle.Text = "PARTIDA EN CURSO"
-    circleStatus.Text = "Noche " .. math.max(SE.noche, 1) .. " de " .. NOCHES_META .. " - Llama al " .. math.floor(SE.llama) .. "%"
-    circleSub.Text = "La siguiente partida empieza al terminar esta"
-  elseif SE.cuentaAtras > 0 then
-    circleTitle.Text = "BOSQUE PROHIBIDO"
-    circleStatus.Text = "La partida empieza en " .. math.ceil(SE.cuentaAtras) .. "..."
-    local n = 0
-    for _ in pairs(SE.enCirculo) do
-      n += 1
-    end
-    circleSub.Text = n .. " mago(s) entrando - entra tu tambien"
-  else
-    circleTitle.Text = "BOSQUE PROHIBIDO"
-    circleStatus.Text = "Párate en el círculo para entrar"
-    circleSub.Text = "Sobrevive 7 noches - Rescata a los 4 aprendices"
-  end
-end
-
 local function updateFireBoard()
   if not (llamaParts and llamaBase and fuegoPos) then
     return -- el bosque aun no se descubre: nada que actualizar
@@ -340,19 +402,6 @@ end
 -- OBJETOS: comida en la mano (moras y hongos), SACO MAGICO (x/5)
 -- y acciones como en 99 Noches: Comer, Desgarrar, Tienda, Desalmacenar
 --===========================================================
-local RSvc = game:GetService("ReplicatedStorage")
-local function remotoBosque(nombre)
-  local r = RSvc:FindFirstChild(nombre)
-  if not r then
-    r = Instance.new("RemoteEvent")
-    r.Name = nombre
-    r.Parent = RSvc
-  end
-  return r
-end
-local RE_UI = remotoBosque("AvadaBosqueUI")
-local RE_ACC = remotoBosque("AvadaBosqueAccion")
-local RE_SFX = remotoBosque("AvadaSonidos")
 local SACO_MAX = 5
 local COMIDA = { Mora = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
 
@@ -874,7 +923,7 @@ end
 local calderoModelo
 local function posCaldero()
   if not calderoModelo or not calderoModelo.Parent then
-    calderoModelo = workspace:FindFirstChild("Cauldron")
+    calderoModelo = ctx.caldero
   end
   if not calderoModelo then
     return nil
@@ -1009,7 +1058,7 @@ end
 local function posRebrote()
   local a = math.random() * math.pi * 2
   local r = 45 + math.random() * 150
-  return Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
+  return Vector3.new(fuegoPos.X + math.cos(a) * r, 2.0, fuegoPos.Z + math.sin(a) * r)
 end
 
 -- Los arboles de cristales dan lena: tocas el tronco (o le das tap)
@@ -1079,7 +1128,7 @@ local function conectarArboles()
   return true
 end
 task.spawn(function()
-  while not conectarArboles() do
+  while not SE.terminada and not conectarArboles() do
     task.wait(1)
   end
 end)
@@ -1136,7 +1185,7 @@ local function recogerHongo(player, hg)
   end)
 end
 
-RE_ACC.OnServerEvent:Connect(function(player, accion)
+local function accionRemota(player, accion)
   if not jugadorEnPartida(player) or not SE.players[player].vivo then
     return
   end
@@ -1157,21 +1206,21 @@ RE_ACC.OnServerEvent:Connect(function(player, accion)
   elseif accion == "VerCaldero" then
     sincronizaUI(player)
   end
-end)
+end
 
 -- La Fogata Magica (fogata nueva del dueno): encendida mientras la
 -- llama tenga nivel; al llegar a 0 se apaga sola (attribute Lit)
 local fogataModelo
 local function sincronizarFogata()
   if not fogataModelo or not fogataModelo.Parent then
-    fogataModelo = workspace:FindFirstChild("FogataMagica")
+    fogataModelo = ctx.fogata
   end
   if fogataModelo then
     fogataModelo:SetAttribute("Lit", SE.llama > 0)
   end
 end
 task.spawn(function()
-  while true do
+  while not SE.terminada do
     task.wait(0.5)
     sincronizarFogata()
   end
@@ -1179,7 +1228,7 @@ end)
 
 -- el hambre baja sin parar: la barra de la interfaz se refresca sola
 task.spawn(function()
-  while true do
+  while not SE.terminada do
     task.wait(1.5)
     if SE.on then
       for player, _ in pairs(SE.players) do
@@ -1202,8 +1251,6 @@ local function llamarEsencias(player, cantidad)
   end
 end
 
-local lobosFaltan = false
-local loboAvisoDado = false
 local function llamarLobos(accion, a, b)
   local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaLobos")
   if not bf then
@@ -1376,13 +1423,6 @@ local function golpeSombra(caster, spellName)
 end
 
 --===========================================================
-local bfGolpe = Instance.new("BindableFunction")
-bfGolpe.Name = "AvadaGolpeSombra"
-bfGolpe.Parent = game:GetService("ServerScriptService")
-bfGolpe.OnInvoke = function(caster, spellName)
-  return golpeSombra(caster, spellName)
-end
-
 --===========================================================
 -- FLUJO DE LA PARTIDA
 --===========================================================
@@ -1411,15 +1451,12 @@ local function finPartida(victoria)
   destruirLobos(false)
   LightingSvc.ClockTime = 13.2
   LightingSvc.FogEnd = 100000
-  if circleTitle and circleStatus and circleSub then
+  if ctx.avisar then
     if victoria then
-      circleTitle.Text = "BOSQUE SUPERADO"
-      circleStatus.Text = "Los magos vencieron las " .. NOCHES_META .. " noches"
+      ctx.avisar("BOSQUE SUPERADO", "Los magos vencieron las " .. NOCHES_META .. " noches", "Párate en el círculo para jugar otra vez")
     else
-      circleTitle.Text = "BOSQUE PROHIBIDO"
-      circleStatus.Text = "La partida termino en la noche " .. math.max(SE.noche, 1)
+      ctx.avisar("BOSQUE PROHIBIDO", "La partida termino en la noche " .. math.max(SE.noche, 1), "Párate en el círculo para jugar otra vez")
     end
-    circleSub.Text = "Párate en el círculo para jugar otra vez"
   end
   for player, _ in pairs(SE.players) do
     sonar(player, "MusicaLobby")
@@ -1429,11 +1466,10 @@ local function finPartida(victoria)
   SE.players = {}
   SE.cuentaAtras = 0
   SE.enCirculo = {}
-  task.delay(6, function()
-    if not SE.on then
-      updateCircleBoard()
-    end
-  end)
+  SE.terminada = true
+  if ctx.alTerminar then
+    ctx.alTerminar()
+  end
 end
 
 local function marcarMuerto(player)
@@ -1460,7 +1496,7 @@ local function asegurarLobosDelBosque()
   for i = vivos + 1, 3 do
     local a = i * 2.1 + 0.7
     local r = 150 + (i % 2) * 30
-    crearLoboPartida(Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r), "bosque")
+    crearLoboPartida(Vector3.new(fuegoPos.X + math.cos(a) * r, 2.0, fuegoPos.Z + math.sin(a) * r), "bosque")
   end
 end
 
@@ -1473,7 +1509,7 @@ local function nocheLobos()
   end
   for i = 1, total do
     local a = math.random() * math.pi * 2
-    local pos = Vector3.new(FC.X + math.cos(a) * 150, 2.0, FC.Z + math.sin(a) * 150)
+    local pos = Vector3.new(fuegoPos.X + math.cos(a) * 150, 2.0, fuegoPos.Z + math.sin(a) * 150)
     crearLoboPartida(pos, "normal")
   end
   -- incursiones: en las noches 3 y 6 algunos lobos entran hasta la fogata
@@ -1481,7 +1517,7 @@ local function nocheLobos()
     local n = (SE.noche == 3) and 2 or 4
     for i = 1, n do
       local a = math.random() * math.pi * 2
-      local pos = Vector3.new(FC.X + math.cos(a) * 130, 2.0, FC.Z + math.sin(a) * 130)
+      local pos = Vector3.new(fuegoPos.X + math.cos(a) * 130, 2.0, fuegoPos.Z + math.sin(a) * 130)
       crearLoboPartida(pos, "raider")
     end
   end
@@ -1496,7 +1532,7 @@ local function nocheLobos()
     end
     if not yaHay then
       local a = math.random() * math.pi * 2
-      crearLoboPartida(Vector3.new(FC.X + math.cos(a) * 160, 2.0, FC.Z + math.sin(a) * 160), "grande")
+      crearLoboPartida(Vector3.new(fuegoPos.X + math.cos(a) * 160, 2.0, fuegoPos.Z + math.sin(a) * 160), "grande")
     end
   end
 end
@@ -1538,7 +1574,7 @@ local function cicloPartida()
     nocheLobos()
     sonarTodos("Aullido")
     updateFireBoard()
-    updateCircleBoard()
+    if ctx.avisar then ctx.avisar() end
     local tNoche = 0
     local nocheDur = math.max(NOCHE_LEN - SE.aprendices * 12, 70)
     while SE.on and tNoche < nocheDur do
@@ -1558,7 +1594,7 @@ local function cicloPartida()
         end
       end
       if SE.llama <= 0 then
-        circleStatus.Text = "LA LLAMA SE APAGO - fin de la partida"
+        if ctx.avisar then ctx.avisar("BOSQUE PROHIBIDO", "LA LLAMA SE APAGO - fin de la partida", "") end
         task.wait(2)
         finPartida(false)
         return
@@ -1582,7 +1618,7 @@ local function cicloPartida()
       finPartida(true)
       return
     end
-    updateCircleBoard()
+    if ctx.avisar then ctx.avisar() end
   end
 end
 
@@ -1591,7 +1627,7 @@ end
 -- lobos (salvo los de las incursiones 3 y 6): el que lo cruza es
 -- empujado fuera al instante y el fuego lo quema.
 local function bucleLobos()
-  while true do
+  while not SE.terminada do
     task.wait(0.15)
     if SE.on then
       local radio = 9 + SE.llama * 0.11
@@ -1718,7 +1754,7 @@ local function conectarToques()
               f2.CFrame = CFrame.new(dest + Vector3.new(off.X, off.Y - 0.8, off.Z)) * CFrame.Angles(0, -ang - math.pi / 2, 0)
             end
             updateFireBoard()
-            updateCircleBoard()
+            if ctx.avisar then ctx.avisar() end
           end
         end)
       end
@@ -1786,8 +1822,9 @@ local function iniciarPartida(lista)
   end
   if not bosqueListo then
     print("[Avada] La partida espera: falta descubrir el bosque (archivo BOSQUE)")
-    return
+    return false
   end
+  conectarToques()
   SE.on = true
   SE.players = {}
   prepararMundo()
@@ -1815,50 +1852,10 @@ local function iniciarPartida(lista)
       end
     end
   end
-  updateCircleBoard()
+  if ctx.avisar then ctx.avisar() end
   task.spawn(cicloPartida)
+  return true
 end
-
--- Circulo del lobby: quien este dentro cuando la cuenta llega a 0, entra
-task.spawn(function()
-  while true do
-    task.wait(0.3)
-    if not SE.on then
-      local dentro = {}
-      for _, player in ipairs(Players:GetPlayers()) do
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-          local flat = Vector2.new(hrp.Position.X, hrp.Position.Z)
-          if flat.Magnitude <= 12.5 and hrp.Position.Y > 1 and hrp.Position.Y < 14 then
-            dentro[player] = true
-          end
-        end
-      end
-      SE.enCirculo = dentro
-      local n = 0
-      for _ in pairs(dentro) do
-        n += 1
-      end
-      if n >= 1 and SE.cuentaAtras <= 0 then
-        SE.cuentaAtras = 12
-      end
-      if SE.cuentaAtras > 0 then
-        SE.cuentaAtras -= 0.3
-        if SE.cuentaAtras <= 0 then
-          local lista = {}
-          for player, _ in pairs(dentro) do
-            table.insert(lista, player)
-          end
-          if #lista >= 1 then
-            iniciarPartida(lista)
-          end
-        end
-      end
-      updateCircleBoard()
-    end
-  end
-end)
 
 --===========================================================
 -- PLAYER EVENTS
@@ -1889,7 +1886,7 @@ end)
 -- ANIMADOR DE LA LLAMA: pulso, lengua que sube y se recoge, luz que tiembla
 task.spawn(function()
   local t = 0
-  while true do
+  while not SE.terminada do
     task.wait(0.1)
     t += 0.1
     if llamaParts and llamaBase and fuegoPos then
@@ -1923,17 +1920,147 @@ task.spawn(function()
   end
 end)
 
-task.spawn(function()
-  local intentos = 0
-  while not escanearBosque() do
-    intentos += 1
-    if intentos == 200 then
-      print("[Avada] Todavia no aparece el bosque: falta poner el archivo BOSQUE")
-    end
-    task.wait(0.25)
+
+  return { iniciar = iniciarPartida, golpe = golpeSombra, accion = accionRemota, cerrar = function()
+    SE.terminada = true
+  end }
+end
+
+--===========================================================
+-- CREAR UNA SESION: clona el mundo plantilla a su propio centro
+--===========================================================
+local function crearSesion(lista)
+  if not plantillasListas then
+    return false
   end
-  conectarToques()
-  updateFireBoard()
+  local slot
+  for i = 1, MAX_MUNDOS do
+    if not slotsEnUso[i] then
+      slot = i
+      break
+    end
+  end
+  if not slot then
+    return false
+  end
+  slotsEnUso[slot] = true
+  local delta = Vector3.new(3000 * slot, 0, 0)
+  local modelo = tplBosque:Clone()
+  local fog = tplFogata:Clone()
+  local cal = tplCaldero:Clone()
+  local function mover(m)
+    pcall(function()
+      m:PivotTo(CFrame.new(delta) * m:GetPivot())
+    end)
+    m.Parent = workspace
+  end
+  mover(modelo)
+  mover(fog)
+  mover(cal)
+  local entrada = { slot = slot }
+  local function limpiarEntrada()
+    if entrada.api and entrada.api.cerrar then
+      pcall(entrada.api.cerrar)
+    end
+    slotsEnUso[slot] = nil
+    for i, e in ipairs(PARTIDAS) do
+      if e == entrada then
+        table.remove(PARTIDAS, i)
+        break
+      end
+    end
+    for pl, s in pairs(SESIONES) do
+      if s == entrada.api then
+        SESIONES[pl] = nil
+      end
+    end
+    pcall(function()
+      modelo:Destroy()
+    end)
+    pcall(function()
+      fog:Destroy()
+    end)
+    pcall(function()
+      cal:Destroy()
+    end)
+    refrescarCartelCirculo()
+  end
+  local ctx = {
+    modelo = modelo,
+    fogata = fog,
+    caldero = cal,
+    avisar = function(t, e, s)
+      refrescarCartelCirculo(t, e, s)
+    end,
+    alTerminar = function()
+      limpiarEntrada()
+    end,
+  }
+  local api = crearPartida(ctx)
+  entrada.api = api
+  table.insert(PARTIDAS, entrada)
+  local vivos = {}
+  for _, pl in ipairs(lista) do
+    if pl and pl.Parent then
+      table.insert(vivos, pl)
+      SESIONES[pl] = api
+    end
+  end
+  if #vivos == 0 then
+    limpiarEntrada()
+    return false
+  end
+  local okIniciar, resIniciar = pcall(function()
+    return api.iniciar(vivos)
+  end)
+  if not okIniciar or resIniciar ~= true then
+    limpiarEntrada()
+    return false
+  end
+  refrescarCartelCirculo()
+  return true
+end
+
+-- Circulo del lobby: la cuenta atras arranca sola en cuanto alguien
+-- entra, haya o no otra partida en curso (cada quien a su mundo)
+task.spawn(function()
+  while true do
+    task.wait(0.3)
+    local dentro = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+      if not SESIONES[player] then
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+          local flat = Vector2.new(hrp.Position.X, hrp.Position.Z)
+          if flat.Magnitude <= 12.5 and hrp.Position.Y > 1 and hrp.Position.Y < 14 then
+            dentro[player] = true
+          end
+        end
+      end
+    end
+    lobby.enCirculo = dentro
+    local n = 0
+    for _ in pairs(dentro) do
+      n += 1
+    end
+    if n >= 1 and lobby.cuentaAtras <= 0 then
+      lobby.cuentaAtras = 12
+    end
+    if lobby.cuentaAtras > 0 then
+      lobby.cuentaAtras -= 0.3
+      if lobby.cuentaAtras <= 0 then
+        local lista = {}
+        for player, _ in pairs(dentro) do
+          table.insert(lista, player)
+        end
+        if #lista >= 1 and not crearSesion(lista) then
+          lobby.cuentaAtras = 6 -- mundos llenos o cargando: reintenta
+        end
+      end
+    end
+    refrescarCartelCirculo()
+  end
 end)
 
 -- cartel del circulo (lo construye BOSQUE dentro del lobby)
@@ -1952,7 +2079,28 @@ task.spawn(function()
       task.wait(0.3)
     end
   end
-  updateCircleBoard()
+  refrescarCartelCirculo()
+end)
+
+-- las plantillas: el bosque que construye BOSQUE, la fogata y el
+-- caldero quedan de molde; cada partida clona los suyos
+task.spawn(function()
+  while not plantillasListas do
+    local b = workspace:FindFirstChild("BosqueProhibido")
+    local f = workspace:FindFirstChild("FogataMagica")
+    local c = workspace:FindFirstChild("Cauldron")
+    if b and b:GetAttribute("Listo") and f and c then
+      tplBosque, tplFogata, tplCaldero = b, f, c
+      plantillasListas = true
+      print("[Avada] Mundos listos: cada partida tendra su propio bosque")
+    end
+    task.wait(0.5)
+  end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+  SESIONES[player] = nil
+  lobby.enCirculo[player] = nil
 end)
 
 print("[Avada] Bosque Prohibido listo: supervivencia de magos en 7 noches")
