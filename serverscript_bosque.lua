@@ -1070,14 +1070,19 @@ end
 
 
 end
+local arbolesOk = 0
 for i = 1, 26 do
 	local a = rngBosque:NextNumber(0, math.pi * 2)
 	local r = rngBosque:NextNumber(34, 212)
 	local x, z = FC.X + math.cos(a) * r, FC.Z + math.sin(a) * r
 	if lejosDeJaulas(x, z) then
-		crearArbolCristal(x, z, rngBosque:NextNumber(0, math.pi * 2), 1100 + i * 17, i)
+		local ok = pcall(crearArbolCristal, x, z, rngBosque:NextNumber(0, math.pi * 2), 1100 + i * 17, i)
+		if ok then
+			arbolesOk += 1
+		end
 	end
 end
+print("[Avada] Arboles de cristales plantados: " .. arbolesOk)
 
 
 -- Hongos comestibles: el Boletus del dueno del juego, en su version
@@ -1542,17 +1547,23 @@ for ci = 1, 4 do
   table.insert(jaulas, { pos = jp, fig = fig, barrotes = barrotes, label = jLbl, libre = false, rescatado = false })
 end
 
--- Todo el bosque en estilo clasico (studs), de una pasada
-clasicoEn(Bosque)
+-- Todo el bosque en estilo clasico (studs), de una pasada. El bosque
+-- ya esta COMPLETO en piezas y atributos: se marca Listo ANTES de este
+-- repaso visual (protegido), para que un fallo de estilo jamas deje el
+-- juego sin bosque.
+Bosque:SetAttribute("Listo", true)
+pcall(function()
+  clasicoEn(Bosque)
+end)
 -- y el lobby tambien, por si el archivo ISLA muere antes de su pasada:
 -- asi el estilo clasico nunca depende de un solo archivo
 if LobbyModel then
-  clasicoEn(LobbyModel)
+  pcall(function()
+    clasicoEn(LobbyModel)
+  end)
 end
 
 --===========================================================
-
-Bosque:SetAttribute("Listo", true)
 print("[Avada] Bosque construido")
 
 -- FIN BOSQUE

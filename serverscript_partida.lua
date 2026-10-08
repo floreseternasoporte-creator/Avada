@@ -220,6 +220,12 @@ local function updateCircleBoard()
   if not (circleTitle and circleStatus and circleSub) then
     return -- el cartel aun no aparece: el hilo del circulo sigue vivo
   end
+  if not bosqueListo then
+    circleTitle.Text = "AVADA"
+    circleStatus.Text = "EL BOSQUE NO TERMINO DE CARGAR"
+    circleSub.Text = "Revisa el Script BOSQUE en el Output"
+    return
+  end
   if SE.on then
     circleTitle.Text = "PARTIDA EN CURSO"
     circleStatus.Text = "Noche " .. math.max(SE.noche, 1) .. " de " .. NOCHES_META .. " - Llama al " .. math.floor(SE.llama) .. "%"
