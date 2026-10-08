@@ -20,6 +20,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "BosqueHUD"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 50
+gui.IgnoreGuiInset = true -- pegado al borde real de la pantalla
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local raiz = Instance.new("Frame")
@@ -49,7 +50,7 @@ end
 -- Dia/Noche como la foto de referencia: texto chico en la letra
 -- clasica del juego, en cursiva, arriba en el centro y sin fondo.
 -- El numero sube solo: Dia 1, Dia 2... y de noche Noche X de 7.
-local diaLbl = etiqueta("Día 1", 19, UDim2.new(0.5, 0, 0, 6), UDim2.new(0, 240, 0, 26), Color3.new(1, 1, 1), raiz)
+local diaLbl = etiqueta("Día 1", 19, UDim2.new(0.5, 0, 0, 4), UDim2.new(0, 240, 0, 26), Color3.new(1, 1, 1), raiz)
 diaLbl.AnchorPoint = Vector2.new(0.5, 0)
 diaLbl.Font = Enum.Font.Merriweather
 diaLbl.RichText = true
@@ -88,7 +89,7 @@ contador.Visible = false
 local function boton(texto, textSize)
   local b = Instance.new("TextButton")
   b.AnchorPoint = Vector2.new(0.5, 0.5)
-  b.Size = UDim2.new(0, 56, 0, 56)
+  b.Size = UDim2.new(0, 50, 0, 50)
   b.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
   b.BackgroundTransparency = 0.32
   b.BorderSizePixel = 0
@@ -108,13 +109,13 @@ local function boton(texto, textSize)
 end
 
 local correrBtn = boton("CORRER", 10)
-correrBtn.Position = UDim2.new(1, -60, 1, -186) -- arriba-derecha del salto
+correrBtn.Position = UDim2.new(1, -64, 1, -172) -- arriba del salto, pegado
 local tiendaBtn = boton("Tienda", 10)
-tiendaBtn.Position = UDim2.new(1, -128, 1, -244) -- encima de Comer
+tiendaBtn.Position = UDim2.new(1, -116, 1, -226) -- encima de Comer, juntito
 local desgarrarBtn = boton("Desgarrar", 8)
-desgarrarBtn.Position = UDim2.new(1, -146, 1, -104) -- a la izquierda del salto
+desgarrarBtn.Position = UDim2.new(1, -128, 1, -98) -- a la izquierda del salto, pegado
 local comerBtn = boton("Comer", 12)
-comerBtn.Position = UDim2.new(1, -136, 1, -176) -- arriba-izquierda del salto
+comerBtn.Position = UDim2.new(1, -122, 1, -164) -- arriba-izquierda del salto, juntito
 
 -- Correr / caminar (alternando, como pidio el dueno del juego)
 local sprint = false

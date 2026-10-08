@@ -282,6 +282,17 @@ chispas.Size = NumberSequence.new({
   NumberSequenceKeypoint.new(1, 0.02),
 })
 chispas.Parent = llamaParts[1]
+-- Pared gris que CIERRA el circulo del bosque (como el borde rocoso
+-- de 99 Noches): nadie sale del mapa hasta que la fogata crezca.
+for i = 1, 48 do
+  local a = (i / 48) * math.pi * 2
+  local px, pz = FC.X + math.cos(a) * 228, FC.Z + math.sin(a) * 228
+  local pared = bp("ParedBorde", Vector3.new(30.5, 18, 2), CFrame.new(Vector3.new(px, 11, pz), Vector3.new(FC.X, 11, FC.Z)), Color3.fromRGB(112, 112, 118), true)
+  pared.Material = Enum.Material.Slate
+  local tapaP = bp("ParedTapa", Vector3.new(31.5, 1.6, 3.4), CFrame.new(Vector3.new(px, 20.4, pz), Vector3.new(FC.X, 20.4, FC.Z)), Color3.fromRGB(88, 88, 94), true)
+  tapaP.Material = Enum.Material.Slate
+end
+
 -- Anillo del radio seguro (se ve en el suelo, marca hasta donde llegan las Sombras)
 local anilloSeguro = {}
 for i = 0, 23 do

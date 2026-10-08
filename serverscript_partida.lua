@@ -829,6 +829,14 @@ local function recogerMoraDelArbusto(player, fr)
   end)
 end
 
+-- Rebrote como en 99 Noches: lo que recoges vuelve a salir en OTRO
+-- sitio del mapa, asi el bosque nunca se queda sin comida ni lena.
+local function posRebrote()
+  local a = math.random() * math.pi * 2
+  local r = 45 + math.random() * 150
+  return Vector3.new(FC.X + math.cos(a) * r, 2.0, FC.Z + math.sin(a) * r)
+end
+
 local function recogerHongo(player, hg)
   if not hg.disponible or not jugadorEnPartida(player) then
     return
@@ -849,6 +857,16 @@ local function recogerHongo(player, hg)
   end
   darEnMano(player, "Hongo")
   task.delay(25, function()
+    -- el hongo REBROTA en otro sitio del mapa
+    if hg.cap and hg.cap.Parent then
+      local destino = posRebrote()
+      local d = Vector3.new(destino.X - hg.cap.Position.X, 0, destino.Z - hg.cap.Position.Z)
+      for _, parte in ipairs(hg.partes) do
+        if parte and parte.Parent then
+          parte.CFrame = parte.CFrame + d
+        end
+      end
+    end
     hg.disponible = true
     for _, parte in ipairs(hg.partes) do
       if parte and parte.Parent then
@@ -1321,6 +1339,11 @@ local function conectarToques()
         nodo.part.Transparency = 1
         nodo.part.CanCollide = false
         task.delay(25, function()
+          -- el tronco tambien rebrota en otro sitio
+          local destino = posRebrote()
+          local d = Vector3.new(destino.X - nodo.pos.X, 0, destino.Z - nodo.pos.Z)
+          nodo.part.CFrame = nodo.part.CFrame + d
+          nodo.pos = nodo.pos + d
           nodo.part.Transparency = 0
           nodo.part.CanCollide = false
         end)
