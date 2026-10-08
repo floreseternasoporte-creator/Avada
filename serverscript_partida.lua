@@ -687,14 +687,9 @@ local function comerDesdeSaco(player)
 end
 
 -- Desgarrar: lo de la mano cae al suelo y cualquiera lo puede recoger
-local function desgarrarEnMano(player)
-  local d = SE.players[player]
-  if not d or not d.enMano then
-    return
-  end
-  local tipo = d.enMano.tipo
-  d.enMano.tool:Destroy()
-  d.enMano = nil
+-- Suelta una comida en el suelo frente al jugador: ahi queda guardada
+-- (en la casa/fogata) y se recoge TOCANDOLA, sin letreros de recoger.
+local function soltarAlSuelo(player, tipo)
   local char = player.Character
   local hrp = char and char:FindFirstChild("HumanoidRootPart")
   if hrp then
@@ -720,25 +715,28 @@ local function desgarrarEnMano(player)
       corona.Parent = suelta
       ancla = fb
     end
-    local pr = Instance.new("ProximityPrompt")
-    pr.ActionText = "Recoger"
-    pr.ObjectText = tipo
-    pr.HoldDuration = 0
-    pr.MaxActivationDistance = 9
-    pr.RequiresLineOfSight = false
-    pr.Parent = ancla
     local function recogerSuelta(otro)
       if jugadorEnPartida(otro) and entregarComida(otro, tipo) then
         suelta:Destroy()
       end
     end
-    pr.Triggered:Connect(recogerSuelta)
     local cdS = Instance.new("ClickDetector")
     cdS.MaxActivationDistance = 14
     cdS.Parent = ancla
     cdS.MouseClick:Connect(recogerSuelta)
     suelta.Parent = workspace
   end
+end
+
+local function desgarrarEnMano(player)
+  local d = SE.players[player]
+  if not d or not d.enMano then
+    return
+  end
+  local tipo = d.enMano.tipo
+  d.enMano.tool:Destroy()
+  d.enMano = nil
+  soltarAlSuelo(player, tipo)
   sincronizaUI(player)
 end
 
@@ -754,13 +752,13 @@ local function guardarEnSaco(player) -- boton "Tienda": mete lo de la mano al sa
   sincronizaUI(player)
 end
 
-local function desalmacenar(player) -- saca una comida del saco a la mano
+local function desalmacenar(player) -- saca una comida del saco y cae al suelo
   local d = SE.players[player]
-  if not d or d.enMano or #d.saco <= 0 then
+  if not d or #d.saco <= 0 then
     return
   end
-  local tipo = table.remove(d.saco, 1)
-  darEnMano(player, tipo)
+  local tipo = table.remove(d.saco)
+  soltarAlSuelo(player, tipo)
   sincronizaUI(player)
 end
 
@@ -1351,18 +1349,6 @@ local function conectarToques()
     end)
   end
   for _, fr in ipairs(moras) do
-    local pr = Instance.new("ProximityPrompt")
-    pr.Name = "RecogerMora"
-    pr.ActionText = "Recoger"
-    pr.ObjectText = "Mora"
-    pr.HoldDuration = 0
-    pr.MaxActivationDistance = 9
-    pr.RequiresLineOfSight = false
-    pr.Parent = fr.mora
-    fr.prompt = pr
-    pr.Triggered:Connect(function(player)
-      recogerMoraDelArbusto(player, fr)
-    end)
     local cd = Instance.new("ClickDetector")
     cd.MaxActivationDistance = 14
     cd.Parent = fr.mora
@@ -1371,18 +1357,6 @@ local function conectarToques()
     end)
   end
   for _, hg in ipairs(hongos) do
-    local pr = Instance.new("ProximityPrompt")
-    pr.Name = "RecogerHongo"
-    pr.ActionText = "Recoger"
-    pr.ObjectText = "Hongo"
-    pr.HoldDuration = 0
-    pr.MaxActivationDistance = 9
-    pr.RequiresLineOfSight = false
-    pr.Parent = hg.cap
-    hg.prompt = pr
-    pr.Triggered:Connect(function(player)
-      recogerHongo(player, hg)
-    end)
     local cd = Instance.new("ClickDetector")
     cd.MaxActivationDistance = 14
     cd.Parent = hg.cap
