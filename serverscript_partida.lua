@@ -92,7 +92,8 @@ end
 -- DESCUBRIR LAS PIEZAS DEL BOSQUE (las construye el archivo BOSQUE)
 --===========================================================
 local Bosque, fuegoPos, deposito, llamaParts, llamaBase, llamaLight, anilloSeguro, chispasFuego, paredes
-local jaulas, jaulasPos, lenaNodos, moras, hongos, cofres, fireStatus
+local jaulas, jaulasPos, lenaNodos, moras, hongos, cofres, fireStatus = {}, {}, {}, {}, {}, {}, nil
+local bosqueListo = false
 local circleTitle, circleStatus, circleSub
 local fireBoardAnchor
 
@@ -205,6 +206,7 @@ local function escanearBosque()
     end
   end
 
+  bosqueListo = true
   return true
 end
 
@@ -1071,7 +1073,7 @@ local function loboCayo(som)
           bar.Transparency = 0.75
           bar.CanCollide = false
         end
-        j.label.Text = "Jaula abierta: toca al aprendiz"
+        if j.label then j.label.Text = "Jaula abierta: toca al aprendiz" end
       end
     end
   end
@@ -1538,7 +1540,7 @@ local function conectarToques()
   end)
   -- jaulas: tocar al aprendiz cuando la jaula esta abierta
   for ci, j in ipairs(jaulas) do
-    for _, pp in ipairs(j.fig:GetChildren()) do
+    for _, pp in ipairs(j.fig and j.fig:GetChildren() or {}) do
       if pp:IsA("BasePart") then
         pp.Touched:Connect(function(hit)
           if not SE.on or not j.libre or j.rescatado then
@@ -1548,11 +1550,11 @@ local function conectarToques()
           if player and jugadorEnPartida(player) and SE.players[player].vivo then
             j.rescatado = true
             SE.aprendices += 1
-            j.label.Text = "Aprendiz rescatado"
+            if j.label then j.label.Text = "Aprendiz rescatado" end
             -- el aprendiz se muda junto a la fogata
             local ang = ci * (math.pi / 2) + 0.4
             local dest = Vector3.new(fuegoPos.X + math.cos(ang) * 11, fuegoPos.Y, fuegoPos.Z + math.sin(ang) * 11)
-            for _, f2 in ipairs(j.fig:GetChildren()) do
+            for _, f2 in ipairs(j.fig and j.fig:GetChildren() or {}) do
               local off = f2.CFrame.Position - j.pos
               f2.CFrame = CFrame.new(dest + Vector3.new(off.X, off.Y - 0.8, off.Z)) * CFrame.Angles(0, -ang - math.pi / 2, 0)
             end
@@ -1603,9 +1605,9 @@ local function prepararMundo()
       bar.Transparency = 0
       bar.CanCollide = false
     end
-    j.label.Text = "Aprendiz atrapado: vence a sus guardianes"
+    if j.label then j.label.Text = "Aprendiz atrapado: vence a sus guardianes" end
     -- figura de vuelta en la jaula
-    for _, pp in ipairs(j.fig:GetChildren()) do
+    for _, pp in ipairs(j.fig and j.fig:GetChildren() or {}) do
       local offY = ({ Piernas = 0.55, Tunica = 1.95, Cabeza = 3.3, Sombrero = 4.05 })[pp.Name] or 1
       pp.CFrame = CFrame.new(j.pos.X, j.pos.Y + 0.8 + offY, j.pos.Z)
     end
@@ -1617,6 +1619,10 @@ local function prepararMundo()
 end
 
 local function iniciarPartida(lista)
+  if not bosqueListo then
+    print("[Avada] La partida espera: falta descubrir el bosque (archivo BOSQUE)")
+    return
+  end
   SE.on = true
   SE.players = {}
   prepararMundo()
