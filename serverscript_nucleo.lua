@@ -1577,6 +1577,89 @@ bfBaja.OnInvoke = function(player)
 end
 
 --===========================================================
+-- ESENCIAS (la moneda del juego: cristales de hechizo que se ganan
+-- sobreviviendo noches en el Bosque Prohibido; el saldo se guarda
+-- igual que las bajas y servira para la tienda del dueno)
+--===========================================================
+local PlayersE = game:GetService("Players")
+local RSE = game:GetService("ReplicatedStorage")
+local DSSE = game:GetService("DataStoreService")
+local EsenciasStore
+do
+  local okE, resE = pcall(function()
+    return DSSE:GetDataStore("AvadaEsencias_v1")
+  end)
+  EsenciasStore = (okE and resE) or nil
+end
+local esenciasSaldo = {}
+local RE_Esencias = RSE:FindFirstChild("AvadaEsenciasUI")
+if not RE_Esencias then
+  RE_Esencias = Instance.new("RemoteEvent")
+  RE_Esencias.Name = "AvadaEsenciasUI"
+  RE_Esencias.Parent = RSE
+end
+local function mandarEsencias(player)
+  if player and player.Parent then
+    RE_Esencias:FireClient(player, esenciasSaldo[player] or 0)
+  end
+end
+local function cargarEsencias(player)
+  local n = 0
+  if EsenciasStore then
+    local ok, val = pcall(function()
+      return EsenciasStore:GetAsync("u" .. player.UserId)
+    end)
+    if ok and type(val) == "number" then
+      n = math.max(0, math.floor(val))
+    end
+  end
+  esenciasSaldo[player] = n
+  mandarEsencias(player)
+end
+local function guardarEsencias(player)
+  if EsenciasStore and esenciasSaldo[player] ~= nil then
+    pcall(function()
+      EsenciasStore:SetAsync("u" .. player.UserId, esenciasSaldo[player])
+    end)
+  end
+end
+RE_Esencias.OnServerEvent:Connect(function(player)
+  if esenciasSaldo[player] == nil then
+    cargarEsencias(player)
+  else
+    mandarEsencias(player)
+  end
+end)
+PlayersE.PlayerAdded:Connect(function(player)
+  task.delay(1, function()
+    cargarEsencias(player)
+  end)
+end)
+PlayersE.PlayerRemoving:Connect(function(player)
+  guardarEsencias(player)
+  esenciasSaldo[player] = nil
+end)
+task.spawn(function()
+  while true do
+    task.wait(90)
+    for _, plr in ipairs(PlayersE:GetPlayers()) do
+      guardarEsencias(plr)
+    end
+  end
+end)
+local bfEsencias = Instance.new("BindableFunction")
+bfEsencias.Name = "AvadaEsencias"
+bfEsencias.Parent = game:GetService("ServerScriptService")
+bfEsencias.OnInvoke = function(accion, player, cantidad)
+  if accion == "sumar" and player then
+    esenciasSaldo[player] = (esenciasSaldo[player] or 0) + (cantidad or 0)
+    mandarEsencias(player)
+    return esenciasSaldo[player]
+  end
+  return (player and esenciasSaldo[player]) or 0
+end
+
+--===========================================================
 -- PLAYER EVENTS (base: estadisticas y vuelta al lobby)
 --===========================================================
 Players.PlayerAdded:Connect(function(player)
