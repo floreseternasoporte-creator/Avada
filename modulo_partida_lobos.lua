@@ -193,6 +193,7 @@ end
     llamarLobos = llamarLobos,
     llamarEsencias = llamarEsencias,
     golpeSombra = golpeSombra,
+    danarLobo = danarLobo,
   }
 end
 return crear

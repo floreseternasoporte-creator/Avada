@@ -174,7 +174,7 @@ local function darEnMano(player, tipo)
     end
   else
     tipo = "Mora"
-    tool.ToolTip = "Mora del W.Bosque Prohibido"
+    tool.ToolTip = "Mora del Bosque Prohibido"
     h = parteDeTool("Handle", Vector3.new(0.62, 0.6, 0.62), CFrame.new(0, 3, 0), Color3.fromRGB(52, 60, 118))
     h.Shape = Enum.PartType.Ball
     h.Parent = tool

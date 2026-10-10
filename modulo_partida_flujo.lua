@@ -296,7 +296,7 @@ local function conectarToques()
         SE.fogataXP = (SE.fogataXP or 0) + d.lenos
         d.lenos = 0
         O.sincronizaUI(player)
-        while (SE.nivel or 1) < NIVEL_MAX and SE.fogataXP >= M.lenosParaNivel(SE.nivel or 1) do
+        while (SE.nivel or 1) < E.NIVEL_MAX and SE.fogataXP >= M.lenosParaNivel(SE.nivel or 1) do
           SE.fogataXP = SE.fogataXP - M.lenosParaNivel(SE.nivel or 1)
           SE.nivel = (SE.nivel or 1) + 1
           M.moverPared()

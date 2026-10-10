@@ -171,9 +171,6 @@ local function escanearBosque()
   return true
 end
 
--- Archivo PARTIDA: la supervivencia en el W.Bosque Prohibido (noche, llama, hambre, lobos, rescates).
-local Players = game:GetService("Players")
-local LOBBY_SPAWN = Vector3.new(0, 6, 0)
 
 -- CARTELES
 --===========================================================
@@ -213,7 +210,6 @@ end
 -- Fogata por NIVELES (como 99 Noches): depositar lenos la hace subir;
 -- cada nivel el anillo seguro crece y la PARED del mapa se expande,
 -- abriendo mas bosque para explorar. A cambio la llama dura mas.
-local NIVEL_MAX = 6
 local function lenosParaNivel(n)
   return 4 + n * 2
 end

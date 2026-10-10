@@ -1,10 +1,10 @@
 -- PartidaSesion: ModuleScript en ServerScriptService (fabrica de sesiones).
 -- El loader ya cargo los modulos; aqui se requieren por nombre (cache de require).
 local SSS = game:GetService("ServerScriptService")
-local ModMundo = require(SSS:WaitForChild("PartidaMundo", 30))
-local ModObjetos = require(SSS:WaitForChild("PartidaObjetos", 30))
-local ModLobos = require(SSS:WaitForChild("PartidaLobos", 30))
-local ModFlujo = require(SSS:WaitForChild("PartidaFlujo", 30))
+local ModMundo = require(SSS:WaitForChild("PartidaMundo", 15))
+local ModObjetos = require(SSS:WaitForChild("PartidaObjetos", 15))
+local ModLobos = require(SSS:WaitForChild("PartidaLobos", 15))
+local ModFlujo = require(SSS:WaitForChild("PartidaFlujo", 15))
 
 local function crear(E, ctx)
 local SE = {
