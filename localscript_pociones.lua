@@ -21,12 +21,12 @@ local GRIS_BOTON = Color3.fromRGB(95, 95, 100)
 -- Íconos dibujados estilo 99 Noches (subidos a Roblox).
 -- Cuando tengas los IDs reales, reemplázalos aquí. Mientras tanto usa los 3D.
 local ICONOS = {
-  hongo = "rbxassetid://0",
-  mora = "rbxassetid://0",
-  diamante = "rbxassetid://0",
-  pocionVida = "rbxassetid://0",
-  pocionVigor = "rbxassetid://0",
-  pocionLlama = "rbxassetid://0",
+  hongo = "rbxassetid://88871840764208",
+  mora = "rbxassetid://83004260409839",
+  diamante = "rbxassetid://137539417496578",
+  pocionVida = "rbxassetid://102636861903339",
+  pocionVigor = "rbxassetid://76894858938305",
+  pocionLlama = "rbxassetid://87706608267008",
 }
 
 local RECETAS = {
