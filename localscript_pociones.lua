@@ -100,14 +100,41 @@ local function construirSeccion()
   local hud = pg:WaitForChild("CalderoHUD", 30)
   if not hud then return end
   local panel = hud:WaitForChild("CalderoPanel", 30)
-  if not panel or panel:FindFirstChild("PocionesSec") then return end
+  if not panel then return end
+  local yaScroll = panel:FindFirstChild("PocScroll")
+  if yaScroll and yaScroll:FindFirstChild("PocionesSec") then return end
+
+  -- El panel es corto y mi sección quedaba cortada: lo hago desplazable.
+  -- Muevo el contenido existente a un scroll (el botón X se queda).
+  local scroll = panel:FindFirstChild("PocScroll")
+  if not scroll then
+    scroll = Instance.new("ScrollingFrame")
+    scroll.Name = "PocScroll"
+    scroll.Size = UDim2.new(1, 0, 1, 0)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 5
+    scroll.ScrollBarImageColor3 = Color3.fromRGB(160, 160, 160)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 680)
+    scroll.Parent = panel
+    for _, ch in ipairs(panel:GetChildren()) do
+      if ch ~= scroll and ch.Name ~= "PocionesSec" then
+        if ch:IsA("TextButton") or ch:IsA("UICorner") or ch:IsA("UIStroke") then
+          -- el botón X y la decoración del panel se quedan
+        else
+          ch.Parent = scroll
+        end
+      end
+    end
+  end
 
   local sec = Instance.new("Frame")
   sec.Name = "PocionesSec"
   sec.BackgroundTransparency = 1
   sec.Size = UDim2.new(1, 0, 0, 300)
   sec.Position = UDim2.new(0, 0, 0, 344)
-  sec.Parent = panel
+  sec.Parent = scroll
+  scroll.CanvasSize = UDim2.new(0, 0, 0, 344 + 300)
 
   local tit = etiqueta("POCIONES", 22, UDim2.new(0, 22, 0, 0), UDim2.new(0.8, 0, 0, 28), AMARILLO, sec)
   tit.TextXAlignment = Enum.TextXAlignment.Left
