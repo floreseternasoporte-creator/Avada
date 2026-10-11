@@ -292,6 +292,31 @@ RE.OnServerEvent:Connect(function(jugador, accion, a)
     end
     hongosReportados = n
 
+  elseif accion == "DepositarTodo" then
+    -- Echa TODAS las moras y diamantes de la mano/mochila (para el botón Soltar).
+    if not cercaCaldero(jugador) then
+      return
+    end
+    local nM, nD = 0, 0
+    local function vaciar(nombres)
+      local n = 0
+      while true do
+        local t = buscarHerramienta(jugador, nombres)
+        if not t then break end
+        t:Destroy()
+        n += 1
+      end
+      return n
+    end
+    nM = vaciar({ "Mora" })
+    nD = vaciar({ "Diamante", "Diamantes", "Diamond", "Diamonds", "Gema" })
+    if nM > 0 then RES.Mora += nM end
+    if nD > 0 then RES.Diamante += nD end
+    if nM + nD > 0 then
+      difundir()
+      avisar(jugador, string.format("Guardado: %d mora(s), %d diamante(s)", nM, nD))
+    end
+
   elseif accion == "Depositar" then
     -- Echa moras o diamantes de la mano/mochila a la reserva (junto al caldero).
     if not cercaCaldero(jugador) then
