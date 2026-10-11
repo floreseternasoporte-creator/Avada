@@ -24,8 +24,8 @@ local remote = RS:WaitForChild("PoderesEvent")
 local camera = workspace.CurrentCamera
 
 -- recargas (deben coincidir con las del servidor)
-local CD = { Tierra = 8, Fuego = 3 }
-local cdEnd = { Tierra = 0, Fuego = 0 }
+local CD = { Tierra = 8, Fuego = 3, Agua = 6, Viento = 10, Rayo = 12 }
+local cdEnd = { Tierra = 0, Fuego = 0, Agua = 0, Viento = 0, Rayo = 0 }
 local equippedPower = nil
 
 -- estilo del menú
@@ -242,8 +242,8 @@ make("TextLabel", {
 
 -- recargas arriba a la derecha (como los contadores del caldero)
 local chipsRow = make("Frame", {
-	Position = UDim2.new(1, -252, 0, 16),
-	Size = UDim2.new(0, 236, 0, 36),
+	Position = UDim2.new(1, -346, 0, 16),
+	Size = UDim2.new(0, 330, 0, 36),
 	BackgroundTransparency = 1,
 	ZIndex = 32,
 }, panel)
@@ -251,11 +251,11 @@ make("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
 	HorizontalAlignment = Enum.HorizontalAlignment.Right,
 	VerticalAlignment = Enum.VerticalAlignment.Center,
-	Padding = UDim.new(0, 10),
+	Padding = UDim.new(0, 8),
 }, chipsRow)
 local function chip(order)
 	local pill = make("Frame", {
-		Size = UDim2.new(0, 70, 1, 0),
+		Size = UDim2.new(0, 58, 1, 0),
 		BackgroundColor3 = Color3.fromRGB(28, 28, 32),
 		LayoutOrder = order,
 		ZIndex = 33,
@@ -265,16 +265,19 @@ local function chip(order)
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		Font = FONT_NAME,
-		TextSize = 24,
+		TextSize = 20,
 		TextColor3 = WHITE,
 		Text = "",
 		ZIndex = 34,
 	}, pill)
 end
-local chipEarth, chipFire = chip(1), chip(2)
+local chipEarth, chipFire, chipAgua, chipViento, chipRayo = chip(1), chip(2), chip(3), chip(4), chip(5)
 local function refreshChips()
 	chipEarth.Text = "🌿 " .. math.max(0, math.ceil(cdEnd.Tierra - os.clock()))
 	chipFire.Text = "🔥 " .. math.max(0, math.ceil(cdEnd.Fuego - os.clock()))
+	chipAgua.Text = "💧 " .. math.max(0, math.ceil(cdEnd.Agua - os.clock()))
+	chipViento.Text = "🌪️ " .. math.max(0, math.ceil(cdEnd.Viento - os.clock()))
+	chipRayo.Text = "⚡ " .. math.max(0, math.ceil(cdEnd.Rayo - os.clock()))
 end
 refreshChips()
 task.spawn(function()
@@ -329,12 +332,13 @@ closeBtn.Activated:Connect(function()
 end)
 
 -- tarjetas estilo caldero: icono arriba, nombre al medio, costo abajo
+-- (los 5 poderes desbloqueados)
 local POWER_DEFS = {
 	{ power = "Tierra", icon = "🌿", name = "Tierra", cost = "⏱ 8s", desc = "Pon las manos en el suelo y despierta la tierra: lianas y hierba brotan y atrapan a quien esté cerca." },
 	{ power = "Fuego", icon = "🔥", name = "Fuego", cost = "⏱ 3s", desc = "Estira la mano y lanza una llama púrpura que explota al impactar y deja a tu enemigo ardiendo." },
-	{ power = "Agua", icon = "💧", name = "Agua", locked = true },
-	{ power = "Viento", icon = "🌪️", name = "Viento", locked = true },
-	{ power = "Rayo", icon = "⚡", name = "Rayo", locked = true },
+	{ power = "Agua", icon = "💧", name = "Agua", cost = "⏱ 6s", desc = "Lanza una ola abisal que empuja a tus enemigos y los deja empapados (más lentos)." },
+	{ power = "Viento", icon = "🌪️", name = "Viento", cost = "⏱ 10s", desc = "Invoca un tornado que avanza arrastrando y golpeando a quien atrape." },
+	{ power = "Rayo", icon = "⚡", name = "Rayo", cost = "⏱ 12s", desc = "Un rayo cae del cielo donde apuntas: gran daño y deja aturdido." },
 }
 local powerCards = {}
 
@@ -446,7 +450,7 @@ make("TextLabel", {
 	Position = UDim2.new(0, 28, 0, 400),
 	Size = UDim2.new(1, -56, 0, 96),
 	BackgroundTransparency = 1,
-	Text = "Puedes hablar con la vendedora en la tienda o recibir tu poder al entrar a la partida. Con la herramienta equipada, haz clic o toca hacia donde apuntas para lanzarlo. Agua, Viento y Rayo llegarán más adelante.",
+	Text = "Puedes hablar con la vendedora en la tienda o recibir tu poder al entrar a la partida. Con la herramienta equipada, haz clic o toca hacia donde apuntas para lanzarlo.",
 	Font = FONT_NAME,
 	TextSize = 19,
 	TextColor3 = Color3.fromRGB(170, 170, 178),
@@ -630,6 +634,44 @@ local FIRE_KEYS = {
 	{ 1.1, FIRE_HOLD },
 	{ 1.8, {} },
 }
+-- Agua: carga con ambas manos al pecho y empuja la ola al frente
+local AGUA_CHARGE = { hip = 0.5, knee = -0.8, ankle = 0.35, lean = 0.1, rsx = -0.7, lsx = -0.7, re = 1.6, le = 1.6, neckX = 0.2 }
+local AGUA_PUSH = { hip = 0.7, knee = -1.0, ankle = 0.4, lean = 0.45, rsx = 1.6, lsx = 1.6, re = 0.1, le = 0.1, neckX = -0.2 }
+local AGUA_KEYS = {
+	{ 0, {} },
+	{ 0.5, AGUA_CHARGE },
+	{ 0.8, AGUA_PUSH },
+	{ 1.2, AGUA_PUSH },
+	{ 1.8, {} },
+}
+-- Viento: brazos al cielo invocando y remolino al frente
+local VIENTO_UP = { hip = 0.4, knee = -0.7, ankle = 0.3, lean = -0.2, rsx = -2.7, lsx = -2.7, rsz = 0.3, lsz = -0.3, re = 0.2, le = 0.2, neckX = 0.6 }
+local VIENTO_SPIN = { hip = 0.5, knee = -0.9, ankle = 0.35, lean = 0.2, twist = 0.5, rsx = 1.2, lsx = 1.2, rsz = 0.5, lsz = -0.5, re = 0.4, le = 0.4 }
+local VIENTO_KEYS = {
+	{ 0, {} },
+	{ 0.6, VIENTO_UP },
+	{ 0.9, VIENTO_SPIN },
+	{ 1.4, VIENTO_SPIN },
+	{ 2.0, {} },
+}
+-- Rayo: mano al cielo y descarga hacia el objetivo
+local RAYO_SKY = { hip = 0.4, knee = -0.7, ankle = 0.3, lean = -0.25, rsx = -2.9, rsz = 0.1, re = 0.1, lsx = 0.4, le = 0.8, neckX = 0.7 }
+local RAYO_DOWN = { hip = 0.6, knee = -0.9, ankle = 0.35, lean = 0.35, rsx = 1.5, rsz = 0, re = 0.05, lsx = -0.4, le = 0.4, neckX = -0.3 }
+local RAYO_KEYS = {
+	{ 0, {} },
+	{ 0.55, RAYO_SKY },
+	{ 0.85, RAYO_DOWN },
+	{ 1.1, RAYO_DOWN },
+	{ 1.6, {} },
+}
+
+-- estilo de lanzamiento por poder (Tierra va por su propia rama)
+local CAST_STYLE = {
+	Fuego = { keys = FIRE_KEYS, dur = 1.8, orb = Color3.fromRGB(170, 64, 255), flash = Color3.fromRGB(150, 60, 255), fov = -12 },
+	Agua = { keys = AGUA_KEYS, dur = 1.8, orb = Color3.fromRGB(60, 140, 255), flash = Color3.fromRGB(60, 140, 255), fov = -8 },
+	Viento = { keys = VIENTO_KEYS, dur = 2.0, orb = Color3.fromRGB(190, 230, 255), flash = Color3.fromRGB(200, 235, 255), fov = -6 },
+	Rayo = { keys = RAYO_KEYS, dur = 1.6, orb = Color3.fromRGB(235, 245, 255), flash = Color3.fromRGB(200, 220, 255), fov = -10 },
+}
 
 local function getRig(char)
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -763,12 +805,12 @@ local function greenEmitter(att)
 	return e
 end
 
-local function makeOrb(hand, grow)
+local function makeOrb(hand, grow, color, fiery)
 	local orb = make("Part", {
 		Shape = Enum.PartType.Ball,
 		Size = Vector3.new(0.3, 0.3, 0.3),
 		Material = Enum.Material.Neon,
-		Color = PURPLE,
+		Color = color,
 		Transparency = 0.1,
 		CanCollide = false,
 		CanQuery = false,
@@ -780,8 +822,21 @@ local function makeOrb(hand, grow)
 	orb.Parent = localFx
 	make("WeldConstraint", { Part0 = hand, Part1 = orb }, orb)
 	local att = make("Attachment", {}, orb)
-	purpleEmitters(att, 0.6, 0.6)
-	make("PointLight", { Color = PURPLE, Range = 10, Brightness = 1.2, Shadows = false }, orb)
+	if fiery then
+		purpleEmitters(att, 0.6, 0.6)
+	else
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		e.Color = ColorSequence.new(color)
+		e.Size = NumberSequence.new({ kp(0, 0.6), kp(1, 0) })
+		e.Lifetime = NumberRange.new(0.4, 0.9)
+		e.Rate = 60
+		e.Speed = NumberRange.new(2, 6)
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.LightEmission = 0.9
+		e.Parent = att
+	end
+	make("PointLight", { Color = color, Range = 10, Brightness = 1.2, Shadows = false }, orb)
 	TweenService:Create(orb, TweenInfo.new(grow, Enum.EasingStyle.Quad), { Size = Vector3.new(2.1, 2.1, 2.1) }):Play()
 	return orb
 end
@@ -811,6 +866,32 @@ local function screenFlash(color, alpha)
 	Debris:AddItem(f, 0.5)
 end
 
+-- destello genérico del color del poder (para Agua/Viento/Rayo)
+local function puffAt(pos, color)
+	local p = make("Part", {
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Transparency = 1,
+		Size = Vector3.new(0.5, 0.5, 0.5),
+		CFrame = CFrame.new(pos),
+	}, localFx)
+	local att = make("Attachment", {}, p)
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.Color = ColorSequence.new(color)
+	e.Size = NumberSequence.new({ kp(0, 0.9), kp(1, 0) })
+	e.Lifetime = NumberRange.new(0.4, 0.9)
+	e.Rate = 0
+	e.Speed = NumberRange.new(8, 20)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.LightEmission = 0.8
+	e.Parent = att
+	e:Emit(30)
+	Debris:AddItem(p, 1.5)
+end
+
 -- ---------- reproducir el lanzamiento (se ejecuta en TODOS los clientes) ----------
 local function playCast(plr, power, dir, delay)
 	local char = plr.Character
@@ -824,7 +905,8 @@ local function playCast(plr, power, dir, delay)
 	end
 	active[char] = true
 	local isLocal = (plr == player)
-	local isFire = (power == "Fuego")
+	local isEarth = (power == "Tierra")
+	local st = CAST_STYLE[power] or CAST_STYLE.Fuego
 	if isLocal then
 		localCasting = true
 	end
@@ -881,7 +963,7 @@ local function playCast(plr, power, dir, delay)
 	local tpR, ikR, tpL, ikL
 	if rig then
 		tpR, ikR = addIK("RightHand", "RightUpperArm")
-		if not isFire then
+		if isEarth then
 			tpL, ikL = addIK("LeftHand", "LeftUpperArm")
 			local o = hrp.Position
 			tpR.Position = groundPoint(o + flat * 3.0 + right * 0.8) + Vector3.new(0, 0.2, 0)
@@ -891,8 +973,8 @@ local function playCast(plr, power, dir, delay)
 
 	local handR = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 	local handL = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
-	local keys = isFire and FIRE_KEYS or EARTH_KEYS
-	local duration = isFire and 1.8 or 2.3
+	local keys = isEarth and EARTH_KEYS or st.keys
+	local duration = isEarth and 2.3 or st.dur
 	local baseFov = camera.FieldOfView
 	local fxObjects, handEmitters = {}, {}
 	local orb, released, handFxOn = nil, false, false
@@ -946,12 +1028,12 @@ local function playCast(plr, power, dir, delay)
 			for k, v in pairs(sample(keys, t)) do
 				p[k] = v
 			end
-			if not isFire and t > 0.85 and t < 1.7 then
+			if isEarth and t > 0.85 and t < 1.7 then
 				p.lean = (p.lean or 0) + math.sin(t * 45) * 0.03 -- la tierra vibra
 			end
 			applyPose(rig, p)
 
-			if isFire then
+			if not isEarth then
 				if tpR then
 					tpR.Position = hrp.Position + Vector3.new(0, 0.7, 0) + dir * 5.5
 				end
@@ -971,13 +1053,13 @@ local function playCast(plr, power, dir, delay)
 		end
 
 		-- efectos y cámara
-		if isFire then
+		if not isEarth then
 			if not orb and t >= 0.05 and handR then
-				orb = makeOrb(handR, math.max(delay - 0.05, 0.3))
+				orb = makeOrb(handR, math.max(delay - 0.05, 0.3), st.orb, power == "Fuego")
 				table.insert(fxObjects, orb)
 			end
 			if isLocal and not released then
-				camera.FieldOfView = baseFov - 12 * clamp01(t / 0.55)
+				camera.FieldOfView = baseFov + st.fov * clamp01(t / 0.55)
 			end
 			if not released and t >= delay then
 				released = true
@@ -985,11 +1067,15 @@ local function playCast(plr, power, dir, delay)
 					orb:Destroy()
 				end
 				if handR then
-					burstAt(handR.Position + flat * 1.5)
+					if power == "Fuego" then
+						burstAt(handR.Position + flat * 1.5)
+					else
+						puffAt(handR.Position + flat * 1.5, st.orb)
+					end
 				end
 				if isLocal then
 					shake(1.0, 0.35)
-					screenFlash(Color3.fromRGB(150, 60, 255), 0.72)
+					screenFlash(st.flash, 0.72)
 					TweenService:Create(camera, TweenInfo.new(0.1), { FieldOfView = baseFov + 14 }):Play()
 					task.delay(0.1, function()
 						TweenService:Create(camera, TweenInfo.new(0.5), { FieldOfView = baseFov }):Play()

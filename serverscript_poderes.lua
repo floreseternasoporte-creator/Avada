@@ -39,6 +39,22 @@ local CFG = {
 	FIRE_RADIUS = 11,
 	FIRE_BURN_TIME = 3,
 	FIRE_BURN_DPS = 4,
+
+	AGUA_COOLDOWN = 6,
+	AGUA_RELEASE_DELAY = 0.8,
+	AGUA_SPEED = 55,
+	AGUA_RANGE = 70,
+	AGUA_DAMAGE = 18,
+
+	VIENTO_COOLDOWN = 10,
+	VIENTO_RELEASE_DELAY = 0.9,
+	VIENTO_TIME = 5,
+	VIENTO_DPS = 3,
+
+	RAYO_COOLDOWN = 12,
+	RAYO_RELEASE_DELAY = 1.0,
+	RAYO_DAMAGE = 40,
+	RAYO_RADIUS = 10,
 }
 
 --// ============ BASE ============
@@ -659,6 +675,226 @@ local function fire(plr, char, dir)
 	end)
 end
 
+--// ============ AGUA: OLA ABISAL ============
+local WATER = Color3.fromRGB(60, 140, 255)
+local WATER_DARK = Color3.fromRGB(30, 80, 200)
+
+local function agua(plr, char, dir)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return
+	end
+	local origin = hrp.Position + Vector3.new(0, 1, 0)
+	local wave = newPart({
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(6, 4, 2.5),
+		Color = WATER,
+		Material = Enum.Material.Neon,
+		Transparency = 0.25,
+		CFrame = CFrame.lookAt(origin + dir * 3, origin + dir * 4),
+	})
+	local att = Instance.new("Attachment")
+	att.Parent = wave
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(WATER, WATER_DARK)
+	pe.LightEmission = 0.6
+	pe.Size = NumberSequence.new({ kp(0, 1.2), kp(1, 0) })
+	pe.Lifetime = NumberRange.new(0.4, 0.9)
+	pe.Rate = 80
+	pe.Speed = NumberRange.new(6, 14)
+	pe.SpreadAngle = Vector2.new(60, 60)
+	pe.Parent = att
+	local light = Instance.new("PointLight")
+	light.Color = WATER
+	light.Range = 12
+	light.Brightness = 1.4
+	light.Parent = wave
+	shakeNear(origin, 50, 0.7, 0.4)
+
+	local traveled = 0
+	local golpeados = {}
+	local conn
+	conn = RunService.Heartbeat:Connect(function(dt)
+		local step = CFG.AGUA_SPEED * dt
+		traveled = traveled + step
+		wave.CFrame = CFrame.lookAt(wave.Position + dir * step, wave.Position + dir * (step + 1))
+		local params = OverlapParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char, fxFolder }
+		for _, part in ipairs(workspace:GetPartBoundsInRadius(wave.Position, 5, params)) do
+			local m = part:FindFirstAncestorOfClass("Model")
+			if m and not golpeados[m] then
+				local h = m:FindFirstChildOfClass("Humanoid")
+				local r = m:FindFirstChild("HumanoidRootPart")
+				if h and r and h.Health > 0 then
+					golpeados[m] = true
+					h:TakeDamage(CFG.AGUA_DAMAGE)
+					if not r.Anchored then
+						r:ApplyImpulse((dir * 70 + Vector3.new(0, 30, 0)) * r.AssemblyMass)
+					end
+					-- empapado: más lento 4 s
+					if not m:GetAttribute("Empapado") then
+						m:SetAttribute("Empapado", true)
+						local ws = h.WalkSpeed
+						h.WalkSpeed = ws * 0.5
+						task.delay(4, function()
+							if m.Parent and h.Parent then
+								h.WalkSpeed = m:GetAttribute("Trapped") and 0 or ws
+							end
+							m:SetAttribute("Empapado", nil)
+						end)
+					end
+				end
+			end
+		end
+		if traveled >= CFG.AGUA_RANGE then
+			conn:Disconnect()
+			tw(wave, 0.4, { Transparency = 1, Size = Vector3.new(8, 1, 4) })
+			Debris:AddItem(wave, 0.5)
+		end
+	end)
+end
+
+--// ============ VIENTO: TORNADO ============
+local function viento(plr, char, dir)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return
+	end
+	local centro = groundAt(hrp.Position + dir * 10)
+	local anillos = {}
+	for i = 1, 4 do
+		local radio = 1.5 + i * 1.2
+		local a = newPart({
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.5, radio * 2, radio * 2),
+			CFrame = CFrame.new(centro + Vector3.new(0, 1 + i * 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+			Color = Color3.fromRGB(200, 230, 255),
+			Material = Enum.Material.Neon,
+			Transparency = 0.55,
+		})
+		table.insert(anillos, { p = a, h = 1 + i * 2, fase = rng:NextNumber(0, 6.28) })
+	end
+	shakeNear(centro, 60, 0.8, 0.5)
+	local t0 = os.clock()
+	local ultimoDano = {}
+	local conn
+	conn = RunService.Heartbeat:Connect(function(dt)
+		local t = os.clock() - t0
+		if t >= CFG.VIENTO_TIME then
+			conn:Disconnect()
+			for _, x in ipairs(anillos) do
+				tw(x.p, 0.5, { Transparency = 1 })
+				Debris:AddItem(x.p, 0.6)
+			end
+			return
+		end
+		centro = centro + dir * 8 * dt
+		for _, x in ipairs(anillos) do
+			x.fase = x.fase + dt * 7
+			x.p.CFrame = CFrame.new(centro + Vector3.new(0, x.h, 0))
+				* CFrame.Angles(0, 0, math.pi / 2) * CFrame.Angles(x.fase, 0, 0)
+		end
+		local params = OverlapParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char, fxFolder }
+		for _, part in ipairs(workspace:GetPartBoundsInRadius(centro + Vector3.new(0, 3, 0), 11, params)) do
+			local m = part:FindFirstAncestorOfClass("Model")
+			if m then
+				local h = m:FindFirstChildOfClass("Humanoid")
+				local r = m:FindFirstChild("HumanoidRootPart")
+				if h and r and h.Health > 0 and not r.Anchored then
+					local hacia = (centro + Vector3.new(0, 2, 0)) - r.Position
+					if hacia.Magnitude > 0.5 then
+						r.AssemblyLinearVelocity = r.AssemblyLinearVelocity:Lerp(hacia.Unit * 16 + Vector3.new(0, 7, 0), 0.12)
+					end
+					if os.clock() - (ultimoDano[m] or 0) >= 0.5 then
+						ultimoDano[m] = os.clock()
+						h:TakeDamage(CFG.VIENTO_DPS)
+					end
+				end
+			end
+		end
+	end)
+end
+
+--// ============ RAYO: JUICIO CELESTIAL ============
+local function rayo(plr, char, dir)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return
+	end
+	local punto = groundAt(hrp.Position + dir * 42)
+	-- rayo quebrado que baja del cielo
+	local desde = punto + Vector3.new(0, 70, 0)
+	local prev = desde
+	local segs = 7
+	for i = 1, segs do
+		local f = i / segs
+		local pos = desde:Lerp(punto, f)
+			+ Vector3.new(rng:NextNumber(-4, 4) * (1 - f), 0, rng:NextNumber(-4, 4) * (1 - f))
+		local len = (pos - prev).Magnitude
+		if len > 0.01 then
+			local b = newPart({
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(len, 0.7, 0.7),
+				CFrame = CFrame.lookAt((prev + pos) / 2, pos) * CFrame.Angles(0, math.rad(90), 0),
+				Color = Color3.fromRGB(235, 245, 255),
+				Material = Enum.Material.Neon,
+			})
+			tw(b, 0.45, { Transparency = 1 })
+			Debris:AddItem(b, 0.6)
+		end
+		prev = pos
+	end
+	local anchorR = newPart({ Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(punto), Transparency = 1 })
+	local flash = Instance.new("PointLight")
+	flash.Color = Color3.fromRGB(220, 235, 255)
+	flash.Range = 30
+	flash.Brightness = 6
+	flash.Parent = anchorR
+	tw(flash, 0.5, { Brightness = 0 })
+	Debris:AddItem(anchorR, 1)
+	-- marca quemada en el suelo
+	local marca = newPart({
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.2, 8, 8),
+		CFrame = CFrame.new(punto + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+		Color = Color3.fromRGB(20, 20, 25),
+		Transparency = 0.4,
+	})
+	tw(marca, 2, { Transparency = 1 })
+	Debris:AddItem(marca, 2.2)
+	groundRing(punto, Color3.fromRGB(220, 235, 255), 16)
+	shakeNear(punto, 80, 1.4, 0.6)
+
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char, fxFolder }
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(punto, CFG.RAYO_RADIUS, params)) do
+		local m = part:FindFirstAncestorOfClass("Model")
+		if m then
+			local h = m:FindFirstChildOfClass("Humanoid")
+			if h and h.Health > 0 then
+				h:TakeDamage(CFG.RAYO_DAMAGE)
+				-- aturdido 1.5 s
+				if not m:GetAttribute("Aturdido") and not m:GetAttribute("Trapped") then
+					m:SetAttribute("Aturdido", true)
+					local ws = h.WalkSpeed
+					h.WalkSpeed = 0
+					task.delay(1.5, function()
+						if m.Parent and h.Parent and not m:GetAttribute("Trapped") then
+							h.WalkSpeed = ws
+						end
+						m:SetAttribute("Aturdido", nil)
+					end)
+				end
+			end
+		end
+	end
+end
+
 --// ============ PODERES, HERRAMIENTAS Y CONTROL ============
 local POWERS = {
 	Tierra = {
@@ -674,6 +910,27 @@ local POWERS = {
 		cd = CFG.FIRE_COOLDOWN,
 		delay = CFG.FIRE_RELEASE_DELAY,
 		run = fire,
+	},
+	Agua = {
+		toolName = "Ola Abisal",
+		tip = "Lanza una ola que empuja y empapa a tus enemigos",
+		cd = CFG.AGUA_COOLDOWN,
+		delay = CFG.AGUA_RELEASE_DELAY,
+		run = agua,
+	},
+	Viento = {
+		toolName = "Tornado",
+		tip = "Invoca un tornado que arrastra y golpea a quien atrape",
+		cd = CFG.VIENTO_COOLDOWN,
+		delay = CFG.VIENTO_RELEASE_DELAY,
+		run = viento,
+	},
+	Rayo = {
+		toolName = "Juicio Celestial",
+		tip = "Un rayo cae del cielo donde apuntas y aturde",
+		cd = CFG.RAYO_COOLDOWN,
+		delay = CFG.RAYO_RELEASE_DELAY,
+		run = rayo,
 	},
 }
 
