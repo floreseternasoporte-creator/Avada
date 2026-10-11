@@ -901,7 +901,8 @@ local function obtenerPosicion()
 	return pos
 end
 
-crearLobo(obtenerPosicion())
+-- NOTA: ya no se invoca ningún lobo al arrancar (el del lobby era un error).
+-- Los lobos los crea la partida de noche con AvadaLobos:Invoke("crear", pos, opts).
 
 --// LANZADOR AVADA (PARTIDA invoca al lobo de noche) --------------------------
 -- No tocar: serverscript_partida.lua lo usa con
