@@ -18,12 +18,6 @@
 	  • IA: detecta al jugador más cercano, lo persigue y lo muerde.
 
 	Todo se ajusta en la tabla CONFIG de abajo.
-
-	[Avada] Este archivo es del dueno del juego y va INTACTO. La unica
-	diferencia con su version suelta: en vez de crear un lobo al final,
-	registra el lanzador "AvadaLobos" para que PARTIDA lo invoque de
-	noche dentro del Bosque Prohibido (crear / sinReaparicion /
-	conReaparicion), y el lobo sigue siendo exactamente el mismo.
 ]]
 
 local Workspace = game:GetService("Workspace")
@@ -272,11 +266,11 @@ local function crearLobo(posicionSuelo)
 		table.insert(ojosPartes, cicatriz)
 		local luz = Instance.new("PointLight")
 		luz.Color = COLOR_OJO
-		luz.Range = 14 * ESC
-		luz.Brightness = 1.5
+		luz.Range = 8 * ESC
+		luz.Brightness = 0.7
 		luz.Shadows = false
 		luz.Parent = ojo
-		table.insert(luces, { luz = luz, base = 1.5 })
+		table.insert(luces, { luz = luz, base = 0.7 })
 	end
 
 	-- Orejas (se mueven)
@@ -371,64 +365,102 @@ local function crearLobo(posicionSuelo)
 	crearPata(-1, false, "TraseraIzq", 0.5, 0.5)
 	crearPata(1, false, "TraseraDer", 0.0, 0.62)
 
-	-- LLAMAS (lenguas de fuego que ondean) ------------------------------------------
+	-- LLAMAS: cada lengua es una cadena de 3 tramos que se afinan y terminan en punta
+	-- de diamante. Cada tramo se dobla con un desfase distinto, así la llama ondea en "S"
+	-- como fuego de verdad (y se echa hacia atrás cuando el lobo corre).
 	local function llama(padre, base, alto, ancho)
-		local giro = CFrame.Angles(0, rad(azar:NextNumber(0, 360)), 0) * CFrame.Angles(rad(azar:NextNumber(-22, 22)), 0, rad(azar:NextNumber(-22, 22)))
-		local resto = CFrame.new(base) * giro * CFrame.new(0, alto / 2, 0)
+		local giro = CFrame.Angles(0, rad(azar:NextNumber(0, 360)), 0)
+			* CFrame.Angles(rad(azar:NextNumber(-16, 16)), 0, rad(azar:NextNumber(-16, 16)))
+		local baseCF = CFrame.new(base) * giro
 		local indice = azar:NextInteger(1, #COLORES_LLAMA)
+		local colorBase = COLORES_LLAMA[indice]
 		local material = (indice == 6) and Enum.Material.Neon or Enum.Material.SmoothPlastic
-		local p = crearParte(cLlamas, "Llama", V(ancho, alto, ancho * 0.22), resto, COLORES_LLAMA[indice], material)
-		p.CastShadow = false
+		local brillo = Color3.fromRGB(196, 120, 255)
 
-		local pivoteCF = RESTO[p] * CFrame.new(0, -alto * ESC / 2, 0)
-		local m = Instance.new("Motor6D")
-		m.Name = "Llama"
-		m.Part0 = padre
-		m.Part1 = p
-		m.C0 = RESTO[padre]:ToObjectSpace(pivoteCF)
-		m.C1 = CFrame.new(0, -alto * ESC / 2, 0)
-		m.Parent = p
+		local proporciones = { 0.38, 0.34, 0.28 }
+		local anchos = { 1, 0.68, 0.36 }
+		local signo = (azar:NextNumber() < 0.5) and -1 or 1
 
-		local rotSolo = RESTO[p] - RESTO[p].Position
+		local motores = {}
+		local anterior, y, ultimoGrosor, ultimoDx = nil, 0, 0.1, 0
+		for i = 1, 3 do
+			local h = alto * proporciones[i]
+			local w = ancho * anchos[i]
+			local grosor = math.max(0.08, w * 0.3)
+			-- Zigzag en reposo para que el borde se vea irregular, como en la imagen
+			local dx = (i == 1) and 0 or (((i % 2 == 0) and signo or -signo) * ancho * 0.14)
+			local resto = baseCF * CFrame.new(dx, y + h / 2, 0)
+			local color = colorBase:Lerp(brillo, 0.14 * (i - 1))
+			local p = crearParte(cLlamas, "Llama" .. i, V(w, h, grosor), resto, color, material)
+			p.CastShadow = false
+
+			local m = Instance.new("Motor6D")
+			m.Name = "Llama" .. i
+			if anterior then
+				local pivote = RESTO[anterior.parte] * CFrame.new(0, anterior.h * ESC / 2, 0)
+				m.Part0 = anterior.parte
+				m.C0 = RESTO[anterior.parte]:ToObjectSpace(pivote)
+				m.C1 = RESTO[p]:ToObjectSpace(pivote)
+			else
+				local pivote = RESTO[p] * CFrame.new(0, -h * ESC / 2, 0)
+				m.Part0 = padre
+				m.C0 = RESTO[padre]:ToObjectSpace(pivote)
+				m.C1 = RESTO[p]:ToObjectSpace(pivote)
+			end
+			m.Part1 = p
+			m.Parent = p
+			table.insert(motores, { m = m, base = m.C0 })
+
+			anterior = { parte = p, h = h }
+			y = y + h
+			ultimoGrosor, ultimoDx = grosor, dx
+		end
+
+		-- Punta: un diamante que cierra la llama
+		local lado = ancho * anchos[3] * 0.62
+		crearParte(cLlamas, "PuntaLlama", V(lado, lado, ultimoGrosor * 0.8),
+			baseCF * CFrame.new(ultimoDx, y + lado * 0.66, 0) * CFrame.Angles(0, 0, rad(45)),
+			colorBase:Lerp(brillo, 0.4), material, anterior.parte).CastShadow = false
+
+		local rotSolo = giro
 		table.insert(llamasLista, {
-			motor = m, base = m.C0, rot = rotSolo, rotInv = rotSolo:Inverse(),
-			sem = azar:NextNumber(0, 100), vel = azar:NextNumber(1.2, 2.6),
+			motores = motores, rot = rotSolo, rotInv = rotSolo:Inverse(),
+			sem = azar:NextNumber(0, 100), vel = azar:NextNumber(1.1, 2.2),
 		})
-		return p
 	end
 
-	-- Lomo (pecho)
+	-- Lomo (pecho): lenguas altas
 	local lomoLlamas = {
-		{ -0.7, 2.0, -2.5, 1.5, 0.55 }, { 0.1, 2.2, -2.2, 2.0, 0.7 }, { 0.8, 2.0, -1.9, 1.6, 0.6 },
-		{ -0.5, 2.4, -1.4, 2.2, 0.75 }, { 0.4, 2.6, -1.1, 2.4, 0.8 }, { -0.9, 2.1, -0.8, 1.5, 0.55 },
-		{ 0.9, 2.2, -0.5, 1.7, 0.6 }, { 0.0, 2.4, -0.2, 1.9, 0.65 },
+		{ -0.7, 1.7, -2.5, 2.0, 0.7 }, { 0.1, 1.8, -2.2, 2.6, 0.85 }, { 0.8, 1.7, -1.9, 2.1, 0.7 },
+		{ -0.5, 1.9, -1.4, 2.8, 0.9 }, { 0.4, 2.0, -1.1, 3.0, 0.95 }, { -0.9, 1.8, -0.8, 2.0, 0.7 },
+		{ 0.9, 1.8, -0.5, 2.2, 0.75 }, { 0.0, 1.9, -0.2, 2.4, 0.8 },
 	}
 	for _, d in ipairs(lomoLlamas) do
 		llama(pecho, V(d[1], d[2], d[3]), d[4], d[5])
 	end
-	-- Masas grandes de fuego morado sobre el lomo
-	llama(pecho, V(0.2, 2.1, -1.9), 1.9, 1.5)
-	llama(pecho, V(-0.4, 2.2, -1.2), 1.7, 1.3)
-	llama(pecho, V(0.7, 2.0, -0.9), 1.6, 1.2)
+	-- Masas grandes de fuego sobre el lomo
+	llama(pecho, V(0.2, 1.7, -1.9), 2.6, 1.5)
+	llama(pecho, V(-0.4, 1.8, -1.2), 2.3, 1.3)
+	llama(pecho, V(0.7, 1.7, -0.9), 2.2, 1.2)
 	-- Lomo (trasero)
-	for i = 1, 5 do
-		llama(trasero, V(azar:NextNumber(-0.6, 0.6), 1.6, 0.5 + i * 0.6), azar:NextNumber(1.0, 1.8), azar:NextNumber(0.4, 0.7))
+	for i = 1, 3 do
+		llama(trasero, V(azar:NextNumber(-0.5, 0.5), 1.5, 0.8 + i * 0.9), azar:NextNumber(1.6, 2.4), azar:NextNumber(0.6, 0.9))
 	end
 	-- Detrás de las orejas
-	for i = 1, 3 do
-		llama(cabeza, V(azar:NextNumber(-0.7, 0.7), 1.5, -3.9), azar:NextNumber(0.8, 1.3), azar:NextNumber(0.35, 0.55))
+	for _ = 1, 2 do
+		llama(cabeza, V(azar:NextNumber(-0.6, 0.6), 1.5, -3.9), azar:NextNumber(1.0, 1.5), azar:NextNumber(0.4, 0.6))
 	end
 	-- Cola en llamas
 	for i = 2, 4 do
-		for _ = 1, 4 do
-			llama(segmentosCola[i], V(azar:NextNumber(-0.3, 0.3), 0.55, colaDatos[i][2] + azar:NextNumber(-0.5, 0.5)), azar:NextNumber(1.0, 1.9), azar:NextNumber(0.4, 0.8))
+		for _ = 1, 2 do
+			llama(segmentosCola[i], V(azar:NextNumber(-0.2, 0.2), 0.5, colaDatos[i][2] + azar:NextNumber(-0.4, 0.4)), azar:NextNumber(1.4, 2.2), azar:NextNumber(0.5, 0.8))
 		end
 	end
 	-- Fuego en las patas
 	for _, pie in ipairs(pataPies) do
 		local pos = RESTO[pie].Position / ESC
-		for _ = 1, 4 do
-			llama(pie, V(pos.X + azar:NextNumber(-0.4, 0.4), pos.Y + 0.15, pos.Z + azar:NextNumber(-0.5, 0.3)), azar:NextNumber(0.7, 1.3), azar:NextNumber(0.3, 0.5))
+		for _ = 1, 2 do
+			llama(pie, V(pos.X + azar:NextNumber(-0.3, 0.3), pos.Y + 0.15, pos.Z + azar:NextNumber(-0.4, 0.2)), azar:NextNumber(0.9, 1.4), azar:NextNumber(0.35, 0.55))
 		end
 	end
 
@@ -440,19 +472,19 @@ local function crearLobo(posicionSuelo)
 		local pe = Instance.new("ParticleEmitter")
 		pe.Texture = textura or "rbxasset://textures/particles/fire_main.dds"
 		pe.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(190, 100, 255)),
-			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(112, 40, 190)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(28, 20, 110)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(215, 140, 255)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(140, 70, 230)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 40, 170)),
 		})
-		pe.LightEmission = brasas and 1 or 0.55
+		pe.LightEmission = 1
 		pe.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, tamano * ESC),
-			NumberSequenceKeypoint.new(0.6, tamano * 0.75 * ESC),
+			NumberSequenceKeypoint.new(0, tamano * 0.5 * ESC),
+			NumberSequenceKeypoint.new(0.6, tamano * 0.4 * ESC),
 			NumberSequenceKeypoint.new(1, 0),
 		})
 		pe.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.3),
-			NumberSequenceKeypoint.new(0.7, 0.6),
+			NumberSequenceKeypoint.new(0, 0.5),
+			NumberSequenceKeypoint.new(0.7, 0.75),
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		pe.Lifetime = NumberRange.new(vida * 0.7, vida)
@@ -481,9 +513,9 @@ local function crearLobo(posicionSuelo)
 
 	-- Luz de aura morada sobre el lomo
 	local aura = Instance.new("PointLight")
-	aura.Color = Color3.fromRGB(120, 50, 210)
-	aura.Range = 22 * ESC
-	aura.Brightness = 1
+	aura.Color = Color3.fromRGB(140, 80, 220)
+	aura.Range = 12 * ESC
+	aura.Brightness = 0.3
 	aura.Shadows = false
 	aura.Parent = pecho
 
@@ -614,11 +646,13 @@ local function crearLobo(posicionSuelo)
 			local viento = 0.12 + g * 0.75 * amp
 			local fuerza = 0.55 + cur.llamas * 0.4
 			for _, s in ipairs(llamasLista) do
-				local n1 = math.noise(t * s.vel, s.sem, 0)
-				local n2 = math.noise(t * s.vel * 0.8, s.sem, 7.3)
-				local n3 = math.noise(t * s.vel * 1.1, s.sem, 3.1)
-				local Rw = CFrame.Angles(viento + n1 * 0.9 * fuerza, n2 * 0.5, n3 * 0.9 * fuerza)
-				s.motor.C0 = s.base * (s.rotInv * Rw * s.rot)
+				for j, mm in ipairs(s.motores) do
+					local f = t * s.vel * 2.2 + s.sem - j * 1.15
+					local ondaX = math.sin(f) * (0.16 + 0.07 * j) * fuerza + math.noise(t * s.vel, s.sem, j) * 0.35
+					local ondaZ = math.sin(f * 0.8 + 1.7) * (0.14 + 0.06 * j) * fuerza
+					local Rw = CFrame.Angles(viento * 0.4 + ondaX, 0, ondaZ)
+					mm.m.C0 = mm.base * (s.rotInv * Rw * s.rot)
+				end
 			end
 			for _, e in ipairs(emisores) do
 				e.pe.Rate = e.base * cur.llamas
@@ -626,7 +660,7 @@ local function crearLobo(posicionSuelo)
 			for _, l in ipairs(luces) do
 				l.luz.Brightness = l.base * cur.ojos
 			end
-			aura.Brightness = 0.5 + cur.llamas * 0.45
+			aura.Brightness = 0.1 + cur.llamas * 0.12
 			if math.abs(cur.ojos - ultimoOjo) > 0.02 then
 				ultimoOjo = cur.ojos
 				local color = OJO_APAGADO:Lerp(COLOR_OJO, math.clamp(cur.ojos, 0, 1))
@@ -867,7 +901,12 @@ local function obtenerPosicion()
 	return pos
 end
 
---// LANZADOR AVADA (lo unico agregado: PARTIDA invoca al lobo de noche) ----
+crearLobo(obtenerPosicion())
+
+--// LANZADOR AVADA (PARTIDA invoca al lobo de noche) --------------------------
+-- No tocar: serverscript_partida.lua lo usa con
+--   AvadaLobos:Invoke("crear", posicion, {escala, vida, dano})
+--   AvadaLobos:Invoke("sinReaparicion") / ("conReaparicion")
 local bfLobosAvada = Instance.new("BindableFunction")
 bfLobosAvada.Name = "AvadaLobos"
 bfLobosAvada.Parent = game:GetService("ServerScriptService")
