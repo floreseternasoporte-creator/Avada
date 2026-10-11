@@ -18,6 +18,17 @@ local AMARILLO = Color3.fromRGB(255, 214, 0)
 local VERDE = Color3.fromRGB(40, 160, 70)
 local GRIS_BOTON = Color3.fromRGB(95, 95, 100)
 
+-- Íconos dibujados estilo 99 Noches (subidos a Roblox).
+-- Cuando tengas los IDs reales, reemplázalos aquí. Mientras tanto usa los 3D.
+local ICONOS = {
+  hongo = "rbxassetid://0",
+  mora = "rbxassetid://0",
+  diamante = "rbxassetid://0",
+  pocionVida = "rbxassetid://0",
+  pocionVigor = "rbxassetid://0",
+  pocionLlama = "rbxassetid://0",
+}
+
 local RECETAS = {
   Vida  = { hongo = 2, mora = 1, diamante = 0, titulo = "Poción de Vida",
             desc = "Cura 60 de vida", color = Color3.fromRGB(255, 90, 90) },
@@ -33,7 +44,6 @@ local miSacoPoc = {}
 local ultimoHongos = -1
 local accionComer = "Comer"
 
--- ===== ÍCONOS 3D (estilo 99 Noches) =====
 local function modeloIcono(tipo)
   local m = Instance.new("Model")
   m.Name = "Icono_" .. tipo
@@ -111,6 +121,24 @@ local function icono3D(padre, tipo, tam, pos)
   end
   return vf
 end
+-- ===== ÍCONOS (imagen estilo 99 Noches, o 3D procedural de respaldo) =====
+local function icono(padre, tipo, tam, pos)
+  local id = ICONOS[tipo]
+  if id and id ~= "" and id ~= "rbxassetid://0" then
+    local im = Instance.new("ImageLabel")
+    im.Size = UDim2.new(0, tam, 0, tam)
+    if pos then
+      im.Position = pos
+    end
+    im.BackgroundTransparency = 1
+    im.BorderSizePixel = 0
+    im.Image = id
+    im.ScaleType = Enum.ScaleType.Fit
+    im.Parent = padre
+    return im
+  end
+  return icono3D(padre, tipo, tam, pos)
+end
 
 -- ===== utilidades =====
 local function etiqueta(texto, size, pos, tam, color, padre)
@@ -174,7 +202,7 @@ local function miniIcono(padre, tipo, x)
   f.Position = UDim2.new(0, x, 0, 0)
   f.BackgroundTransparency = 1
   f.Parent = padre
-  icono3D(f, tipo, 24, UDim2.new(0, 0, 0, 1))
+  icono(f, tipo, 24, UDim2.new(0, 0, 0, 1))
   return f
 end
 
@@ -249,7 +277,7 @@ local function construirSeccion()
     local bd = Instance.new("UIStroke")
     bd.Color, bd.Transparency, bd.Thickness, bd.Parent = r.color, 0.4, 1.5, card
 
-    icono3D(card, "pocion" .. id, 44, UDim2.new(0, 6, 0, 6))
+    icono(card, "pocion" .. id, 44, UDim2.new(0, 6, 0, 6))
 
     local nom = etiqueta(r.titulo, 16, UDim2.new(0, 56, 0, 2), UDim2.new(1, -170, 0, 20), Color3.new(1,1,1), card)
     nom.TextXAlignment = Enum.TextXAlignment.Left
@@ -258,7 +286,7 @@ local function construirSeccion()
     local cy = 24
     local function costo(tipo, cant)
       if cant <= 0 then return end
-      icono3D(card, tipo, 20, UDim2.new(0, cx, 0, cy))
+      icono(card, tipo, 20, UDim2.new(0, cx, 0, cy))
       local nn = etiqueta("x" .. cant, 14, UDim2.new(0, cx + 22, 0, cy), UDim2.new(0, 34, 0, 20), Color3.fromRGB(220,220,220), card)
       nn.TextXAlignment = Enum.TextXAlignment.Left
       cx += 58
@@ -301,7 +329,7 @@ local function construirSeccion()
     b.AutoButtonColor = true
     b.Parent = sec
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-    icono3D(b, tipo, 26, UDim2.new(1, -32, 0, 5))
+    icono(b, tipo, 26, UDim2.new(1, -32, 0, 5))
     b.MouseButton1Click:Connect(function()
       RE_POC:FireServer("Depositar", esMora and "Mora" or "Diamante")
     end)
