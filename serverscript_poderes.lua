@@ -726,7 +726,11 @@ remote.OnServerEvent:Connect(function(plr, action, a, b)
 	if action == "Equip" then
 		if type(a) == "string" then
 			givePower(plr, a, true)
+			plr:SetAttribute("PoderOfrecido", true)
 		end
+	elseif action == "NoPick" then
+		-- cerró el diálogo sin elegir: se le vuelve a ofrecer en 45 s
+		plr:SetAttribute("PoderOfrecidoCD", os.clock() + 45)
 	elseif action == "Cast" then
 		local def = type(a) == "string" and POWERS[a]
 		if not def or typeof(b) ~= "Vector3" then
@@ -809,6 +813,46 @@ task.spawn(function()
 	prompt.Triggered:Connect(function(plr)
 		remote:FireClient(plr, "Talk")
 	end)
+end)
+
+--// ============ PODERES DENTRO DE LA PARTIDA ============
+-- La vendedora vive en la tienda (lobby). Para que el poder se brinde
+-- ADENTRO de la partida (en el bosque, jugando), cuando un jugador entra
+-- al bosque y aún no tiene poder, se le abre solo el diálogo de la maga
+-- una vez por visita. No toca PARTIDA: solo mira posiciones y atributos.
+local CENTRO_BOSQUE = Vector3.new(0, 0, 4200) -- mismo centro que el bosque
+local RADIO_PARTIDA = 260
+
+task.spawn(function()
+	while true do
+		task.wait(3)
+		for _, plr in ipairs(Players:GetPlayers()) do
+			local char = plr.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local dentro = (hrp.Position - CENTRO_BOSQUE).Magnitude < RADIO_PARTIDA
+				if dentro then
+					local cd = plr:GetAttribute("PoderOfrecidoCD") or 0
+					if not plr:GetAttribute("EquippedPower")
+						and not plr:GetAttribute("PoderOfrecido")
+						and os.clock() >= cd then
+						-- anti-spam de 8 s mientras el diálogo abre; si elige,
+						-- "Equip" marca PoderOfrecido; si cierra, "NoPick" da 45 s
+						plr:SetAttribute("PoderOfrecidoCD", os.clock() + 8)
+						remote:FireClient(plr, "Talk")
+					end
+				else
+					-- salió del bosque (volvió al lobby): se puede ofrecer de nuevo
+					if plr:GetAttribute("PoderOfrecido") then
+						plr:SetAttribute("PoderOfrecido", nil)
+					end
+					if plr:GetAttribute("PoderOfrecidoCD") then
+						plr:SetAttribute("PoderOfrecidoCD", nil)
+					end
+				end
+			end
+		end
+	end
 end)
 
 print("🔮 Poderes de la maga listos (servidor)")

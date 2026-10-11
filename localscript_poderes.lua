@@ -8,7 +8,7 @@
 
 	QUÉ HACE:
 	- Diálogo con texto que se escribe solo abajo ("Hola, hechicero...").
-	- Pantalla de poderes con el estilo del menú de referencia.
+	- Pantalla de poderes con el estilo de la Reserva del Caldero.
 	- Animaciones de lanzar poderes (agacharse y tocar el suelo / estirar la mano).
 	  Las animaciones son por código y funcionan con personajes R15.
 ]]
@@ -199,12 +199,12 @@ local function showDialog(show)
 	end
 end
 
---// ============ PANTALLA DE PODERES ============
+--// ============ PANTALLA DE PODERES (estilo "Reserva del Caldero") ============
 local overlay = make("Frame", {
 	Name = "PoderesPantalla",
 	Size = UDim2.new(1, 0, 1, 0),
 	BackgroundColor3 = Color3.new(0, 0, 0),
-	BackgroundTransparency = 0.5,
+	BackgroundTransparency = 0.45,
 	Visible = false,
 	Active = true,
 	ZIndex = 30,
@@ -213,45 +213,68 @@ local overlay = make("Frame", {
 local panel = make("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.new(0.5, 0, 0.5, 0),
-	Size = UDim2.new(0, 760, 0, 500),
-	BackgroundColor3 = Color3.fromRGB(16, 16, 18),
-	BackgroundTransparency = 0.08,
+	Size = UDim2.new(0, 780, 0, 520),
+	BackgroundColor3 = Color3.fromRGB(13, 13, 15),
+	BackgroundTransparency = 0.05,
 	ZIndex = 31,
 }, overlay)
-make("UICorner", { CornerRadius = UDim.new(0, 12) }, panel)
-make("UIStroke", { Color = Color3.fromRGB(96, 96, 104), Thickness = 2, Transparency = 0.3 }, panel)
+make("UICorner", { CornerRadius = UDim.new(0, 16) }, panel)
+make("UIStroke", { Color = Color3.fromRGB(90, 90, 98), Thickness = 2, Transparency = 0.3 }, panel)
 local panelScale = make("UIScale", {}, panel)
 
 local function updateScale()
 	local vp = camera.ViewportSize
-	panelScale.Scale = math.clamp(math.min(vp.X / 820, vp.Y / 540), 0.4, 1.2)
+	panelScale.Scale = math.clamp(math.min(vp.X / 840, vp.Y / 560), 0.4, 1.2)
 end
 
--- contadores de arriba (recarga de cada poder)
-local chipsRow = make("Frame", { Position = UDim2.new(0, 0, 0, 12), Size = UDim2.new(1, 0, 0, 50), BackgroundTransparency = 1, ZIndex = 32 }, panel)
+-- título dorado como "RESERVA DEL CALDERO"
+make("TextLabel", {
+	Position = UDim2.new(0, 28, 0, 16),
+	Size = UDim2.new(1, -300, 0, 36),
+	BackgroundTransparency = 1,
+	Text = "PODERES DE LA MAGA",
+	Font = FONT_HEAD,
+	TextSize = 30,
+	TextColor3 = YELLOW,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 32,
+}, panel)
+
+-- recargas arriba a la derecha (como los contadores del caldero)
+local chipsRow = make("Frame", {
+	Position = UDim2.new(1, -252, 0, 16),
+	Size = UDim2.new(0, 236, 0, 36),
+	BackgroundTransparency = 1,
+	ZIndex = 32,
+}, panel)
 make("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
-	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	HorizontalAlignment = Enum.HorizontalAlignment.Right,
 	VerticalAlignment = Enum.VerticalAlignment.Center,
-	Padding = UDim.new(0, 40),
+	Padding = UDim.new(0, 10),
 }, chipsRow)
 local function chip(order)
-	return make("TextLabel", {
-		Size = UDim2.new(0, 110, 1, 0),
-		BackgroundTransparency = 1,
-		Font = FONT_NAME,
-		TextSize = 34,
-		TextColor3 = WHITE,
-		Text = "",
+	local pill = make("Frame", {
+		Size = UDim2.new(0, 70, 1, 0),
+		BackgroundColor3 = Color3.fromRGB(28, 28, 32),
 		LayoutOrder = order,
 		ZIndex = 33,
 	}, chipsRow)
+	make("UICorner", { CornerRadius = UDim.new(0, 10) }, pill)
+	return make("TextLabel", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Font = FONT_NAME,
+		TextSize = 24,
+		TextColor3 = WHITE,
+		Text = "",
+		ZIndex = 34,
+	}, pill)
 end
-local chipEarth, chipFire, chipCount = chip(1), chip(2), chip(3)
+local chipEarth, chipFire = chip(1), chip(2)
 local function refreshChips()
 	chipEarth.Text = "🌿 " .. math.max(0, math.ceil(cdEnd.Tierra - os.clock()))
 	chipFire.Text = "🔥 " .. math.max(0, math.ceil(cdEnd.Fuego - os.clock()))
-	chipCount.Text = "🔮 2"
 end
 refreshChips()
 task.spawn(function()
@@ -262,19 +285,18 @@ task.spawn(function()
 		end
 	end
 end)
-make("Frame", { Position = UDim2.new(0, 16, 0, 66), Size = UDim2.new(1, -32, 0, 2), BackgroundColor3 = Color3.fromRGB(60, 60, 66), BorderSizePixel = 0, ZIndex = 32 }, panel)
 
-local descLabel = make("TextLabel", {
-	Position = UDim2.new(0, 24, 0, 462),
-	Size = UDim2.new(1, -48, 0, 30),
+-- sub-título dorado
+make("TextLabel", {
+	Position = UDim2.new(0, 28, 0, 62),
+	Size = UDim2.new(1, -56, 0, 28),
 	BackgroundTransparency = 1,
-	Text = "Elige un poder para equiparlo.",
-	Font = FONT_NAME,
-	TextSize = 20,
-	TextColor3 = Color3.fromRGB(200, 200, 208),
+	Text = "ELIGE TU PODER",
+	Font = FONT_HEAD,
+	TextSize = 22,
+	TextColor3 = YELLOW,
 	TextXAlignment = Enum.TextXAlignment.Left,
-	TextWrapped = true,
-	ZIndex = 33,
+	ZIndex = 32,
 }, panel)
 
 -- cierre de la pantalla
@@ -289,61 +311,101 @@ local function closePanel(reason, power)
 	panelClosed:Fire(reason, power)
 end
 
+-- X roja redondeada como la del caldero
 local closeBtn = make("TextButton", {
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(1, 8, 0, -22),
-	Size = UDim2.new(0, 68, 0, 68),
+	Position = UDim2.new(1, -66, 0, 12),
+	Size = UDim2.new(0, 54, 0, 54),
 	BackgroundColor3 = Color3.fromRGB(228, 32, 32),
 	Text = "X",
 	Font = FONT_HEAD,
-	TextSize = 54,
+	TextSize = 40,
 	TextColor3 = WHITE,
 	AutoButtonColor = true,
 	ZIndex = 40,
 }, panel)
-make("UICorner", { CornerRadius = UDim.new(0, 10) }, closeBtn)
+make("UICorner", { CornerRadius = UDim.new(0, 12) }, closeBtn)
 closeBtn.Activated:Connect(function()
 	closePanel("close")
 end)
 
--- tarjetas
+-- tarjetas estilo caldero: icono arriba, nombre al medio, costo abajo
 local POWER_DEFS = {
 	{ power = "Tierra", icon = "🌿", name = "Tierra", cost = "⏱ 8s", desc = "Pon las manos en el suelo y despierta la tierra: lianas y hierba brotan y atrapan a quien esté cerca." },
 	{ power = "Fuego", icon = "🔥", name = "Fuego", cost = "⏱ 3s", desc = "Estira la mano y lanza una llama púrpura que explota al impactar y deja a tu enemigo ardiendo." },
-}
-local LOCKED_DEFS = {
-	{ icon = "💧", name = "Agua" },
-	{ icon = "🌪️", name = "Viento" },
-	{ icon = "⚡", name = "Rayo" },
+	{ power = "Agua", icon = "💧", name = "Agua", locked = true },
+	{ power = "Viento", icon = "🌪️", name = "Viento", locked = true },
+	{ power = "Rayo", icon = "⚡", name = "Rayo", locked = true },
 }
 local powerCards = {}
 
-local function makeCard(x, y, d, locked)
+local function makeCard(i, d)
 	local card = make("Frame", {
-		Position = UDim2.new(0, x, 0, y),
-		Size = UDim2.new(0, 130, 0, 156),
-		BackgroundColor3 = Color3.fromRGB(12, 12, 14),
-		BackgroundTransparency = 0.05,
+		Position = UDim2.new(0, 28 + (i - 1) * 146, 0, 100),
+		Size = UDim2.new(0, 132, 0, 172),
+		BackgroundColor3 = Color3.fromRGB(10, 10, 12),
+		BackgroundTransparency = 0.04,
 		ZIndex = 32,
 	}, panel)
 	make("UICorner", { CornerRadius = UDim.new(0, 14) }, card)
-	local stroke = make("UIStroke", { Color = Color3.fromRGB(74, 74, 82), Thickness = 2 }, card)
-	make("TextLabel", { Position = UDim2.new(0, 0, 0, 10), Size = UDim2.new(1, 0, 0, 72), BackgroundTransparency = 1, Text = d.icon, TextSize = 58, Font = FONT_NAME, TextColor3 = WHITE, ZIndex = 33 }, card)
-	make("TextLabel", { Position = UDim2.new(0, 0, 0, 88), Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, Text = d.name, TextSize = 24, Font = FONT_NAME, TextColor3 = WHITE, ZIndex = 33 }, card)
-	make("TextLabel", { Position = UDim2.new(0, 0, 0, 120), Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, Text = locked and "🔒" or d.cost, TextSize = 24, Font = FONT_NAME, TextColor3 = WHITE, ZIndex = 33 }, card)
-	if locked then
-		local dim = make("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 36 }, card)
+	local stroke = make("UIStroke", { Color = Color3.fromRGB(70, 70, 78), Thickness = 2, Transparency = 0.15 }, card)
+	local iconL = make("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 12),
+		Size = UDim2.new(1, 0, 0, 66),
+		BackgroundTransparency = 1,
+		Text = d.icon,
+		TextSize = 56,
+		Font = FONT_NAME,
+		TextColor3 = WHITE,
+		ZIndex = 33,
+	}, card)
+	local nameL = make("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 84),
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 1,
+		Text = d.name,
+		TextSize = 24,
+		Font = FONT_NAME,
+		TextColor3 = WHITE,
+		ZIndex = 33,
+	}, card)
+	local costL = make("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 122),
+		Size = UDim2.new(1, 0, 0, 36),
+		BackgroundTransparency = 1,
+		Text = d.locked and "🔒" or d.cost,
+		TextSize = 30,
+		Font = FONT_NAME,
+		TextColor3 = WHITE,
+		ZIndex = 33,
+	}, card)
+	if d.locked then
+		local dim = make("Frame", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.45,
+			ZIndex = 36,
+		}, card)
 		make("UICorner", { CornerRadius = UDim.new(0, 14) }, dim)
 	end
-	local btn = make("TextButton", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 40 }, card)
-	return card, stroke, btn
+	local btn = make("TextButton", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Text = "",
+		ZIndex = 40,
+	}, card)
+	return { card = card, stroke = stroke, iconL = iconL, nameL = nameL, costL = costL, btn = btn, def = d }
 end
 
+local DARK_TEXT = Color3.fromRGB(48, 30, 4)
 local function refreshCards()
 	for power, c in pairs(powerCards) do
 		local on = (equippedPower == power)
-		c.card.BackgroundColor3 = on and GOLD_CARD or Color3.fromRGB(12, 12, 14)
-		c.stroke.Color = on and YELLOW or Color3.fromRGB(74, 74, 82)
+		c.card.BackgroundColor3 = on and GOLD_CARD or Color3.fromRGB(10, 10, 12)
+		c.stroke.Color = on and YELLOW or Color3.fromRGB(70, 70, 78)
+		local tc = on and DARK_TEXT or WHITE
+		c.nameL.TextColor3 = tc
+		c.costL.TextColor3 = tc
+		c.iconL.TextColor3 = tc
 	end
 end
 
@@ -354,44 +416,72 @@ local function pickPower(power)
 	closePanel("equip", power)
 end
 
-for i, d in ipairs(POWER_DEFS) do
-	local card, stroke, btn = makeCard(24 + (i - 1) * 146, 82, d, false)
-	powerCards[d.power] = { card = card, stroke = stroke }
-	btn.MouseEnter:Connect(function()
-		descLabel.Text = d.desc
-		if equippedPower ~= d.power then
-			stroke.Color = YELLOW
-		end
-	end)
-	btn.MouseLeave:Connect(function()
-		refreshCards()
-	end)
-	btn.Activated:Connect(function()
-		pickPower(d.power)
-	end)
-end
-
 make("TextLabel", {
-	Position = UDim2.new(0, 24, 0, 256),
-	Size = UDim2.new(1, -48, 0, 34),
+	Position = UDim2.new(0, 28, 0, 292),
+	Size = UDim2.new(1, -56, 0, 26),
 	BackgroundTransparency = 1,
-	Text = "NECESITA MÁS MAGIA ✨",
+	Text = "CÓMO SE USA",
 	Font = FONT_HEAD,
-	TextSize = 26,
+	TextSize = 20,
 	TextColor3 = YELLOW,
 	TextXAlignment = Enum.TextXAlignment.Left,
 	ZIndex = 33,
 }, panel)
 
-for i, d in ipairs(LOCKED_DEFS) do
-	local _, _, btn = makeCard(24 + (i - 1) * 146, 298, d, true)
-	btn.Activated:Connect(function()
-		toast("Aún no disponible")
-	end)
-	btn.MouseEnter:Connect(function()
-		descLabel.Text = "Este poder se desbloqueará más adelante."
-	end)
+local descLabel = make("TextLabel", {
+	Position = UDim2.new(0, 28, 0, 322),
+	Size = UDim2.new(1, -56, 0, 60),
+	BackgroundTransparency = 1,
+	Text = "Elige un poder para equiparlo.",
+	Font = FONT_NAME,
+	TextSize = 20,
+	TextColor3 = Color3.fromRGB(210, 210, 218),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top,
+	TextWrapped = true,
+	ZIndex = 33,
+}, panel)
+
+make("TextLabel", {
+	Position = UDim2.new(0, 28, 0, 400),
+	Size = UDim2.new(1, -56, 0, 96),
+	BackgroundTransparency = 1,
+	Text = "Puedes hablar con la vendedora en la tienda o recibir tu poder al entrar a la partida. Con la herramienta equipada, haz clic o toca hacia donde apuntas para lanzarlo. Agua, Viento y Rayo llegarán más adelante.",
+	Font = FONT_NAME,
+	TextSize = 19,
+	TextColor3 = Color3.fromRGB(170, 170, 178),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top,
+	TextWrapped = true,
+	ZIndex = 33,
+}, panel)
+
+for i, d in ipairs(POWER_DEFS) do
+	local c = makeCard(i, d)
+	powerCards[d.power] = c
+	if d.locked then
+		c.btn.Activated:Connect(function()
+			toast("Aún no disponible")
+		end)
+		c.btn.MouseEnter:Connect(function()
+			descLabel.Text = "Este poder se desbloqueará más adelante."
+		end)
+	else
+		c.btn.MouseEnter:Connect(function()
+			descLabel.Text = d.desc
+			if equippedPower ~= d.power then
+				c.stroke.Color = YELLOW
+			end
+		end)
+		c.btn.MouseLeave:Connect(function()
+			refreshCards()
+		end)
+		c.btn.Activated:Connect(function()
+			pickPower(d.power)
+		end)
+	end
 end
+
 
 local function openPanel()
 	updateScale()
@@ -402,7 +492,7 @@ local function openPanel()
 	overlay.BackgroundTransparency = 1
 	overlay.Visible = true
 	panel.Position = UDim2.new(0.5, 0, 0.58, 0)
-	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.5 }):Play()
+	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
 	TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Position = UDim2.new(0.5, 0, 0.5, 0) }):Play()
 end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
@@ -425,6 +515,7 @@ local function talk()
 		say("Buena elección, hechicero. Haz clic o toca para lanzar tu poder.")
 		task.wait(2.4)
 	else
+		remote:FireServer("NoPick")
 		say("Vuelve cuando quieras, hechicero.")
 		task.wait(1.4)
 	end
