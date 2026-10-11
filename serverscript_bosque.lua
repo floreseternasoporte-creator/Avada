@@ -935,8 +935,9 @@ end
 -- Arbusto de ARANDANOS del dueno: mata lenosa abierta de tallos finos
 -- marrones que suben y se abren en abanico, hojas ovaladas pequenas
 -- alternas a lo largo de cada tallo, y racimos de arandanos
--- azul-polvorientos colgando entre las hojas, con corona oscura de estrella
--- y rabito corto. Sin domo ni nucleo gigante: se ve arbusto de verdad.
+-- azul-polvorientos NACIDOS ENTRE las hojas (rabito grueso y corto +
+-- copete de hojas alrededor de cada racimo: nada flota ni se ve despegado),
+-- con corona oscura de estrella. Sin domo ni nucleo gigante.
 -- Las moras llevan Tipo/Arbusto/MoraId: PARTIDA las hace comestibles
 -- (ClickDetector + Touched sobre la Mora; recoger oculta mora/corona/rabito
 -- y reaparecen a los 18 s).
@@ -945,8 +946,8 @@ local MB_ALTURA_MAX = 6.8
 local MB_TALLOS = 9
 local MB_CORTEZA = Color3.fromRGB(101, 78, 60)
 local MB_CORTEZA_VIEJA = Color3.fromRGB(84, 72, 62)
-local MB_HOJA_OSCURA = Color3.fromRGB(46, 96, 58)
-local MB_HOJA_CLARA = Color3.fromRGB(96, 148, 88)
+local MB_HOJA_OSCURA = Color3.fromRGB(58, 116, 70)
+local MB_HOJA_CLARA = Color3.fromRGB(112, 164, 100)
 local MB_TIERRA = Color3.fromRGB(48, 38, 30)
 local MB_CORONA = Color3.fromRGB(24, 20, 44)
 local MB_MORAS = {
@@ -1000,9 +1001,10 @@ local function mbPuntoTallo(base, medio, punta, t)
 end
 
 -- hoja ovalada: una sola bola aplanada con el eje largo en Z
-local function mbHoja(padre, pos, dir, color, azar)
+local function mbHoja(padre, pos, dir, color, azar, tamano)
   local cf = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, math.rad(azar:NextNumber(-25, 25)))
-  mbParte(padre, "Hoja", Enum.PartType.Ball, Vector3.new(0.55, 0.1, 1.15), cf, color)
+  local s = tamano or 1
+  mbParte(padre, "Hoja", Enum.PartType.Ball, Vector3.new(0.55 * s, 0.1 * s, 1.15 * s), cf, color)
 end
 
 local function mbMora(padre, centro, normal, radio, color, base, arbId, moraId)
@@ -1020,7 +1022,7 @@ local function mbMora(padre, centro, normal, radio, color, base, arbId, moraId)
   corona:SetAttribute("Tipo", "MoraCorona")
   corona:SetAttribute("Arbusto", arbId)
   corona:SetAttribute("MoraId", moraId)
-  local rabito = mbTramo(padre, "Rabito", base, centro - normal * radio * 0.5, 0.045, MB_CORTEZA)
+  local rabito = mbTramo(padre, "Rabito", base, centro - normal * radio * 0.5, 0.07, MB_CORTEZA)
   rabito:SetAttribute("Tipo", "MoraRabito")
   rabito:SetAttribute("Arbusto", arbId)
   rabito:SetAttribute("MoraId", moraId)
@@ -1075,7 +1077,8 @@ local function crearArbustoMoras(posicion, escala, semilla, arbId)
       mbHoja(hojas, posHoja, dir, mbVariar(colorHoja, azar:NextNumber(-0.03, 0.03)), azar)
     end
   end
-  -- racimos de arandanos colgando entre las hojas (no encima del arbusto)
+  -- racimos de arandanos NACIDOS ENTRE las hojas: rabito corto y grueso,
+  -- mora casi pegada al tallo y copete de 3 hojitas alrededor del racimo
   local moraId = 0
   local nRacimos = azar:NextInteger(6, 8)
   for c = 1, nRacimos do
@@ -1083,15 +1086,24 @@ local function crearArbustoMoras(posicion, escala, semilla, arbId)
     local t = azar:NextNumber(0.62, 0.92)
     local centro = mbPuntoTallo(tallo.base, tallo.medio, tallo.punta, t)
     local cuantas = azar:NextInteger(3, 5)
+    -- copete de hojas que abraza el racimo
+    for hh = 1, 3 do
+      local angH = azar:NextNumber(0, math.pi * 2)
+      local dirH = (tallo.radial * 0.6 + Vector3.new(math.cos(angH), 0, math.sin(angH)) * 0.8
+        + Vector3.yAxis * azar:NextNumber(0.1, 0.5)).Unit
+      local colorH = mbVariar(MB_HOJA_OSCURA:Lerp(MB_HOJA_CLARA, azar:NextNumber(0.2, 0.5)),
+        azar:NextNumber(-0.03, 0.03))
+      mbHoja(hojas, centro + dirH * 0.75, dirH, colorH, azar, 0.8)
+    end
     for mm = 1, cuantas do
       moraId = moraId + 1
       local ang = azar:NextNumber(0, math.pi * 2)
       local afuera = (tallo.radial * azar:NextNumber(0.4, 0.9)
         + Vector3.new(math.cos(ang), 0, math.sin(ang)) * 0.5).Unit
-      local baseRacimo = centro + afuera * azar:NextNumber(0.15, 0.4)
-        + Vector3.new(0, azar:NextNumber(-0.1, 0.15), 0)
+      local baseRacimo = centro + afuera * azar:NextNumber(0.1, 0.22)
+        + Vector3.new(0, azar:NextNumber(-0.08, 0.1), 0)
       local radio = azar:NextNumber(0.4, 0.52)
-      local centroMora = baseRacimo + Vector3.new(afuera.X * 0.25, -azar:NextNumber(0.35, 0.6), afuera.Z * 0.25)
+      local centroMora = baseRacimo + Vector3.new(afuera.X * 0.18, -azar:NextNumber(0.22, 0.38), afuera.Z * 0.18)
       local normal = (centroMora - baseRacimo).Unit
       local color = mbVariar(MB_MORAS[azar:NextInteger(1, #MB_MORAS)], azar:NextNumber(-0.025, 0.025))
       mbMora(frutos, centroMora, normal, radio, color, baseRacimo, arbId, moraId)
