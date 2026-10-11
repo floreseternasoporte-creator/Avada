@@ -932,25 +932,28 @@ for _, off in ipairs({ { -70, -20 }, { 30, 90 }, { 90, 40 } }) do
   table.insert(cofres, { pos = cp, listo = 0, base = chestBase })
 end
 
--- Arbusto de MORAS del dueno: cupula de hojas puntiagudas en capas como
--- tejas, collar de hojas paradas y racimos de moras azules y moradas con
--- corona oscura y rabito. Sustituye por completo al arbusto de fresas.
--- Las moras llevan Tipo/Arbusto/MoraId: PARTIDA las hace comestibles.
-local MB_RADIO = 4.6
-local MB_ALTO = 3.4
-local MB_BASE_Y = 0.9
-local MB_OSCURO = Color3.fromRGB(36, 60, 35)
-local MB_CLARO = Color3.fromRGB(94, 132, 82)
-local MB_BRILLO = Color3.fromRGB(108, 148, 94)
-local MB_NERVIO = Color3.fromRGB(120, 156, 100)
-local MB_NUCLEO = Color3.fromRGB(30, 50, 30)
-local MB_RAMA = Color3.fromRGB(66, 88, 46)
-local MB_CORONA = Color3.fromRGB(22, 18, 38)
+-- Arbusto de ARANDANOS del dueno: mata lenosa abierta de tallos finos
+-- marrones que suben y se abren en abanico, hojas ovaladas pequenas
+-- alternas a lo largo de cada tallo, y racimos de arandanos
+-- azul-polvorientos colgando entre las hojas, con corona oscura de estrella
+-- y rabito corto. Sin domo ni nucleo gigante: se ve arbusto de verdad.
+-- Las moras llevan Tipo/Arbusto/MoraId: PARTIDA las hace comestibles
+-- (ClickDetector + Touched sobre la Mora; recoger oculta mora/corona/rabito
+-- y reaparecen a los 18 s).
+local MB_ALTURA_MIN = 5.2
+local MB_ALTURA_MAX = 6.8
+local MB_TALLOS = 9
+local MB_CORTEZA = Color3.fromRGB(101, 78, 60)
+local MB_CORTEZA_VIEJA = Color3.fromRGB(84, 72, 62)
+local MB_HOJA_OSCURA = Color3.fromRGB(46, 96, 58)
+local MB_HOJA_CLARA = Color3.fromRGB(96, 148, 88)
+local MB_TIERRA = Color3.fromRGB(48, 38, 30)
+local MB_CORONA = Color3.fromRGB(24, 20, 44)
 local MB_MORAS = {
-  Color3.fromRGB(38, 44, 92),
-  Color3.fromRGB(52, 60, 118),
-  Color3.fromRGB(84, 58, 108),
-  Color3.fromRGB(70, 48, 96),
+  Color3.fromRGB(72, 94, 168),
+  Color3.fromRGB(88, 108, 182),
+  Color3.fromRGB(62, 80, 150),
+  Color3.fromRGB(96, 88, 158),
 }
 local MB_RAIZ = CFrame.new()
 local MB_ESC = 1
@@ -987,39 +990,19 @@ local function mbTramo(padre, nombre, a, b, grosor, color)
   return mbParte(padre, nombre, Enum.PartType.Cylinder, Vector3.new(largo + 0.04, grosor * 2, grosor * 2), cf, color)
 end
 
-local function mbSuperficie(phi, theta)
-  local sp, cp = math.sin(phi), math.cos(phi)
-  local ct, st = math.cos(theta), math.sin(theta)
-  local pos = Vector3.new(MB_RADIO * sp * ct, MB_BASE_Y + MB_ALTO * cp, MB_RADIO * sp * st)
-  local normal = Vector3.new(sp * ct / MB_RADIO, cp / MB_ALTO, sp * st / MB_RADIO).Unit
-  local tangente = Vector3.new(MB_RADIO * cp * ct, -MB_ALTO * sp, MB_RADIO * cp * st).Unit
-  return pos, normal, tangente
-end
-
-local function mbHoja(padre, base, dir, arriba, largo, color, azar)
-  local giroHoja = math.rad(azar:NextNumber(-18, 18))
-  local cf = CFrame.lookAt(base, base + dir, arriba) * CFrame.Angles(0, 0, giroHoja)
-  local ancho = largo * 0.55
-  local grosor = 0.07
-  local vertical = CFrame.Angles(0, 0, math.rad(90))
-  mbParte(padre, "Hoja", Enum.PartType.Cylinder,
-    Vector3.new(grosor, ancho, largo * 0.72),
-    cf * CFrame.new(0, 0, -largo * 0.36) * vertical, color)
-  mbParte(padre, "PuntaHoja", Enum.PartType.Cylinder,
-    Vector3.new(grosor * 1.02, ancho * 0.45, largo * 0.5),
-    cf * CFrame.new(0, 0, -largo * 0.74) * vertical, color)
-  mbParte(padre, "Nervio", Enum.PartType.Block,
-    Vector3.new(0.05, 0.03, largo * 0.92),
-    cf * CFrame.new(0, grosor / 2 + 0.01, -largo * 0.48),
-    color:Lerp(MB_NERVIO, 0.45))
-end
-
-local function mbColorHoja(alturaNorm, azar)
-  local color = MB_OSCURO:Lerp(MB_CLARO, math.clamp(alturaNorm, 0, 1) ^ 0.8)
-  if azar:NextNumber() < 0.15 then
-    color = color:Lerp(MB_BRILLO, azar:NextNumber(0.3, 0.55))
+-- punto sobre un tallo de dos tramos (base -> medio -> punta), t en [0,1]
+local function mbPuntoTallo(base, medio, punta, t)
+  if t <= 0.5 then
+    return base:Lerp(medio, t * 2)
+  else
+    return medio:Lerp(punta, (t - 0.5) * 2)
   end
-  return mbVariar(color, azar:NextNumber(-0.035, 0.035))
+end
+
+-- hoja ovalada: una sola bola aplanada con el eje largo en Z
+local function mbHoja(padre, pos, dir, color, azar)
+  local cf = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, math.rad(azar:NextNumber(-25, 25)))
+  mbParte(padre, "Hoja", Enum.PartType.Ball, Vector3.new(0.55, 0.1, 1.15), cf, color)
 end
 
 local function mbMora(padre, centro, normal, radio, color, base, arbId, moraId)
@@ -1029,15 +1012,15 @@ local function mbMora(padre, centro, normal, radio, color, base, arbId, moraId)
   mora:SetAttribute("Tipo", "Mora")
   mora:SetAttribute("Arbusto", arbId)
   mora:SetAttribute("MoraId", moraId)
-  local posCorona = centro + normal * radio * 0.88
+  local posCorona = centro + normal * radio * 0.9
   local corona = mbParte(padre, "Corona", Enum.PartType.Cylinder,
-    Vector3.new(0.07, radio * 0.75, radio * 0.75),
+    Vector3.new(0.06, radio * 0.62, radio * 0.62),
     CFrame.lookAt(posCorona, posCorona + normal) * CFrame.Angles(0, math.rad(90), 0),
     MB_CORONA)
   corona:SetAttribute("Tipo", "MoraCorona")
   corona:SetAttribute("Arbusto", arbId)
   corona:SetAttribute("MoraId", moraId)
-  local rabito = mbTramo(padre, "Rabito", base, centro - normal * radio * 0.6, 0.05, MB_RAMA)
+  local rabito = mbTramo(padre, "Rabito", base, centro - normal * radio * 0.5, 0.045, MB_CORTEZA)
   rabito:SetAttribute("Tipo", "MoraRabito")
   rabito:SetAttribute("Arbusto", arbId)
   rabito:SetAttribute("MoraId", moraId)
@@ -1055,80 +1038,63 @@ local function crearArbustoMoras(posicion, escala, semilla, arbId)
     f.Parent = modelo
     return f
   end
-  local nucleo = carpeta("Nucleo")
+  local tierra = carpeta("Tierra")
   local ramas = carpeta("Ramas")
   local hojas = carpeta("Hojas")
   local frutos = carpeta("Moras")
-  local primeraParte
-  local discos = 9
-  for i = 1, discos do
-    local y = 0.15 + (i - 0.5) / discos * (MB_BASE_Y + MB_ALTO - 0.55)
-    local k = math.clamp((y - MB_BASE_Y) / MB_ALTO, 0, 1)
-    local radio = (y <= MB_BASE_Y) and MB_RADIO * 0.93 or MB_RADIO * math.sqrt(1 - k * k) * 0.93
-    local parte = mbParte(nucleo, "Nucleo" .. i, Enum.PartType.Cylinder,
-      Vector3.new((MB_BASE_Y + MB_ALTO - 0.55) / discos + 0.08, radio * 2, radio * 2),
-      CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90)),
-      mbVariar(MB_NUCLEO, azar:NextNumber(-0.01, 0.01)))
-    primeraParte = primeraParte or parte
-  end
-  for i = 1, 8 do
-    local theta = i / 8 * math.pi * 2 + azar:NextNumber(-0.2, 0.2)
-    local punto = mbSuperficie(math.rad(azar:NextNumber(40, 62)), theta) * 0.8
-    mbTramo(ramas, "Rama" .. i, Vector3.new(0, 0.3, 0), punto, 0.11, MB_RAMA)
-  end
-  local capas = {
-    { angulos = { 4, 20, 36, 52, 68, 82, 94 }, separacion = 1.8, inclinacion = { 8, 28 }, largo = { 2.0, 2.9 } },
-    { angulos = { 12, 28, 44, 60, 76, 90 },    separacion = 2.2, inclinacion = { 20, 42 }, largo = { 1.8, 2.5 } },
-  }
-  for numCapa, capa in ipairs(capas) do
-    for _, gradosPhi in ipairs(capa.angulos) do
-      local circunferencia = 2 * math.pi * MB_RADIO * math.sin(math.rad(gradosPhi))
-      local cantidad = math.max(3, math.round(circunferencia / capa.separacion))
-      local desfase = azar:NextNumber(0, 1)
-      for k = 1, cantidad do
-        local theta = (k + desfase) / cantidad * math.pi * 2 + azar:NextNumber(-0.12, 0.12)
-        local phi = math.rad(gradosPhi + azar:NextNumber(-4, 4))
-        local pos, normal, tangente = mbSuperficie(phi, theta)
-        local lado = normal:Cross(tangente)
-        local yaw = (gradosPhi < 10) and azar:NextNumber(-math.pi, math.pi) or math.rad(azar:NextNumber(-55, 55))
-        local dir = tangente * math.cos(yaw) + lado * math.sin(yaw)
-        local inclinacion = math.rad(azar:NextNumber(capa.inclinacion[1], capa.inclinacion[2]))
-        dir = (dir * math.cos(inclinacion) + normal * math.sin(inclinacion)).Unit
-        local largo = azar:NextNumber(capa.largo[1], capa.largo[2])
-        if gradosPhi < 10 then
-          largo = largo * 0.85
-        end
-        local base = pos - normal * 0.1
-        if base.Y + dir.Y * largo < 0.08 then
-          dir = Vector3.new(dir.X, (0.08 - base.Y) / largo, dir.Z).Unit
-        end
-        local alturaNorm = (base.Y + 0.5 * dir.Y * largo) / (MB_BASE_Y + MB_ALTO)
-        mbHoja(hojas, base, dir, normal, largo, mbColorHoja(alturaNorm - 0.1 * (numCapa - 1), azar), azar)
-      end
+  -- monticulo de tierra bajo, solo para asentar la mata
+  local primeraParte = mbParte(tierra, "Tierra", Enum.PartType.Ball,
+    Vector3.new(2.0, 0.7, 2.0), CFrame.new(0, 0.05, 0),
+    mbVariar(MB_TIERRA, azar:NextNumber(-0.02, 0.02)))
+  -- tallos lenosos: suben juntos y se abren en abanico
+  local tallos = {}
+  for i = 1, MB_TALLOS do
+    local theta = (i - 1) / MB_TALLOS * math.pi * 2 + azar:NextNumber(-0.25, 0.25)
+    local radial = Vector3.new(math.cos(theta), 0, math.sin(theta))
+    local altura = azar:NextNumber(MB_ALTURA_MIN, MB_ALTURA_MAX)
+    local base = radial * azar:NextNumber(0.25, 0.5) + Vector3.new(0, 0.1, 0)
+    local medio = radial * azar:NextNumber(0.9, 1.3) + Vector3.new(0, altura * 0.55, 0)
+    local punta = radial * azar:NextNumber(1.7, 2.4) + Vector3.new(0, altura, 0)
+    local colorTallo = mbVariar((i % 2 == 0) and MB_CORTEZA or MB_CORTEZA_VIEJA,
+      azar:NextNumber(-0.02, 0.02))
+    mbTramo(ramas, "Tallo" .. i .. "A", base, medio, 0.14, colorTallo)
+    mbTramo(ramas, "Tallo" .. i .. "B", medio, punta, 0.1, colorTallo)
+    tallos[i] = { base = base, medio = medio, punta = punta, radial = radial }
+    -- hojas ovaladas alternas a lo largo del tallo
+    local nHojas = azar:NextInteger(5, 7)
+    for h = 1, nHojas do
+      local t = 0.3 + (h - 1) / math.max(nHojas - 1, 1) * 0.62 + azar:NextNumber(-0.03, 0.03)
+      local pos = mbPuntoTallo(base, medio, punta, t)
+      local lado = ((h % 2 == 0) and 1 or -1) * azar:NextNumber(0.7, 1.1)
+      local tang = Vector3.new(-radial.Z, 0, radial.X)
+      local dir = (tang * lado + radial * azar:NextNumber(0.5, 0.9)
+        + Vector3.yAxis * azar:NextNumber(0.25, 0.55)).Unit
+      local posHoja = pos + dir * 0.55
+      local colorHoja = MB_HOJA_OSCURA:Lerp(MB_HOJA_CLARA,
+        math.clamp(t - 0.25, 0, 1) * 0.8 + azar:NextNumber(-0.08, 0.12))
+      mbHoja(hojas, posHoja, dir, mbVariar(colorHoja, azar:NextNumber(-0.03, 0.03)), azar)
     end
   end
-  for i = 1, 16 do
-    local theta = i / 16 * math.pi * 2 + azar:NextNumber(-0.1, 0.1)
-    local radial = Vector3.new(math.cos(theta), 0, math.sin(theta))
-    local base = radial * (MB_RADIO * azar:NextNumber(0.97, 1.05)) + Vector3.new(0, 0.05, 0)
-    local dir = (radial * azar:NextNumber(0.25, 0.5) + Vector3.yAxis * 0.9).Unit
-    local color = mbVariar(MB_OSCURO:Lerp(MB_CLARO, azar:NextNumber(0.1, 0.4)), azar:NextNumber(-0.03, 0.03))
-    mbHoja(hojas, base, dir, radial, azar:NextNumber(1.9, 2.5), color, azar)
-  end
+  -- racimos de arandanos colgando entre las hojas (no encima del arbusto)
   local moraId = 0
-  for c = 1, 6 do
-    local thetaCentro = c / 6 * math.pi * 2 + azar:NextNumber(-0.4, 0.4)
-    local phiCentro = math.rad(azar:NextNumber(10, 55))
-    local cuantas = azar:NextInteger(2, 3)
+  local nRacimos = azar:NextInteger(6, 8)
+  for c = 1, nRacimos do
+    local tallo = tallos[azar:NextInteger(1, #tallos)]
+    local t = azar:NextNumber(0.62, 0.92)
+    local centro = mbPuntoTallo(tallo.base, tallo.medio, tallo.punta, t)
+    local cuantas = azar:NextInteger(3, 5)
     for mm = 1, cuantas do
       moraId = moraId + 1
-      local phi = phiCentro + math.rad(azar:NextNumber(-7, 7))
-      local theta = thetaCentro + azar:NextNumber(-0.18, 0.18)
-      local pos, normal = mbSuperficie(math.max(phi, math.rad(6)), theta)
-      local radio = azar:NextNumber(0.38, 0.45)
-      local centro = pos + normal * 0.95
-      local color = mbVariar(MB_MORAS[azar:NextInteger(1, #MB_MORAS)], azar:NextNumber(-0.02, 0.02))
-      mbMora(frutos, centro, normal, radio, color, pos - normal * 0.1, arbId, moraId)
+      local ang = azar:NextNumber(0, math.pi * 2)
+      local afuera = (tallo.radial * azar:NextNumber(0.4, 0.9)
+        + Vector3.new(math.cos(ang), 0, math.sin(ang)) * 0.5).Unit
+      local baseRacimo = centro + afuera * azar:NextNumber(0.15, 0.4)
+        + Vector3.new(0, azar:NextNumber(-0.1, 0.15), 0)
+      local radio = azar:NextNumber(0.4, 0.52)
+      local centroMora = baseRacimo + Vector3.new(afuera.X * 0.25, -azar:NextNumber(0.35, 0.6), afuera.Z * 0.25)
+      local normal = (centroMora - baseRacimo).Unit
+      local color = mbVariar(MB_MORAS[azar:NextInteger(1, #MB_MORAS)], azar:NextNumber(-0.025, 0.025))
+      mbMora(frutos, centroMora, normal, radio, color, baseRacimo, arbId, moraId)
     end
   end
   modelo.PrimaryPart = primeraParte
