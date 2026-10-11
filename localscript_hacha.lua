@@ -1,0 +1,153 @@
+-- LocalScript HACHA (pegar en StarterPlayer > StarterPlayerScripts)
+-- Animación de corte del hacha. NO toca partida.
+-- - Detecta la Tool "Hacha" y conecta su Activated.
+-- - Reproduce el hachazo (brazo arriba → corte rápido → recupera) + estela.
+-- - Avisa al servidor para validar el golpe contra árboles de cristal.
+
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+local RE = RS:WaitForChild("HachaEvent", 30)
+
+-- aviso flotante simple
+local guiAviso = Instance.new("ScreenGui")
+guiAviso.Name = "HachaAviso"
+guiAviso.ResetOnSpawn = false
+guiAviso.DisplayOrder = 90
+guiAviso.IgnoreGuiInset = true
+guiAviso.Parent = player:WaitForChild("PlayerGui")
+
+local function avisar(texto)
+  local f = Instance.new("TextLabel")
+  f.AnchorPoint = Vector2.new(0.5, 0)
+  f.Position = UDim2.new(0.5, 0, 0, 130)
+  f.Size = UDim2.new(0, 380, 0, 40)
+  f.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+  f.BackgroundTransparency = 0.15
+  f.Font = Enum.Font.Kalam
+  f.TextSize = 18
+  f.TextColor3 = Color3.fromRGB(160, 230, 255)
+  f.Text = texto
+  f.Parent = guiAviso
+  Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+  task.delay(2, function()
+    pcall(function()
+      f:Destroy()
+    end)
+  end)
+end
+
+local function obtenerHombro(char)
+  -- R15
+  local ut = char:FindFirstChild("UpperTorso")
+  if ut then
+    local s = ut:FindFirstChild("RightShoulder")
+    if s and s:IsA("Motor6D") then
+      return s
+    end
+  end
+  -- R6
+  local torso = char:FindFirstChild("Torso")
+  if torso then
+    local s = torso:FindFirstChild("Right Shoulder")
+    if s and s:IsA("Motor6D") then
+      return s
+    end
+  end
+  return nil
+end
+
+local animando = false
+
+local function animarHachazo(char, tool)
+  if animando then return end
+  animando = true
+  local hombro = obtenerHombro(char)
+  local trail = tool:FindFirstChild("Estela", true)
+
+  if hombro then
+    local c0 = hombro.C0
+    -- 1) cargar: brazo arriba y atrás
+    local t1 = TweenService:Create(hombro,
+      TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+      { C0 = c0 * CFrame.Angles(math.rad(-135), 0, math.rad(-18)) })
+    t1:Play()
+    t1.Completed:Wait()
+    -- 2) ¡corte! rápido hacia abajo (con estela)
+    if trail then
+      trail.Enabled = true
+    end
+    local t2 = TweenService:Create(hombro,
+      TweenInfo.new(0.11, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+      { C0 = c0 * CFrame.Angles(math.rad(50), 0, math.rad(12)) })
+    t2:Play()
+    t2.Completed:Wait()
+    if trail then
+      trail.Enabled = false
+    end
+    -- 3) recuperar a la pose normal
+    local t3 = TweenService:Create(hombro,
+      TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+      { C0 = c0 })
+    t3:Play()
+    t3.Completed:Wait()
+  else
+    -- sin hombro detectable: solo la estela
+    if trail then
+      trail.Enabled = true
+      task.wait(0.3)
+      trail.Enabled = false
+    end
+  end
+  animando = false
+end
+
+local function vigilarTool(tool)
+  if not tool:IsA("Tool") or tool.Name ~= "Hacha" then return end
+  if tool:GetAttribute("HachaLista") then return end
+  tool:SetAttribute("HachaLista", true)
+  tool.Activated:Connect(function()
+    local char = player.Character
+    if not char then return end
+    -- animación inmediata (responsiva)
+    task.spawn(animarHachazo, char, tool)
+    -- el servidor valida el golpe
+    pcall(function()
+      RE:FireServer("Golpear")
+    end)
+  end)
+end
+
+local function onCharacter(char)
+  char.ChildAdded:Connect(vigilarTool)
+  for _, t in ipairs(char:GetChildren()) do
+    vigilarTool(t)
+  end
+end
+
+player.CharacterAdded:Connect(onCharacter)
+if player.Character then
+  onCharacter(player.Character)
+end
+task.spawn(function()
+  local bp = player:WaitForChild("Backpack", 30)
+  if bp then
+    bp.ChildAdded:Connect(vigilarTool)
+    for _, t in ipairs(bp:GetChildren()) do
+      vigilarTool(t)
+    end
+  end
+end)
+
+if RE then
+  RE.OnClientEvent:Connect(function(tipo, dato)
+    if tipo == "Aviso" then
+      avisar(tostring(dato))
+    end
+  end)
+end
+
+print("[Hacha] LocalScript cargado")
+-- FIN LOCAL HACHA
