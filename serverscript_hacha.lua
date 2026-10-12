@@ -23,7 +23,7 @@ end
 -- CÓDIGO DEL USUARIO (hacha low-poly) — verbatim, solo MAKE_TOOL=true
 ------------------------------------------------------------------
 local MAKE_TOOL = true                  -- true = Tool en StarterPack
-local SCALE     = 0.005
+local SCALE     = 0.003                 -- más pequeña (antes 0.005)
 local ORIGIN    = CFrame.new(0, 6, 0)
 
 local S = SCALE
@@ -402,6 +402,30 @@ local function esArbolCristal(modelo)
   return true
 end
 
+-- Busca el árbol de cristal más cercano (el bosque se llama BosqueProhibido)
+local function buscarArbolCercano(player, rango)
+  local char = player.Character
+  local hrp = char and char:FindFirstChild("HumanoidRootPart")
+  if not hrp then return nil end
+  local bosque = Workspace:FindFirstChild("BosqueProhibido")
+  if not bosque then return nil end
+  local mejor, mejorDist = nil, rango or 14
+  for _, obj in ipairs(bosque:GetChildren()) do
+    if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$") then
+      local ok, pp = pcall(function()
+        return obj:GetPivot().Position
+      end)
+      if ok then
+        local d = (pp - hrp.Position).Magnitude
+        if d < mejorDist then
+          mejor, mejorDist = obj, d
+        end
+      end
+    end
+  end
+  return mejor
+end
+
 local ventanaGolpe = {} -- jugador -> momento del último hachazo (para validar el toque)
 
 local function aplicarGolpe(player, arbol)
@@ -472,6 +496,18 @@ RE.OnServerEvent:Connect(function(player, accion, dato)
     local char = player.Character
     if char and char:FindFirstChild("Hacha") then
       ventanaGolpe[player] = os.clock()
+      -- Respaldo confiable: si hay un árbol pegado al jugador, golpea directo
+      -- (por si el Touched del filo no dispara)
+      task.delay(0.25, function()
+        local arbol = buscarArbolCercano(player, 13)
+        if arbol then
+          local ahora = os.clock()
+          if not (ultimoGolpe[player] and ahora - ultimoGolpe[player] < COOLDOWN_GOLPE) then
+            ultimoGolpe[player] = ahora
+            aplicarGolpe(player, arbol)
+          end
+        end
+      end)
     end
   elseif accion == "TocoArbol" then
     -- el filo TOCÓ un árbol (estilo 99 Noches): validar y aplicar

@@ -66,12 +66,12 @@ local enHachazo = false -- ventana en la que el filo puede tocar árboles
 local function animarHachazo(char, tool)
   if animando then return end
   animando = true
+  enHachazo = true -- se activa aunque la animación falle, para que el toque cuente
   local hombro = obtenerHombro(char)
   local trail = tool:FindFirstChild("Estela", true)
 
   if hombro then
     local c0 = hombro.C0
-    enHachazo = true
     -- 1) cargar: brazo arriba y atrás
     local t1 = TweenService:Create(hombro,
       TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -103,7 +103,10 @@ local function animarHachazo(char, tool)
       trail.Enabled = true
       task.wait(0.3)
       trail.Enabled = false
+    else
+      task.wait(0.3)
     end
+    enHachazo = false
   end
   animando = false
 end
