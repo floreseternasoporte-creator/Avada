@@ -222,6 +222,76 @@ local function animarImpacto(dato)
   end
 end
 
+-- ===== BOTÓN "CORTAR" en el HUD (como CORRER) =====
+local guiCortar = Instance.new("ScreenGui")
+guiCortar.Name = "HachaCortar"
+guiCortar.ResetOnSpawn = false
+guiCortar.DisplayOrder = 60
+guiCortar.IgnoreGuiInset = true
+guiCortar.Parent = player:WaitForChild("PlayerGui")
+
+local btnCortar = Instance.new("TextButton")
+btnCortar.Name = "CortarBtn"
+btnCortar.AnchorPoint = Vector2.new(1, 0.5)
+btnCortar.Position = UDim2.new(1, -28, 0.5, -110)
+btnCortar.Size = UDim2.new(0, 68, 0, 68)
+btnCortar.BackgroundColor3 = Color3.fromRGB(14, 14, 17)
+btnCortar.BackgroundTransparency = 0.25
+btnCortar.BorderSizePixel = 0
+btnCortar.Font = Enum.Font.GothamBold
+btnCortar.Text = "Cortar"
+btnCortar.TextSize = 13
+btnCortar.TextColor3 = Color3.new(1, 1, 1)
+btnCortar.AutoButtonColor = true
+btnCortar.Visible = false
+btnCortar.Parent = guiCortar
+Instance.new("UICorner", btnCortar).CornerRadius = UDim.new(1, 0)
+local stCortar = Instance.new("UIStroke")
+stCortar.Color = Color3.fromRGB(0, 0, 0)
+stCortar.Transparency = 0.45
+stCortar.Thickness = 1.4
+stCortar.Parent = btnCortar
+
+local function hacerCorte()
+  local char = player.Character
+  local tool = char and char:FindFirstChild("Hacha")
+  if not tool then return end
+  task.spawn(animarHachazo, char, tool)
+  pcall(function()
+    RE:FireServer("Golpear")
+  end)
+end
+
+btnCortar.MouseButton1Click:Connect(hacerCorte)
+
+-- visible solo con el hacha equipada y un árbol cerca (no derribado)
+task.spawn(function()
+  while true do
+    task.wait(0.4)
+    local visible = false
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if char and char:FindFirstChild("Hacha") and hrp then
+      local bosque = Workspace:FindFirstChild("BosqueProhibido")
+      if bosque then
+        for _, obj in ipairs(bosque:GetChildren()) do
+          if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$")
+            and not obj:GetAttribute("HachaCaido") then
+            local ok, pp = pcall(function()
+              return obj:GetPivot().Position
+            end)
+            if ok and (pp - hrp.Position).Magnitude < 15 then
+              visible = true
+              break
+            end
+          end
+        end
+      end
+    end
+    btnCortar.Visible = visible
+  end
+end)
+
 if RE then
   RE.OnClientEvent:Connect(function(tipo, dato)
     if tipo == "Aviso" then

@@ -345,14 +345,62 @@ local function soltarDiamante(pos)
     local plr = modelo and Players:GetPlayerFromCharacter(modelo)
     if not plr then return end
     recogido = true
+    -- Como las moras/hongos: si la mano está libre va a la mano, si no al saco (mochila)
+    local char = plr.Character
     local bp = plr:FindFirstChildOfClass("Backpack")
-    if bp then
-      crearDiamanteTool().Parent = bp
-      RE:FireClient(plr, "Aviso", "¡Diamante recogido!")
+    local manoLibre = true
+    if char and char:FindFirstChildOfClass("Tool") then
+      manoLibre = false
     end
+    local dt = crearDiamanteTool()
+    if manoLibre and char then
+      dt.Parent = char -- se equipa directo en la mano
+    elseif bp then
+      dt.Parent = bp -- al saco (mochila)
+    else
+      dt:Destroy()
+    end
+    RE:FireClient(plr, "Aviso", "¡Diamante recogido!")
     m:Destroy()
   end)
   Debris:AddItem(m, 90)
+end
+
+-- Derriba el árbol al suelo (como en 99 Noches) y lo restaura después
+local function derribarArbol(arbol)
+  local ok, pivote = pcall(function()
+    return arbol:GetPivot()
+  end)
+  if not ok then return end
+  arbol:SetAttribute("HachaCaido", true)
+  -- dirección aleatoria de caída
+  local ang = math.random() * math.pi * 2
+  local eje = Vector3.new(math.cos(ang), 0, math.sin(ang))
+  -- animación de caída (acelera al caer)
+  local pasos = 18
+  for i = 1, pasos do
+    local t = i / pasos
+    local rot = math.rad(82) * t * t
+    local nuevo = pivote * CFrame.fromAxisAngle(eje, rot)
+    nuevo = nuevo - Vector3.new(0, t * 2.5, 0)
+    pcall(function()
+      arbol:PivotTo(nuevo)
+    end)
+    task.wait(0.035)
+  end
+  -- polvo al impactar el suelo
+  pcall(function()
+    chispasGolpe(pivote.Position + Vector3.new(0, 1, 0))
+  end)
+  -- el árbol se levanta de nuevo después de 60s
+  task.delay(60, function()
+    pcall(function()
+      arbol:PivotTo(pivote)
+    end)
+    arbol:SetAttribute("HachaCaido", false)
+    arbol:SetAttribute("HachaHP", HP_POR_ARBOL)
+    arbol:SetAttribute("HachaDescanso", 0)
+  end)
 end
 
 local function sacudirArbol(arbol)
@@ -430,6 +478,7 @@ local ventanaGolpe = {} -- jugador -> momento del último hachazo (para validar 
 
 local function aplicarGolpe(player, arbol)
   if not esArbolCristal(arbol) then return end
+  if arbol:GetAttribute("HachaCaido") then return end -- ya está derribado
 
   -- el jugador debe tener el hacha en la mano
   local char = player.Character
@@ -475,9 +524,10 @@ local function aplicarGolpe(player, arbol)
   })
 
   if hp <= 0 then
-    -- ¡suelta diamantes al piso!
+    -- ¡el árbol se DERRIBA al suelo y suelta diamantes!
     arbol:SetAttribute("HachaHP", HP_POR_ARBOL)
     arbol:SetAttribute("HachaDescanso", os.clock() + DESCANSO_ARBOL)
+    task.spawn(derribarArbol, arbol)
     if ok then
       for _ = 1, DIAMANTES_POR_CORTE do
         local ang = math.random() * math.pi * 2
