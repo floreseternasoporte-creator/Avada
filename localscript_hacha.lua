@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
 local RE = RS:WaitForChild("HachaEvent", 30)
@@ -160,10 +161,70 @@ task.spawn(function()
   end
 end)
 
+-- Onda de choque en el punto de impacto
+local function ondaChoque(pos)
+  if not pos then return end
+  local p = Instance.new("Part")
+  p.Shape = Enum.PartType.Ball
+  p.Size = Vector3.new(1.5, 1.5, 1.5)
+  p.Color = Color3.fromRGB(160, 230, 255)
+  p.Material = Enum.Material.Neon
+  p.Transparency = 0.35
+  p.Anchored = true
+  p.CanCollide = false
+  p.CanQuery = false
+  p.TopSurface = Enum.SurfaceType.Smooth
+  p.BottomSurface = Enum.SurfaceType.Smooth
+  p.CFrame = CFrame.new(pos)
+  p.Parent = Workspace
+  local t = TweenService:Create(p,
+    TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    { Size = Vector3.new(7, 7, 7), Transparency = 1 })
+  t:Play()
+  t.Completed:Connect(function()
+    pcall(function()
+      p:Destroy()
+    end)
+  end)
+end
+
+-- Animación de IMPACTO: el hacha rebota al golpear el árbol
+local function animarImpacto(dato)
+  local char = player.Character
+  if char then
+    task.spawn(function()
+      local hombro = obtenerHombro(char)
+      if hombro then
+        local c0 = hombro.C0
+        -- rebote: el hacha se levanta un poco por el impacto y vuelve
+        local t1 = TweenService:Create(hombro,
+          TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+          { C0 = c0 * CFrame.Angles(math.rad(-28), 0, 0) })
+        t1:Play()
+        t1.Completed:Wait()
+        local t2 = TweenService:Create(hombro,
+          TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+          { C0 = c0 })
+        t2:Play()
+      end
+    end)
+  end
+  -- onda expansiva en el árbol
+  if dato and dato.pos then
+    ondaChoque(dato.pos)
+  end
+  -- contador para saber que el golpe contó
+  if dato and dato.golpe and dato.total then
+    avisar(string.format("¡Golpe %d/%d al árbol!", dato.golpe, dato.total))
+  end
+end
+
 if RE then
   RE.OnClientEvent:Connect(function(tipo, dato)
     if tipo == "Aviso" then
       avisar(tostring(dato))
+    elseif tipo == "Impacto" then
+      animarImpacto(dato)
     end
   end)
 end

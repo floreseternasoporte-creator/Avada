@@ -360,15 +360,15 @@ local function sacudirArbol(arbol)
     return arbol:GetPivot()
   end)
   if not ok then return end
-  for _ = 1, 3 do
+  for _ = 1, 4 do
     pcall(function()
-      arbol:PivotTo(pivote * CFrame.Angles(0, 0, math.rad(2.5)))
+      arbol:PivotTo(pivote * CFrame.Angles(0, 0, math.rad(4)))
     end)
-    task.wait(0.06)
+    task.wait(0.05)
     pcall(function()
-      arbol:PivotTo(pivote * CFrame.Angles(0, 0, math.rad(-2.5)))
+      arbol:PivotTo(pivote * CFrame.Angles(0, 0, math.rad(-4)))
     end)
-    task.wait(0.06)
+    task.wait(0.05)
   end
   pcall(function()
     arbol:PivotTo(pivote)
@@ -437,9 +437,18 @@ local function aplicarGolpe(player, arbol)
   local ok, pp = pcall(function()
     return arbol:GetPivot().Position
   end)
+  local posGolpe = nil
   if ok then
-    chispasGolpe(pp + Vector3.new(0, 3, 0))
+    posGolpe = pp + Vector3.new(0, 3, 0)
+    chispasGolpe(posGolpe)
   end
+
+  -- avisa al cliente para la animación de IMPACTO (retroceso + onda + contador)
+  RE:FireClient(player, "Impacto", {
+    pos = posGolpe,
+    golpe = HP_POR_ARBOL - hp,
+    total = HP_POR_ARBOL,
+  })
 
   if hp <= 0 then
     -- ¡suelta diamantes al piso!
