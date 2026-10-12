@@ -60,6 +60,7 @@ local function obtenerHombro(char)
 end
 
 local animando = false
+local enHachazo = false -- ventana en la que el filo puede tocar árboles
 
 local function animarHachazo(char, tool)
   if animando then return end
@@ -69,6 +70,7 @@ local function animarHachazo(char, tool)
 
   if hombro then
     local c0 = hombro.C0
+    enHachazo = true
     -- 1) cargar: brazo arriba y atrás
     local t1 = TweenService:Create(hombro,
       TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -93,6 +95,7 @@ local function animarHachazo(char, tool)
       { C0 = c0 })
     t3:Play()
     t3.Completed:Wait()
+    enHachazo = false
   else
     -- sin hombro detectable: solo la estela
     if trail then
@@ -104,10 +107,26 @@ local function animarHachazo(char, tool)
   animando = false
 end
 
+-- El filo TOCA el árbol (como en 99 Noches): avisa al servidor
+local function conectarToque(tool)
+  local hitbox = tool:WaitForChild("HitboxHacha", 10)
+  if not hitbox then return end
+  hitbox.Touched:Connect(function(hit)
+    if not enHachazo then return end
+    local modelo = hit and hit:FindFirstAncestorOfClass("Model")
+    if modelo and modelo.Name:match("^ArbolCristal") then
+      pcall(function()
+        RE:FireServer("TocoArbol", modelo)
+      end)
+    end
+  end)
+end
+
 local function vigilarTool(tool)
   if not tool:IsA("Tool") or tool.Name ~= "Hacha" then return end
   if tool:GetAttribute("HachaLista") then return end
   tool:SetAttribute("HachaLista", true)
+  task.spawn(conectarToque, tool)
   tool.Activated:Connect(function()
     local char = player.Character
     if not char then return end

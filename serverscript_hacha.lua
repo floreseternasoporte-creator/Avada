@@ -48,7 +48,7 @@ if MAKE_TOOL then
   container.Name = "Hacha"
   container.RequiresHandle = true
   container.CanBeDropped = true
-  container.Grip = CFrame.Angles(0, math.rad(90), 0)
+  container.Grip = CFrame.Angles(math.rad(180), math.rad(90), 0) -- volteada: cabeza arriba
 else
   container = Instance.new("Model")
   container.Name = "Hacha"
@@ -218,8 +218,31 @@ print(("Hacha creada: %d partes"):format(#parts))
 -- FIN CÓDIGO DEL USUARIO
 ------------------------------------------------------------------
 
--- Estela de corte en la hoja (para la animación)
+-- Referencia a la herramienta
 local hachaTool = StarterPack:WaitForChild("Hacha", 10)
+
+-- Hitbox invisible en la hoja para detectar el TOQUE al árbol (estilo 99 Noches)
+if hachaTool then
+  local hojaRef = hachaTool:FindFirstChild("Hoja10")
+  if hojaRef then
+    local hitbox = Instance.new("Part")
+    hitbox.Name = "HitboxHacha"
+    hitbox.Size = Vector3.new(3, 3, 3)
+    hitbox.Transparency = 1
+    hitbox.CanCollide = false
+    hitbox.Massless = true
+    hitbox.TopSurface = Enum.SurfaceType.Smooth
+    hitbox.BottomSurface = Enum.SurfaceType.Smooth
+    hitbox.CFrame = hojaRef.CFrame
+    hitbox.Parent = hachaTool
+    local w = Instance.new("WeldConstraint")
+    w.Part0 = hojaRef
+    w.Part1 = hitbox
+    w.Parent = hitbox
+  end
+end
+
+-- Estela de corte en la hoja (para la animación)
 if hachaTool then
   local hoja = hachaTool:FindFirstChild("Hoja10")
   if hoja then
@@ -254,12 +277,11 @@ end
 ------------------------------------------------------------------
 -- SISTEMA DE CORTE: árboles de cristal → diamantes
 ------------------------------------------------------------------
-local BOSQUE = Workspace:WaitForChild("Bosque", 30)
+-- (El Bosque se busca dinámico: el script arranca en el lobby antes de que exista)
 local HP_POR_ARBOL = 3        -- golpes para soltar diamantes
 local DIAMANTES_POR_CORTE = 2 -- cuántos caen
 local DESCANSO_ARBOL = 30     -- segundos antes de dar más diamantes
 local COOLDOWN_GOLPE = 0.8    -- segundos entre golpes
-local RANGO_CORTE = 14        -- studs de alcance
 
 local ultimoGolpe = {}
 
@@ -374,42 +396,30 @@ local function chispasGolpe(pos)
   Debris:AddItem(f, 1.5)
 end
 
-local function arbolCercano(player)
-  local char = player.Character
-  local hrp = char and char:FindFirstChild("HumanoidRootPart")
-  if not hrp or not BOSQUE then return nil end
-  local mejor, mejorDist = nil, RANGO_CORTE
-  for _, obj in ipairs(BOSQUE:GetChildren()) do
-    if obj:IsA("Model") and obj.Name:match("^ArbolCristal") then
-      local ok, pp = pcall(function()
-        return obj:GetPivot().Position
-      end)
-      if ok then
-        local d = (pp - hrp.Position).Magnitude
-        if d < mejorDist then
-          mejor, mejorDist = obj, d
-        end
-      end
-    end
-  end
-  return mejor
+local function esArbolCristal(modelo)
+  if not modelo or not modelo:IsA("Model") then return false end
+  if not modelo.Name:match("^ArbolCristal") then return false end
+  return true
 end
 
-local function golpear(player)
-  local ahora = os.clock()
-  if ultimoGolpe[player] and ahora - ultimoGolpe[player] < COOLDOWN_GOLPE then
-    return
-  end
-  ultimoGolpe[player] = ahora
+local ventanaGolpe = {} -- jugador -> momento del último hachazo (para validar el toque)
 
+local function aplicarGolpe(player, arbol)
+  if not esArbolCristal(arbol) then return end
+
+  -- el jugador debe tener el hacha en la mano
   local char = player.Character
-  if not char or not char:FindFirstChild("Hacha") then
-    return -- sin hacha en la mano no hay golpe
-  end
+  if not char or not char:FindFirstChild("Hacha") then return end
 
-  local arbol = arbolCercano(player)
-  if not arbol then
-    return -- abanicó al aire
+  -- debe estar cerca del árbol (sanidad, el toque ya lo implica)
+  local hrp = char:FindFirstChild("HumanoidRootPart")
+  if hrp then
+    local ok, pp = pcall(function()
+      return arbol:GetPivot().Position
+    end)
+    if ok and (pp - hrp.Position).Magnitude > 25 then
+      return
+    end
   end
 
   if os.clock() < (arbol:GetAttribute("HachaDescanso") or 0) then
@@ -447,9 +457,29 @@ local function golpear(player)
   end
 end
 
-RE.OnServerEvent:Connect(function(player, accion)
+RE.OnServerEvent:Connect(function(player, accion, dato)
   if accion == "Golpear" then
-    golpear(player)
+    -- el cliente inició un hachazo: abre ventana de 0.8s para validar toques
+    local char = player.Character
+    if char and char:FindFirstChild("Hacha") then
+      ventanaGolpe[player] = os.clock()
+    end
+  elseif accion == "TocoArbol" then
+    -- el filo TOCÓ un árbol (estilo 99 Noches): validar y aplicar
+    local arbol = dato
+    if typeof(arbol) ~= "Instance" or not esArbolCristal(arbol) then
+      return
+    end
+    local v = ventanaGolpe[player]
+    if not v or os.clock() - v > 0.8 then
+      return -- fuera de la ventana del hachazo
+    end
+    local ahora = os.clock()
+    if ultimoGolpe[player] and ahora - ultimoGolpe[player] < COOLDOWN_GOLPE then
+      return
+    end
+    ultimoGolpe[player] = ahora
+    aplicarGolpe(player, arbol)
   end
 end)
 
