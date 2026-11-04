@@ -285,6 +285,58 @@ local COOLDOWN_GOLPE = 0.8    -- segundos entre golpes
 
 local ultimoGolpe = {}
 
+-- Forma de la gema: un CRISTAL PRISMA como los del árbol de cristal
+-- (alargado, con punta y núcleo brillante, celeste hielo), NO un cubo
+-- de neón: el dueño dijo que el del suelo "no parecía como el del
+-- árbol". La comparten el diamante del suelo y el que se lleva en la
+-- mano: lo que recoges se ve igual que lo que cargas.
+local COL_GEMA = Color3.fromRGB(165, 228, 255)
+
+local function piezaGema(nombre, size, color, material)
+  local p = Instance.new("Part")
+  p.Name = nombre
+  p.Size = size
+  p.Color = color
+  p.Material = material
+  p.TopSurface = Enum.SurfaceType.Smooth
+  p.BottomSurface = Enum.SurfaceType.Smooth
+  p.CanCollide = false
+  p.CanQuery = false
+  p.CanTouch = false
+  p.Massless = true
+  return p
+end
+
+-- Viste una raíz (el Handle de la Tool o el ancla del suelo) con las
+-- piezas del cristal, soldadas a ella. Devuelve la pieza principal.
+local function vestirGema(raiz, padre, escala)
+  local e = escala or 1
+  local function poner(pieza, offset)
+    pieza.CFrame = raiz.CFrame * offset
+    pieza.Parent = padre
+    local w = Instance.new("WeldConstraint")
+    w.Part0 = raiz
+    w.Part1 = pieza
+    w.Parent = pieza
+    return pieza
+  end
+  local inclin = CFrame.Angles(math.rad(7), math.rad(24), math.rad(-5))
+  local gema = poner(
+    piezaGema("Gema", Vector3.new(0.62, 1.3, 0.62) * e, COL_GEMA, Enum.Material.Glass),
+    CFrame.new(0, 0.4 * e, 0) * inclin
+  )
+  gema.Transparency = 0.18
+  poner(
+    piezaGema("Punta", Vector3.new(0.4, 0.5, 0.4) * e, COL_GEMA, Enum.Material.Glass),
+    CFrame.new(0, 1.22 * e, 0) * CFrame.Angles(math.rad(45), math.rad(45), 0)
+  ).Transparency = 0.18
+  poner(
+    piezaGema("Nucleo", Vector3.new(0.26, 1.0, 0.26) * e, Color3.fromRGB(215, 246, 255), Enum.Material.Neon),
+    CFrame.new(0, 0.4 * e, 0) * inclin
+  )
+  return gema
+end
+
 local function crearDiamanteTool()
   local tool = Instance.new("Tool")
   tool.Name = "Diamante"
@@ -292,57 +344,69 @@ local function crearDiamanteTool()
   tool.CanBeDropped = true
   local h = Instance.new("Part")
   h.Name = "Handle"
-  h.Size = Vector3.new(0.9, 0.9, 0.9)
-  h.Color = Color3.fromRGB(130, 225, 255)
-  h.Material = Enum.Material.Neon
-  h.TopSurface = Enum.SurfaceType.Smooth
-  h.BottomSurface = Enum.SurfaceType.Smooth
+  h.Size = Vector3.new(0.4, 0.4, 0.4)
+  h.Transparency = 1
+  h.CanCollide = false
+  h.CanQuery = false
+  h.CanTouch = false
+  h.Massless = true
   h.Parent = tool
+  vestirGema(h, tool, 0.85) -- el mismo cristal del suelo, en la mano
+  tool.Grip = CFrame.new(0, -0.3, 0)
   return tool
 end
 
 local function soltarDiamante(pos)
   local m = Instance.new("Model")
   m.Name = "DiamanteSuelo"
-  local p = Instance.new("Part")
-  p.Name = "Gema"
-  p.Size = Vector3.new(1.1, 1.1, 1.1)
-  p.Color = Color3.fromRGB(130, 225, 255)
-  p.Material = Enum.Material.Neon
-  p.TopSurface = Enum.SurfaceType.Smooth
-  p.BottomSurface = Enum.SurfaceType.Smooth
-  p.CFrame = CFrame.new(pos) * CFrame.Angles(math.rad(45), math.rad(45), 0)
-  p.Anchored = true
-  p.CanCollide = false
-  p.CanQuery = false
-  p.Parent = m
+  -- ancla invisible: lleva el toque de recogida y el giro/flote; las
+  -- piezas del cristal van soldadas a ella y la siguen
+  local raiz = Instance.new("Part")
+  raiz.Name = "Toque"
+  raiz.Size = Vector3.new(1.8, 1.8, 1.8)
+  raiz.Transparency = 1
+  raiz.CFrame = CFrame.new(pos + Vector3.new(0, 0.9, 0))
+  raiz.Anchored = true
+  raiz.CanCollide = false
+  raiz.CanQuery = false
+  raiz.Parent = m
+  local gema = vestirGema(raiz, m, 1)
   local luz = Instance.new("PointLight")
-  luz.Color = Color3.fromRGB(130, 225, 255)
+  luz.Color = COL_GEMA
   luz.Range = 9
   luz.Brightness = 1.5
-  luz.Parent = p
-  -- destello al aparecer
+  luz.Parent = gema
+  -- destello al aparecer (la ráfaga es Emit(12): "BurstAmount" NO
+  -- existe en ParticleEmitter y asignarlo mataba esta función)
   local chispas = Instance.new("ParticleEmitter")
   chispas.Color = ColorSequence.new(Color3.fromRGB(160, 230, 255))
   chispas.Size = NumberSequence.new(0.5, 0)
   chispas.Speed = NumberRange.new(4, 8)
   chispas.Lifetime = NumberRange.new(0.4, 0.8)
   chispas.Rate = 0
-  -- SIN "BurstAmount": esa propiedad NO existe en ParticleEmitter y
-  -- asignarla lanzaba un error que mataba soltarDiamante ANTES de poner
-  -- el diamante en Workspace (nunca aparecía en el suelo). La ráfaga se
-  -- hace con Emit(12), que ya se llama justo debajo.
-  chispas.Parent = p
+  chispas.Parent = gema
   task.delay(0.1, function()
     pcall(function()
       chispas:Emit(12)
     end)
   end)
-  m.PrimaryPart = p
+  m.PrimaryPart = raiz
   m.Parent = Workspace
+  -- idle: el cristal gira despacio y flota sobre el suelo
+  local base = raiz.CFrame
+  task.spawn(function()
+    local t0 = os.clock()
+    while m.Parent do
+      local t = os.clock() - t0
+      raiz.CFrame = base
+        * CFrame.new(0, math.sin(t * 2) * 0.1, 0)
+        * CFrame.Angles(0, t * 0.8, 0)
+      task.wait()
+    end
+  end)
 
   local recogido = false
-  p.Touched:Connect(function(hit)
+  raiz.Touched:Connect(function(hit)
     if recogido then return end
     local modelo = hit and hit:FindFirstAncestorOfClass("Model")
     local plr = modelo and Players:GetPlayerFromCharacter(modelo)
@@ -405,6 +469,15 @@ local function derribarArbol(arbol)
   end)
   if not ok then return end
   arbol:SetAttribute("HachaCaido", true)
+  -- aspecto original de cada pieza: al final de la caída el árbol se
+  -- DESVANECE (el dueño no entendía que se quedara tirado en el suelo)
+  -- y la restauración de los 60 s lo devuelve tal cual era
+  local originales = {}
+  for _, d in ipairs(arbol:GetDescendants()) do
+    if d:IsA("BasePart") then
+      originales[d] = { t = d.Transparency, c = d.CanCollide }
+    end
+  end
   -- La restauración se programa PRIMERO, antes de animar la caída:
   -- antes iba DESPUÉS del bucle de caída, así que si la animación
   -- petaba a mitad (esto corre en task.spawn, muere en silencio), la
@@ -414,6 +487,13 @@ local function derribarArbol(arbol)
   task.delay(60, function()
     pcall(function()
       arbol:PivotTo(pivote)
+      -- reaparece COMPLETO: se le devuelve su aspecto y colisión
+      for pieza, orig in pairs(originales) do
+        if pieza.Parent then
+          pieza.Transparency = orig.t
+          pieza.CanCollide = orig.c
+        end
+      end
       arbol:SetAttribute("HachaCaido", false)
       arbol:SetAttribute("HachaHP", HP_POR_ARBOL)
       arbol:SetAttribute("HachaDescanso", 0)
@@ -438,6 +518,24 @@ local function derribarArbol(arbol)
   pcall(function()
     chispasGolpe(pivote.Position + Vector3.new(0, 1, 0))
   end)
+  -- y DESAPARECE: tras un respiro tirado en el suelo se desvanece y
+  -- deja de chocar; reaparece ya de pie con la restauración de los
+  -- 60 s (HachaCaido sigue true: no se puede golpear un árbol caído)
+  task.wait(1.2)
+  for i = 1, 6 do
+    local f = i / 6
+    for pieza, orig in pairs(originales) do
+      if pieza.Parent and orig.t < 1 then
+        pieza.Transparency = orig.t + (1 - orig.t) * f
+      end
+    end
+    task.wait(0.06)
+  end
+  for pieza in pairs(originales) do
+    if pieza.Parent then
+      pieza.CanCollide = false
+    end
+  end
 end
 
 local function sacudirArbol(arbol)

@@ -55,28 +55,53 @@ local sacoPoc = {}
 local SACO_POC_MAX = 5
 
 --// Posiciones ----------------------------------------------------------------
-local function posCaldero()
-  local cal = Workspace:FindFirstChild("Cauldron")
-  if cal then
-    local ancla = cal:FindFirstChild("CalderoAncla")
-    if ancla and ancla:IsA("BasePart") then
-      return ancla.Position
-    end
-    local ok, piv = pcall(function() return cal:GetPivot() end)
-    if ok then
-      return piv.Position
+-- OJO CON LOS CLONES: en Workspace conviven el caldero MOLDE y un CLON
+-- por partida (desplazado +3000 en X por sesión). Antes posCaldero()
+-- devolvía el PRIMERO (el molde) y cercaCaldero() daba siempre falso
+-- dentro de la partida: no dejaba soltar moras/diamantes en el caldero,
+-- ni fabricar, ni que el diamante saliera en la lista de pociones.
+-- Ahora se usa el caldero MÁS CERCANO al jugador.
+local function posCaldero(jugador)
+  local hrp = jugador and jugador.Character
+    and jugador.Character:FindFirstChild("HumanoidRootPart")
+  local mejorPos, mejorDist = nil, math.huge
+  for _, cal in ipairs(Workspace:GetChildren()) do
+    if cal:IsA("Model") and cal.Name == "Cauldron" then
+      local pos = nil
+      local ancla = cal:FindFirstChild("CalderoAncla")
+      if ancla and ancla:IsA("BasePart") then
+        pos = ancla.Position
+      else
+        local ok, piv = pcall(function() return cal:GetPivot() end)
+        if ok then
+          pos = piv.Position
+        end
+      end
+      if pos then
+        local d = hrp and (pos - hrp.Position).Magnitude or 0
+        if d < mejorDist then
+          mejorPos, mejorDist = pos, d
+        end
+      end
     end
   end
-  return Vector3.new(-15.7, 2, 4207)
+  return mejorPos or Vector3.new(-15.7, 2, 4207)
 end
 
-local function posFogata()
+local function posFogata(jugador)
+  -- igual: la fogata más cercana al jugador (la de SU partida)
+  local hrp = jugador and jugador.Character
+    and jugador.Character:FindFirstChild("HumanoidRootPart")
+  local mejorPos, mejorDist = nil, math.huge
   for _, d in ipairs(Workspace:GetDescendants()) do
-    if d:GetAttribute("Rol") == "FireAnchor" then
-      return d.Position - Vector3.new(0, 11, 0)
+    if d:IsA("BasePart") and d:GetAttribute("Rol") == "FireAnchor" then
+      local dist = hrp and (d.Position - hrp.Position).Magnitude or 0
+      if dist < mejorDist then
+        mejorPos, mejorDist = d.Position - Vector3.new(0, 11, 0), dist
+      end
     end
   end
-  return Vector3.new(0, 2, 4200)
+  return mejorPos or Vector3.new(0, 2, 4200)
 end
 
 local function cercaCaldero(jugador)
@@ -85,7 +110,7 @@ local function cercaCaldero(jugador)
   if not hrp then
     return false
   end
-  return (hrp.Position - posCaldero()).Magnitude <= 18
+  return (hrp.Position - posCaldero(jugador)).Magnitude <= 18
 end
 
 --// Estado --------------------------------------------------------------------
@@ -206,8 +231,8 @@ local function crearPocion(id)
 end
 
 --// Erupción de la Llama (visual; lo funcional vive en partida) -----------------
-local function erupcionLlama()
-  local pos = posFogata()
+local function erupcionLlama(jugador)
+  local pos = posFogata(jugador)
   local ancla = Instance.new("Part")
   ancla.Name = "ErupcionPocion"
   ancla.Anchored = true
@@ -262,7 +287,7 @@ local function efectoPocion(jugador, id)
   elseif id == "Llama" then
     -- El +25 funcional a la llama vive en partida (regla dura: no tocarlo).
     -- Se entrega como erupción visual + aura + calor.
-    erupcionLlama()
+    erupcionLlama(jugador)
     local hrp = ch:FindFirstChild("HumanoidRootPart")
     if hrp then
       local f = Instance.new("Fire")
