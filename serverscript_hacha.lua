@@ -285,21 +285,30 @@ local COOLDOWN_GOLPE = 0.8    -- segundos entre golpes
 
 local ultimoGolpe = {}
 
--- Forma de la gema: un CRISTAL PRISMA como los del árbol de cristal
--- (alargado, con punta y núcleo brillante, celeste hielo), NO un cubo
--- de neón: el dueño dijo que el del suelo "no parecía como el del
--- árbol". La comparten el diamante del suelo y el que se lleva en la
--- mano: lo que recoges se ve igual que lo que cargas.
-local COL_GEMA = Color3.fromRGB(165, 228, 255)
+-- Forma de la gema: COPIA FIEL de las gemas del árbol de cristal
+-- (función crystal() tipo "gem" de serverscript_bosque.lua): 6 capas
+-- de bloques apilados con el perfil {0.42, 0.78, 1.0, 0.86, 0.55,
+-- 0.22}, girando 45° capa sí capa no, en Plastic con studs clásicos y
+-- paleta CUARZO del bosque (perla/gris), aclarando hacia blanco en
+-- capas alternas como hace shade(). Nada de neón ni cristal liso: el
+-- dueño dijo que el anterior "no parecía para nada como el del
+-- árbol". La comparten el diamante del suelo y el de la mano.
+local COL_GEMA = Color3.fromRGB(222, 220, 218) -- PEARL del bosque
 
-local function piezaGema(nombre, size, color, material)
+local function piezaGema(size, color, cf)
   local p = Instance.new("Part")
-  p.Name = nombre
+  p.Name = "Gem"
   p.Size = size
   p.Color = color
-  p.Material = material
-  p.TopSurface = Enum.SurfaceType.Smooth
-  p.BottomSurface = Enum.SurfaceType.Smooth
+  p.Material = Enum.Material.Plastic
+  p.CFrame = cf
+  -- superficies como las piezas solid() del árbol en modo clásico
+  p.TopSurface = Enum.SurfaceType.Studs
+  p.BottomSurface = Enum.SurfaceType.Inlet
+  p.LeftSurface = Enum.SurfaceType.Studs
+  p.RightSurface = Enum.SurfaceType.Studs
+  p.FrontSurface = Enum.SurfaceType.Studs
+  p.BackSurface = Enum.SurfaceType.Studs
   p.CanCollide = false
   p.CanQuery = false
   p.CanTouch = false
@@ -307,34 +316,35 @@ local function piezaGema(nombre, size, color, material)
   return p
 end
 
--- Viste una raíz (el Handle de la Tool o el ancla del suelo) con las
--- piezas del cristal, soldadas a ella. Devuelve la pieza principal.
+-- Viste una raíz (el Handle de la Tool o el ancla del suelo) con la
+-- gema escalonada del árbol, soldada a ella. Devuelve una capa media
+-- (para colgarle la luz y las chispas).
 local function vestirGema(raiz, padre, escala)
   local e = escala or 1
-  local function poner(pieza, offset)
-    pieza.CFrame = raiz.CFrame * offset
+  local H, W = 1.5 * e, 1.05 * e
+  local prof = { 0.42, 0.78, 1.0, 0.86, 0.55, 0.22 } -- el perfil del árbol
+  local n = #prof
+  local step = H / n
+  local giro = math.rad(24)
+  local capaMedia = nil
+  for i = 1, n do
+    local s = W * prof[i]
+    -- shade() del bosque: aclara hacia blanco en capas pares
+    local color = COL_GEMA:Lerp(Color3.new(1, 1, 1), (i % 2) * 0.07)
+    local cf = raiz.CFrame
+      * CFrame.new(0, -H / 2 + (i - 0.5) * step, 0)
+      * CFrame.Angles(0, giro + (i % 2) * math.pi / 4, 0)
+    local pieza = piezaGema(Vector3.new(s, step + 0.03, s), color, cf)
     pieza.Parent = padre
     local w = Instance.new("WeldConstraint")
     w.Part0 = raiz
     w.Part1 = pieza
     w.Parent = pieza
-    return pieza
+    if i == 3 then
+      capaMedia = pieza
+    end
   end
-  local inclin = CFrame.Angles(math.rad(7), math.rad(24), math.rad(-5))
-  local gema = poner(
-    piezaGema("Gema", Vector3.new(0.62, 1.3, 0.62) * e, COL_GEMA, Enum.Material.Glass),
-    CFrame.new(0, 0.4 * e, 0) * inclin
-  )
-  gema.Transparency = 0.18
-  poner(
-    piezaGema("Punta", Vector3.new(0.4, 0.5, 0.4) * e, COL_GEMA, Enum.Material.Glass),
-    CFrame.new(0, 1.22 * e, 0) * CFrame.Angles(math.rad(45), math.rad(45), 0)
-  ).Transparency = 0.18
-  poner(
-    piezaGema("Nucleo", Vector3.new(0.26, 1.0, 0.26) * e, Color3.fromRGB(215, 246, 255), Enum.Material.Neon),
-    CFrame.new(0, 0.4 * e, 0) * inclin
-  )
-  return gema
+  return capaMedia
 end
 
 local function crearDiamanteTool()
@@ -379,7 +389,7 @@ local function soltarDiamante(pos)
   -- destello al aparecer (la ráfaga es Emit(12): "BurstAmount" NO
   -- existe en ParticleEmitter y asignarlo mataba esta función)
   local chispas = Instance.new("ParticleEmitter")
-  chispas.Color = ColorSequence.new(Color3.fromRGB(160, 230, 255))
+  chispas.Color = ColorSequence.new(Color3.fromRGB(240, 235, 220))
   chispas.Size = NumberSequence.new(0.5, 0)
   chispas.Speed = NumberRange.new(4, 8)
   chispas.Lifetime = NumberRange.new(0.4, 0.8)
@@ -531,9 +541,12 @@ local function derribarArbol(arbol)
     end
     task.wait(0.06)
   end
-  for pieza in pairs(originales) do
+  for pieza, orig in pairs(originales) do
     if pieza.Parent then
       pieza.CanCollide = false
+      if orig.t < 1 then
+        pieza.Transparency = 1 -- invisible del todo, sin dudas
+      end
     end
   end
 end
@@ -712,5 +725,5 @@ RE.OnServerEvent:Connect(function(player, accion, dato)
   end
 end)
 
-print("[Hacha] Servidor cargado")
+print("[Hacha] v3 cargada: gemas como las del árbol + el árbol desaparece al caer")
 -- FIN SERVER HACHA
