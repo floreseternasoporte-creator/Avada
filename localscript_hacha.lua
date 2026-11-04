@@ -272,17 +272,23 @@ task.spawn(function()
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if char and char:FindFirstChild("Hacha") and hrp then
-      local bosque = Workspace:FindFirstChild("BosqueProhibido")
-      if bosque then
-        for _, obj in ipairs(bosque:GetChildren()) do
-          if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$")
-            and not obj:GetAttribute("HachaCaido") then
-            local ok, pp = pcall(function()
-              return obj:GetPivot().Position
-            end)
-            if ok and (pp - hrp.Position).Magnitude < 15 then
-              visible = true
-              break
+      -- OJO: hay VARIOS "BosqueProhibido" (el molde + el clon de cada
+      -- partida en curso, desplazado +3000 en X). Mirar solo el primero
+      -- hacía que el botón Cortar no apareciera nunca dentro de la
+      -- partida; ahora se miran TODOS y vale el árbol más cercano.
+      for _, bosque in ipairs(Workspace:GetChildren()) do
+        if visible then break end
+        if bosque:IsA("Model") and bosque.Name == "BosqueProhibido" then
+          for _, obj in ipairs(bosque:GetChildren()) do
+            if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$")
+              and not obj:GetAttribute("HachaCaido") then
+              local ok, pp = pcall(function()
+                return obj:GetPivot().Position
+              end)
+              if ok and (pp - hrp.Position).Magnitude < 15 then
+                visible = true
+                break
+              end
             end
           end
         end

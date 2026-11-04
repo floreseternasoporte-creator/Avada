@@ -366,6 +366,30 @@ local function soltarDiamante(pos)
   Debris:AddItem(m, 90)
 end
 
+-- Chispas/polvo de un golpe (definida ANTES de derribarArbol: antes estaba
+-- debajo y derribarArbol la llamaba como global inexistente, así que el
+-- polvo al caer el árbol fallaba en silencio dentro de su pcall)
+local function chispasGolpe(pos)
+  local f = Instance.new("Part")
+  f.Size = Vector3.new(0.5, 0.5, 0.5)
+  f.CFrame = CFrame.new(pos)
+  f.Anchored = true
+  f.CanCollide = false
+  f.CanQuery = false
+  f.Transparency = 1
+  f.Parent = Workspace
+  local pe = Instance.new("ParticleEmitter")
+  pe.Color = ColorSequence.new(Color3.fromRGB(150, 220, 255), Color3.fromRGB(255, 255, 255))
+  pe.Size = NumberSequence.new(0.4, 0)
+  pe.Speed = NumberRange.new(6, 12)
+  pe.Lifetime = NumberRange.new(0.3, 0.6)
+  pe.Rate = 0
+  pe.BurstAmount = 10
+  pe.Parent = f
+  pe:Emit(10)
+  Debris:AddItem(f, 1.5)
+end
+
 -- Derriba el árbol al suelo (como en 99 Noches) y lo restaura después
 local function derribarArbol(arbol)
   local ok, pivote = pcall(function()
@@ -423,27 +447,6 @@ local function sacudirArbol(arbol)
   end)
 end
 
-local function chispasGolpe(pos)
-  local f = Instance.new("Part")
-  f.Size = Vector3.new(0.5, 0.5, 0.5)
-  f.CFrame = CFrame.new(pos)
-  f.Anchored = true
-  f.CanCollide = false
-  f.CanQuery = false
-  f.Transparency = 1
-  f.Parent = Workspace
-  local pe = Instance.new("ParticleEmitter")
-  pe.Color = ColorSequence.new(Color3.fromRGB(150, 220, 255), Color3.fromRGB(255, 255, 255))
-  pe.Size = NumberSequence.new(0.4, 0)
-  pe.Speed = NumberRange.new(6, 12)
-  pe.Lifetime = NumberRange.new(0.3, 0.6)
-  pe.Rate = 0
-  pe.BurstAmount = 10
-  pe.Parent = f
-  pe:Emit(10)
-  Debris:AddItem(f, 1.5)
-end
-
 local function esArbolCristal(modelo)
   if not modelo or not modelo:IsA("Model") then return false end
   if not modelo.Name:match("^ArbolCristal") then return false end
@@ -451,22 +454,32 @@ local function esArbolCristal(modelo)
 end
 
 -- Busca el árbol de cristal más cercano (el bosque se llama BosqueProhibido)
+-- CAUSA DEL FALLO (arreglado): en Workspace hay VARIOS modelos llamados
+-- "BosqueProhibido" a la vez: el bosque MOLDE original y, por cada partida
+-- en curso, un CLON desplazado +3000 en X por slot (así lo crea PARTIDA).
+-- Antes solo se miraba el PRIMERO (FindFirstChild = el molde), cuyos
+-- árboles quedan a miles de studs del jugador que está en su partida:
+-- el golpe nunca encontraba un árbol a menos de 13 studs, así que no se
+-- cortaba nada, no se derribaba nada y no caía ningún diamante.
+-- Ahora se buscan los árboles en TODOS los bosques y gana el más cercano.
 local function buscarArbolCercano(player, rango)
   local char = player.Character
   local hrp = char and char:FindFirstChild("HumanoidRootPart")
   if not hrp then return nil end
-  local bosque = Workspace:FindFirstChild("BosqueProhibido")
-  if not bosque then return nil end
   local mejor, mejorDist = nil, rango or 14
-  for _, obj in ipairs(bosque:GetChildren()) do
-    if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$") then
-      local ok, pp = pcall(function()
-        return obj:GetPivot().Position
-      end)
-      if ok then
-        local d = (pp - hrp.Position).Magnitude
-        if d < mejorDist then
-          mejor, mejorDist = obj, d
+  for _, bosque in ipairs(Workspace:GetChildren()) do
+    if bosque:IsA("Model") and bosque.Name == "BosqueProhibido" then
+      for _, obj in ipairs(bosque:GetChildren()) do
+        if obj:IsA("Model") and obj.Name:match("^ArbolCristal%d*$") then
+          local ok, pp = pcall(function()
+            return obj:GetPivot().Position
+          end)
+          if ok then
+            local d = (pp - hrp.Position).Magnitude
+            if d < mejorDist then
+              mejor, mejorDist = obj, d
+            end
+          end
         end
       end
     end
