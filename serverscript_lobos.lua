@@ -23,6 +23,18 @@
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local RS = game:GetService("ReplicatedStorage")
+
+-- Remoto para los sonidos del lobo: los reproduce el CLIENTE
+-- (localscript_lobos.lua). La versión anterior creaba el Sound en el
+-- servidor y en el juego del dueño NO se oía; en cliente es la vía
+-- fiable (la misma que usan los sonidos de los poderes).
+local RE_LOBOS = RS:FindFirstChild("LobosEvent")
+if not RE_LOBOS then
+	RE_LOBOS = Instance.new("RemoteEvent")
+	RE_LOBOS.Name = "LobosEvent"
+	RE_LOBOS.Parent = RS
+end
 
 --// CONFIGURACIÓN ---------------------------------------------------------
 local CONFIG = {
@@ -717,22 +729,12 @@ local function crearLobo(posicionSuelo)
 		estado = "Ataque"
 		proximoAtaque = os.clock() + CONFIG.ENFRIAMIENTO_ATAQUE
 
-		-- Sonido de ataque pedido por el dueño (9120790555): suena al
-		-- EMPEZAR la mordida, cuando el lobo se prepara y se lanza, en
-		-- 3D desde el propio lobo: se oye venir antes del daño
-		local snd = Instance.new("Sound")
-		snd.SoundId = "rbxassetid://9120790555"
-		snd.Volume = 0.9
-		snd.RollOffMaxDistance = 60
-		snd.Parent = raiz
-		snd:Play()
-		snd.Ended:Connect(function()
-			snd:Destroy()
-		end)
-		task.delay(6, function()
-			if snd.Parent then
-				snd:Destroy()
-			end
+		-- Sonido de ataque pedido por el dueño (9120790555): se avisa a
+		-- los clientes al EMPEZAR la mordida, cuando el lobo se prepara
+		-- y se lanza (antes del daño), y cada cliente lo reproduce en
+		-- 3D en la posición del lobo (localscript_lobos.lua)
+		pcall(function()
+			RE_LOBOS:FireAllClients("Ataque", raiz.Position)
 		end)
 
 		-- 1) Preparación: se agacha y abre la boca de par en par
@@ -958,5 +960,5 @@ bfLobosAvada.OnInvoke = function(accion, a, b)
 	return nil
 end
 
-print("[Avada] LOBOS listos: el lobo sombrio espera la noche")
+print("[Avada] LOBOS v2 listos: sonido de ataque por cliente (9120790555)")
 -- FIN LOBOS

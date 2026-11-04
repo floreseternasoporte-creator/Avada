@@ -227,7 +227,42 @@ task.spawn(function()
           end
         end
       end
-      soltarBtn.Visible = cercaCal and (ultimoEstado.manoTipo == "Hongo" or (ultimoEstado.hongosSaco or 0) > 0)
+      -- SOLTAR sale con CUALQUIER cosa guardable, no solo hongos:
+      -- antes el botón solo aparecía con hongos y el dueño no podía
+      -- soltar los diamantes (ni las moras) en el caldero. Vale lo que
+      -- lleves según partida (mano o saco) Y las Tools sueltas de
+      -- Diamante/Mora (los diamantes del hacha, que partida no
+      -- registra pero pociones sí guarda al pulsar el mismo botón).
+      local llevaSuelto = false
+      if ch2 then
+        local function esSuelto(t)
+          return t:IsA("Tool") and (t.Name == "Diamante" or t.Name == "Mora")
+        end
+        for _, c in ipairs(ch2:GetChildren()) do
+          if esSuelto(c) then
+            llevaSuelto = true
+            break
+          end
+        end
+        if not llevaSuelto then
+          local bp = player:FindFirstChildOfClass("Backpack")
+          if bp then
+            for _, c in ipairs(bp:GetChildren()) do
+              if esSuelto(c) then
+                llevaSuelto = true
+                break
+              end
+            end
+          end
+        end
+      end
+      soltarBtn.Visible = cercaCal and (
+        ultimoEstado.manoTipo == "Hongo"
+        or ultimoEstado.manoTipo == "Mora"
+        or ultimoEstado.manoTipo == "Diamante"
+        or (ultimoEstado.hongosSaco or 0) > 0
+        or llevaSuelto
+      )
     end
   end
 end)
