@@ -717,6 +717,24 @@ local function crearLobo(posicionSuelo)
 		estado = "Ataque"
 		proximoAtaque = os.clock() + CONFIG.ENFRIAMIENTO_ATAQUE
 
+		-- Sonido de ataque pedido por el dueño (9120790555): suena al
+		-- EMPEZAR la mordida, cuando el lobo se prepara y se lanza, en
+		-- 3D desde el propio lobo: se oye venir antes del daño
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxassetid://9120790555"
+		snd.Volume = 0.9
+		snd.RollOffMaxDistance = 60
+		snd.Parent = raiz
+		snd:Play()
+		snd.Ended:Connect(function()
+			snd:Destroy()
+		end)
+		task.delay(6, function()
+			if snd.Parent then
+				snd:Destroy()
+			end
+		end)
+
 		-- 1) Preparación: se agacha y abre la boca de par en par
 		hum.WalkSpeed = 3
 		hum:MoveTo(hrp.Position)
