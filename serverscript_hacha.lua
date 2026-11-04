@@ -328,7 +328,10 @@ local function soltarDiamante(pos)
   chispas.Speed = NumberRange.new(4, 8)
   chispas.Lifetime = NumberRange.new(0.4, 0.8)
   chispas.Rate = 0
-  chispas.BurstAmount = 12
+  -- SIN "BurstAmount": esa propiedad NO existe en ParticleEmitter y
+  -- asignarla lanzaba un error que mataba soltarDiamante ANTES de poner
+  -- el diamante en Workspace (nunca aparecía en el suelo). La ráfaga se
+  -- hace con Emit(12), que ya se llama justo debajo.
   chispas.Parent = p
   task.delay(0.1, function()
     pcall(function()
@@ -384,7 +387,12 @@ local function chispasGolpe(pos)
   pe.Speed = NumberRange.new(6, 12)
   pe.Lifetime = NumberRange.new(0.3, 0.6)
   pe.Rate = 0
-  pe.BurstAmount = 10
+  -- SIN "BurstAmount": esa propiedad NO existe en ParticleEmitter y
+  -- asignarla lanzaba un error. Como aplicarGolpe llama a chispasGolpe
+  -- SIN pcall, ese error mataba el golpe entero: el HP bajaba y el
+  -- árbol se sacudía, pero la ejecución moría antes de la rama del
+  -- derribo -> el árbol nunca se destrozaba ni soltaba diamantes.
+  -- La ráfaga real se hace con Emit(10), justo debajo.
   pe.Parent = f
   pe:Emit(10)
   Debris:AddItem(f, 1.5)
@@ -397,6 +405,20 @@ local function derribarArbol(arbol)
   end)
   if not ok then return end
   arbol:SetAttribute("HachaCaido", true)
+  -- La restauración se programa PRIMERO, antes de animar la caída:
+  -- antes iba DESPUÉS del bucle de caída, así que si la animación
+  -- petaba a mitad (esto corre en task.spawn, muere en silencio), la
+  -- restauración nunca se programaba y el árbol se quedaba con
+  -- HachaCaido=true para siempre, intocable. Ahora pase lo que pase
+  -- se levanta solo a los 60 s.
+  task.delay(60, function()
+    pcall(function()
+      arbol:PivotTo(pivote)
+      arbol:SetAttribute("HachaCaido", false)
+      arbol:SetAttribute("HachaHP", HP_POR_ARBOL)
+      arbol:SetAttribute("HachaDescanso", 0)
+    end)
+  end)
   -- dirección aleatoria de caída
   local ang = math.random() * math.pi * 2
   local eje = Vector3.new(math.cos(ang), 0, math.sin(ang))
@@ -415,15 +437,6 @@ local function derribarArbol(arbol)
   -- polvo al impactar el suelo
   pcall(function()
     chispasGolpe(pivote.Position + Vector3.new(0, 1, 0))
-  end)
-  -- el árbol se levanta de nuevo después de 60s
-  task.delay(60, function()
-    pcall(function()
-      arbol:PivotTo(pivote)
-    end)
-    arbol:SetAttribute("HachaCaido", false)
-    arbol:SetAttribute("HachaHP", HP_POR_ARBOL)
-    arbol:SetAttribute("HachaDescanso", 0)
   end)
 end
 
@@ -518,15 +531,25 @@ local function aplicarGolpe(player, arbol)
   hp -= 1
   arbol:SetAttribute("HachaHP", hp)
 
-  -- efectos del golpe
-  task.spawn(sacudirArbol, arbol)
+  -- efectos del golpe: la sacudida solo en golpes NO mortales. En el
+  -- golpe que derriba, sacudir y derribar se lanzaban a la vez y
+  -- peleaban por el pivote: la sacudida restaura el pivote recto a los
+  -- ~0,4 s (cortaba la caída a mitad) y el derribo capturaba su pivote
+  -- con el árbol ya inclinado por la sacudida, dejando torcida la
+  -- restauración de los 60 s.
+  if hp > 0 then
+    task.spawn(sacudirArbol, arbol)
+  end
   local ok, pp = pcall(function()
     return arbol:GetPivot().Position
   end)
   local posGolpe = nil
   if ok then
     posGolpe = pp + Vector3.new(0, 3, 0)
-    chispasGolpe(posGolpe)
+    -- Las chispas van en pcall: un efecto visual JAMÁS debe poder matar
+    -- el golpe (así murió esta función con el BurstAmount: la llamada
+    -- sin proteger tumbaba aplicarGolpe antes de la rama del derribo)
+    pcall(chispasGolpe, posGolpe)
   end
 
   -- avisa al cliente para la animación de IMPACTO (retroceso + onda + contador)
