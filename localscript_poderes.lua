@@ -20,7 +20,16 @@ local RunService = game:GetService("RunService")
 local PromptService = game:GetService("ProximityPromptService")
 
 local player = Players.LocalPlayer
-local remote = RS:WaitForChild("PoderesEvent")
+-- Espera al remoto SIN colgarse en silencio (arreglo): antes era un
+-- WaitForChild sin timeout; si el Script de poderes del servidor no
+-- estaba puesto o tardaba, este cliente se quedaba esperando para
+-- siempre en esta línea, sin GUI y sin ningún error, y la maga no
+-- hablaba ni daba la lista. Ahora avisa en el Output y sigue esperando.
+local remote = RS:WaitForChild("PoderesEvent", 15)
+while not remote do
+	warn("[Poderes] No llega PoderesEvent: falta el Script serverscript_poderes.lua en ServerScriptService. Sigo esperando...")
+	remote = RS:WaitForChild("PoderesEvent", 15)
+end
 local camera = workspace.CurrentCamera
 
 -- recargas (deben coincidir con las del servidor)
@@ -502,31 +511,65 @@ end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 
 --// ============ HABLAR CON LA MAGA ============
+-- ARREGLO: la charla entera va protegida con pcall y la limpieza se hace
+-- SIEMPRE al salir. Antes, cualquier error a mitad de la conversación
+-- (diálogo, panel, lo que fuera) dejaba busy=true y, peor, TODOS los
+-- ProximityPrompt del juego apagados (PromptService.Enabled=false) para
+-- el resto de la sesión: la maga se quedaba muda y ya no salía ni el
+-- botón Hablar ni la lista de poderes, sin ningún error visible.
 local busy = false
+local ultimoTalk = 0
+
+-- decir una frase sin que un fallo del diálogo pueda tumbar la charla:
+-- la lista de poderes tiene que abrir igual
+local function saySeguro(texto)
+	pcall(say, texto)
+end
+
 local function talk()
 	if busy then
 		return
 	end
+	local now = os.clock()
+	if now - ultimoTalk < 1 then
+		return -- doble disparo (servidor + prompt local): se ignora
+	end
+	ultimoTalk = now
 	busy = true
 	PromptService.Enabled = false
-	showDialog(true)
-	say("Hola, hechicero. Aquí te dejo la lista de los poderes disponibles para ti.")
-	task.wait(0.7)
-	openPanel()
-	local reason, power = panelClosed.Event:Wait()
-	if reason == "equip" then
-		toast("Equipaste el poder de " .. power)
-		say("Buena elección, hechicero. Haz clic o toca para lanzar tu poder.")
-		task.wait(2.4)
-	else
-		remote:FireServer("NoPick")
-		say("Vuelve cuando quieras, hechicero.")
-		task.wait(1.4)
+	local ok, err = pcall(function()
+		showDialog(true)
+		saySeguro("Hola, hechicero. Aquí te dejo la lista de los poderes disponibles para ti.")
+		task.wait(0.7)
+		openPanel()
+		local reason, power = panelClosed.Event:Wait()
+		if reason == "equip" then
+			toast("Equipaste el poder de " .. power)
+			saySeguro("Buena elección, hechicero. Haz clic o toca para lanzar tu poder.")
+			task.wait(2.4)
+		else
+			remote:FireServer("NoPick")
+			saySeguro("Vuelve cuando quieras, hechicero.")
+			task.wait(1.4)
+		end
+	end)
+	if not ok then
+		warn("[Poderes] Error al hablar con la maga: " .. tostring(err))
 	end
-	showDialog(false)
+	-- limpieza SIEMPRE, haya fallado lo que haya fallado
 	busy = false
 	PromptService.Enabled = true
+	pcall(showDialog, false)
 end
+
+-- SEGUNDA VÍA para abrir la conversación (como el caldero con su prompt):
+-- el propio cliente escucha el botón "Hablar". Si la vía del servidor
+-- (FireClient "Talk") falla por lo que sea, esta abre la charla igual.
+PromptService.PromptTriggered:Connect(function(prompt)
+	if prompt and prompt.Name == "HablarPrompt" then
+		task.spawn(talk)
+	end
+end)
 
 --// ============ LANZAR PODERES (animación + efectos locales) ============
 local Debris = game:GetService("Debris")

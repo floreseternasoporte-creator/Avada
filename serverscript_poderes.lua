@@ -973,6 +973,7 @@ local function givePower(plr, power, equipNow)
 end
 
 local cooldowns = {}
+local hablarCD = {} -- anti-doble disparo del botón Hablar, por jugador
 
 local function isAlive(char)
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1043,33 +1044,71 @@ for _, plr in ipairs(Players:GetPlayers()) do
 end
 Players.PlayerRemoving:Connect(function(plr)
 	cooldowns[plr] = nil
+	hablarCD[plr] = nil
 end)
 
 --// ============ BOTÓN "HABLAR" SOBRE LA VENDEDORA ============
-task.spawn(function()
-	local vend = workspace:WaitForChild("VendedoraMagica", 120)
-	local torso = vend and vend:WaitForChild("Torso", 10)
-	if not torso then
-		warn("MagoPoderes: no encontré a la vendedora (VendedoraMagica). Pon también su script.")
-		return
-	end
-	local old = torso:FindFirstChild("HablarPrompt")
-	if old then
-		old:Destroy()
-	end
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "HablarPrompt"
-	prompt.ActionText = "Hablar"
-	prompt.ObjectText = "Vendedora Mágica"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = CFG.PROMPT_DISTANCE
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = torso
+-- GUARDIÁN DEL PROMPT (arreglo): antes el botón se creaba UNA sola vez al
+-- arrancar, con una cadena de WaitForChild con timeout (maga 120 s, torso
+-- 10 s). Si esa cadena fallaba una vez —o el prompt o la propia vendedora
+-- se destruían después— el botón "Hablar" no volvía a existir JAMÁS y la
+-- maga se quedaba muda sin ningún error visible: ni hablaba ni daba la
+-- lista de poderes. Ahora un bucle vigila cada 1,5 s que la maga tenga su
+-- prompt puesto, con la configuración correcta y conectado, y lo repone
+-- si falta, para siempre.
+local function conectarPrompt(prompt)
 	prompt.Triggered:Connect(function(plr)
+		local now = os.clock()
+		if now - (hablarCD[plr] or 0) < 1 then
+			return
+		end
+		hablarCD[plr] = now
 		remote:FireClient(plr, "Talk")
 	end)
+end
+
+task.spawn(function()
+	local promptVivo = nil
+	local avisoT = 0
+	while true do
+		local vend = workspace:FindFirstChild("VendedoraMagica")
+		local torso = vend and vend:FindFirstChild("Torso")
+		if torso then
+			local prompt = torso:FindFirstChild("HablarPrompt")
+			if not prompt then
+				prompt = Instance.new("ProximityPrompt")
+				prompt.Name = "HablarPrompt"
+				prompt.Parent = torso
+				promptVivo = nil -- instancia nueva: se conecta abajo
+			end
+			-- si quedó algún duplicado de versiones viejas, fuera
+			for _, h in ipairs(torso:GetChildren()) do
+				if h:IsA("ProximityPrompt") and h.Name == "HablarPrompt" and h ~= prompt then
+					h:Destroy()
+				end
+			end
+			prompt.ActionText = "Hablar"
+			prompt.ObjectText = "Vendedora Mágica"
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = CFG.PROMPT_DISTANCE
+			prompt.RequiresLineOfSight = false
+			prompt.Enabled = true
+			if promptVivo ~= prompt then
+				promptVivo = prompt
+				conectarPrompt(prompt)
+				print("🔮 Botón Hablar puesto sobre la Vendedora Mágica")
+			end
+		else
+			promptVivo = nil
+			if os.clock() - avisoT > 30 then
+				avisoT = os.clock()
+				warn("MagoPoderes: sigo esperando a la vendedora (VendedoraMagica/Torso). Revisa que estén puestos los scripts de la tienda y de la vendedora.")
+			end
+		end
+		task.wait(1.5)
+	end
 end)
 
 --// ============ PODERES DENTRO DE LA PARTIDA ============
