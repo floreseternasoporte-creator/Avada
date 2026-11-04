@@ -393,23 +393,65 @@ local function vestirGema(raiz, padre, escala)
   return capaMedia
 end
 
-local function crearDiamanteTool()
-  local tool = Instance.new("Tool")
-  tool.Name = "Diamante"
-  tool.RequiresHandle = true
-  tool.CanBeDropped = true
-  local h = Instance.new("Part")
-  h.Name = "Handle"
-  h.Size = Vector3.new(0.4, 0.4, 0.4)
-  h.Transparency = 1
-  h.CanCollide = false
-  h.CanQuery = false
-  h.CanTouch = false
-  h.Massless = true
-  h.Parent = tool
-  vestirGema(h, tool, 0.85) -- el mismo cristal del suelo, en la mano
-  tool.Grip = CFrame.new(0, -0.3, 0)
-  return tool
+-- La moneda: desde 2026-11-03 los diamantes NO son una Tool: al
+-- recogerlos entran en el contador DIAMANTES del jugador (el Bindable
+-- del núcleo, el mismo que paga las noches). Así el contador de la
+-- pantalla sube al recogerlos y mejoras/pociones/defensas cobran de
+-- un solo saldo.
+local function sumarDiamante(player)
+  local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaDiamantes")
+  if bf then
+    pcall(function()
+      bf:Invoke("sumar", player, 1)
+    end)
+  end
+end
+
+-- Trozo de madera que suelta el árbol al caer: se recoge andando
+-- encima y suma al atributo Madera del jugador (lo muele el molino
+-- de la fogata para hacer tablas y construir defensas).
+local function soltarMadera(pos)
+  local m = Instance.new("Model")
+  m.Name = "MaderaSuelo"
+  local raiz = Instance.new("Part")
+  raiz.Name = "Toque"
+  raiz.Size = Vector3.new(2, 1.4, 2)
+  raiz.Transparency = 1
+  raiz.CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0))
+  raiz.Anchored = true
+  raiz.CanCollide = false
+  raiz.CanQuery = false
+  raiz.Parent = m
+  local giro = CFrame.Angles(0, math.random() * math.pi * 2, 0)
+  local function tronco(nombre, size, off, color)
+    local p = Instance.new("Part")
+    p.Name = nombre
+    p.Size = size
+    p.CFrame = CFrame.new(pos + Vector3.new(0, 0.35, 0)) * giro * CFrame.new(off)
+    p.Color = color
+    p.Material = Enum.Material.Wood
+    p.Anchored = true
+    p.CanCollide = false
+    p.CanQuery = false
+    p.Parent = m
+    return p
+  end
+  tronco("Tronco", Vector3.new(2.2, 0.7, 0.9), Vector3.new(0, 0, 0), Color3.fromRGB(122, 84, 48))
+  tronco("TroncoClaro", Vector3.new(2.24, 0.2, 0.92), Vector3.new(0, 0.28, 0), Color3.fromRGB(176, 132, 82))
+  tronco("Rama", Vector3.new(1.1, 0.4, 0.5), Vector3.new(0.4, 0.55, 0.1), Color3.fromRGB(104, 70, 40))
+  m.Parent = Workspace
+  local recogido = false
+  raiz.Touched:Connect(function(hit)
+    if recogido then return end
+    local modelo = hit and hit:FindFirstAncestorOfClass("Model")
+    local plr = modelo and Players:GetPlayerFromCharacter(modelo)
+    if not plr then return end
+    recogido = true
+    plr:SetAttribute("Madera", (plr:GetAttribute("Madera") or 0) + 1)
+    RE:FireClient(plr, "Aviso", "¡Madera recogida!")
+    m:Destroy()
+  end)
+  Debris:AddItem(m, 90)
 end
 
 local function soltarDiamante(pos)
@@ -468,22 +510,10 @@ local function soltarDiamante(pos)
     local plr = modelo and Players:GetPlayerFromCharacter(modelo)
     if not plr then return end
     recogido = true
-    -- Como las moras/hongos: si la mano está libre va a la mano, si no al saco (mochila)
-    local char = plr.Character
-    local bp = plr:FindFirstChildOfClass("Backpack")
-    local manoLibre = true
-    if char and char:FindFirstChildOfClass("Tool") then
-      manoLibre = false
-    end
-    local dt = crearDiamanteTool()
-    if manoLibre and char then
-      dt.Parent = char -- se equipa directo en la mano
-    elseif bp then
-      dt.Parent = bp -- al saco (mochila)
-    else
-      dt:Destroy()
-    end
-    RE:FireClient(plr, "Aviso", "¡Diamante recogido!")
+    -- Directo al contador DIAMANTES (la moneda): la pastilla de la
+    -- pantalla sube al momento, que era la queja del dueño
+    sumarDiamante(plr)
+    RE:FireClient(plr, "Aviso", "¡Diamante recogido! 💎 +1")
     m:Destroy()
   end)
   Debris:AddItem(m, 90)
@@ -736,8 +766,14 @@ local function aplicarGolpe(player, arbol)
         local pos = pp + Vector3.new(math.cos(ang) * r, 2, math.sin(ang) * r)
         soltarDiamante(pos)
       end
+      -- y trozos de MADERA para el molino (pedido del dueño)
+      for _ = 1, 3 do
+        local ang = math.random() * math.pi * 2
+        local r = 1.5 + math.random() * 2
+        soltarMadera(pp + Vector3.new(math.cos(ang) * r, 0.6, math.sin(ang) * r))
+      end
     end
-    RE:FireClient(player, "Aviso", "¡Diamantes del árbol!")
+    RE:FireClient(player, "Aviso", "¡Diamantes y madera del árbol!")
   end
 end
 
@@ -779,5 +815,5 @@ RE.OnServerEvent:Connect(function(player, accion, dato)
   end
 end)
 
-print("[Hacha] v4 cargada: niveles de mejora (daño y aspecto por NivelHacha)")
+print("[Hacha] v5 cargada: diamantes directos a la moneda + los árboles sueltan madera")
 -- FIN SERVER HACHA

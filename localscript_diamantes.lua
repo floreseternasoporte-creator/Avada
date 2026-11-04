@@ -37,46 +37,45 @@ borde.Transparency = 0.55
 borde.Thickness = 1.2
 borde.Parent = pill
 
--- el diamante: rombo celeste hielo con brillo y estrella de 4 puntas
+-- EL DIAMANTE de verdad (v2, queja del dueño: «no cambiaste el icono»):
+-- forma de GEMA clásica construida con piezas: tabla ancha arriba con
+-- sus dos facetas laterales, pabellón en punta abajo y brillo. Ya no
+-- es un rombo girado como el cristal de las viejas Esencias.
 local icono = Instance.new("Frame")
 icono.Name = "DiamanteIcono"
 icono.AnchorPoint = Vector2.new(0, 0.5)
-icono.Position = UDim2.new(0, 10, 0.5, 0)
-icono.Size = UDim2.new(0, 30, 0, 30)
+icono.Position = UDim2.new(0, 8, 0.5, 0)
+icono.Size = UDim2.new(0, 34, 0, 30)
 icono.BackgroundTransparency = 1
 icono.Parent = pill
 
-local function rombo(tam, color)
+local function pieza(x, y, w, h, rot, color, transp, z)
   local f = Instance.new("Frame")
   f.AnchorPoint = Vector2.new(0.5, 0.5)
-  f.Position = UDim2.new(0.5, 0, 0.5, 0)
-  f.Size = UDim2.new(0, tam, 0, tam)
-  f.Rotation = 45
+  f.Position = UDim2.new(0, x, 0, y)
+  f.Size = UDim2.new(0, w, 0, h)
+  f.Rotation = rot or 0
   f.BackgroundColor3 = color
+  f.BackgroundTransparency = transp or 0
   f.BorderSizePixel = 0
+  f.ZIndex = z or 1
   f.Parent = icono
-  Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
   return f
 end
-rombo(21, Color3.fromRGB(56, 169, 235))
-rombo(12, Color3.fromRGB(186, 236, 255))
-
-local estrellaV = Instance.new("Frame")
-estrellaV.AnchorPoint = Vector2.new(0.5, 0.5)
-estrellaV.Position = UDim2.new(0.5, 0, 0.5, 0)
-estrellaV.Size = UDim2.new(0, 2, 0, 15)
-estrellaV.BackgroundColor3 = Color3.new(1, 1, 1)
-estrellaV.BackgroundTransparency = 0.25
-estrellaV.BorderSizePixel = 0
-estrellaV.Parent = icono
-local estrellaH = Instance.new("Frame")
-estrellaH.AnchorPoint = Vector2.new(0.5, 0.5)
-estrellaH.Position = UDim2.new(0.5, 0, 0.5, 0)
-estrellaH.Size = UDim2.new(0, 15, 0, 2)
-estrellaH.BackgroundColor3 = Color3.new(1, 1, 1)
-estrellaH.BackgroundTransparency = 0.25
-estrellaH.BorderSizePixel = 0
-estrellaH.Parent = icono
+local AZUL = Color3.fromRGB(56, 169, 235)
+local HIELO = Color3.fromRGB(186, 236, 255)
+local CIELO = Color3.fromRGB(125, 211, 252)
+-- pabellón: la punta (cuadrado girado; la mitad alta la tapa la tabla)
+pieza(17, 19, 19, 19, 45, AZUL, 0, 1)
+pieza(17, 21, 11, 11, 45, CIELO, 0, 2)
+-- facetas laterales de la corona (inclinadas hacia fuera)
+pieza(5, 7, 10, 10, 45, CIELO, 0, 2)
+pieza(29, 7, 10, 10, 45, CIELO, 0, 2)
+-- tabla: la cara ancha de arriba
+local tabla = pieza(17, 7, 27, 10, 0, HIELO, 0, 3)
+Instance.new("UICorner", tabla).CornerRadius = UDim.new(0, 3)
+-- brillo diagonal sobre la punta
+pieza(13, 20, 3, 12, 32, Color3.new(1, 1, 1), 0.45, 4)
 
 -- numero y nombre de la moneda
 local numero = Instance.new("TextLabel")
@@ -116,8 +115,8 @@ Instance.new("UICorner", mas).CornerRadius = UDim.new(1, 0)
 
 local saldo = 0
 local function palpita()
-  local crece = TweenService:Create(icono, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 37, 0, 37) })
-  local vuelve = TweenService:Create(icono, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 30, 0, 30) })
+  local crece = TweenService:Create(icono, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 41, 0, 36) })
+  local vuelve = TweenService:Create(icono, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 34, 0, 30) })
   crece:Play()
   crece.Completed:Connect(function()
     vuelve:Play()

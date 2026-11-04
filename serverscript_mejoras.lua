@@ -7,9 +7,9 @@
   - SacoMax (5/8/12): lo lee partida vía sacoMaxDe() para la
     capacidad del Saco mágico.
 
-  Se paga con DIAMANTES de verdad: las Tools "Diamante" que el
-  jugador lleve en la mano o la mochila (los que caen de los árboles
-  de cristal). Comprar consume los diamantes.
+  Se paga con la MONEDA DIAMANTES del jugador (el saldo del núcleo,
+  el del contador de la pantalla): recoger diamantes de los árboles
+  y sobrevivir noches lo sube; comprar descuenta del saldo.
   - Hacha: Nv 2 = 3 diamantes, Nv 3 = 6 diamantes.
   - Saco:  8 cosas = 4 diamantes, 12 cosas = 8 diamantes.
   La tienda vive en el panel de la maga (localscript_mejoras.lua
@@ -58,22 +58,33 @@ local function asegurarAtributos(player)
 	end
 end
 
--- diamantes que lleva encima (mano + mochila), como Tools "Diamante"
-local function diamantesDe(player)
-	local lista = {}
-	local function mira(cont)
-		if not cont then
-			return
-		end
-		for _, t in ipairs(cont:GetChildren()) do
-			if t:IsA("Tool") and t.Name == "Diamante" then
-				table.insert(lista, t)
-			end
+-- la moneda vive en el núcleo (Bindable "AvadaDiamantes")
+local function bfDiamantes()
+	return game:GetService("ServerScriptService"):FindFirstChild("AvadaDiamantes")
+end
+
+local function saldoDe(player)
+	local bf = bfDiamantes()
+	if bf then
+		local ok, n = pcall(function()
+			return bf:Invoke("saldo", player)
+		end)
+		if ok and type(n) == "number" then
+			return n
 		end
 	end
-	mira(player.Character)
-	mira(player:FindFirstChildOfClass("Backpack"))
-	return lista
+	return 0
+end
+
+local function gastarDe(player, coste)
+	local bf = bfDiamantes()
+	if bf then
+		local ok, hecho = pcall(function()
+			return bf:Invoke("gastar", player, coste)
+		end)
+		return ok and hecho == true
+	end
+	return false
 end
 
 local function estado(player)
@@ -82,7 +93,7 @@ local function estado(player)
 		hacha = nh,
 		saco = ns,
 		cap = CAP_SACO[ns],
-		diamantes = #diamantesDe(player),
+		diamantes = saldoDe(player),
 		costeHacha = COSTE_HACHA[nh], -- nil si ya es nivel máximo
 		costeSaco = COSTE_SACO[ns],
 	}
@@ -102,7 +113,6 @@ end
 
 local function comprar(player, que)
 	asegurarAtributos(player)
-	local lista = diamantesDe(player)
 	if que == "Hacha" then
 		local n = nivelHacha(player)
 		if n >= 3 then
@@ -110,12 +120,9 @@ local function comprar(player, que)
 			return
 		end
 		local coste = COSTE_HACHA[n]
-		if #lista < coste then
-			avisar(player, "Te faltan diamantes: la mejora cuesta " .. coste .. " y llevas " .. #lista)
+		if not gastarDe(player, coste) then
+			avisar(player, "Te faltan diamantes: la mejora cuesta " .. coste .. " y tienes " .. saldoDe(player))
 			return
-		end
-		for i = 1, coste do
-			lista[i]:Destroy()
 		end
 		player:SetAttribute("NivelHacha", n + 1)
 		avisar(player, "¡Hacha mejorada al nivel " .. (n + 1) .. "! Ahora hace " .. (n + 1) .. " de daño por golpe")
@@ -126,12 +133,9 @@ local function comprar(player, que)
 			return
 		end
 		local coste = COSTE_SACO[n]
-		if #lista < coste then
-			avisar(player, "Te faltan diamantes: la mejora cuesta " .. coste .. " y llevas " .. #lista)
+		if not gastarDe(player, coste) then
+			avisar(player, "Te faltan diamantes: la mejora cuesta " .. coste .. " y tienes " .. saldoDe(player))
 			return
-		end
-		for i = 1, coste do
-			lista[i]:Destroy()
 		end
 		player:SetAttribute("NivelSaco", n + 1)
 		player:SetAttribute("SacoMax", CAP_SACO[n + 1])

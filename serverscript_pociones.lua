@@ -141,6 +141,19 @@ local function avisar(jugador, texto)
   end)
 end
 
+-- la moneda DIAMANTES vive en el núcleo: guardar un diamante en la
+-- reserva del caldero descuenta 1 del contador del jugador
+local function gastarDiamanteMoneda(jugador)
+  local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaDiamantes")
+  if bf then
+    local ok, hecho = pcall(function()
+      return bf:Invoke("gastar", jugador, 1)
+    end)
+    return ok and hecho == true
+  end
+  return false
+end
+
 local function syncSaco(jugador)
   pcall(function()
     RE:FireClient(jugador, "SacoPoc", sacoPoc[jugador] or {})
@@ -343,28 +356,35 @@ RE.OnServerEvent:Connect(function(jugador, accion, a)
     end
 
   elseif accion == "Depositar" then
-    -- Echa moras o diamantes de la mano/mochila a la reserva (junto al caldero).
+    -- Echa una mora (Tool) o un diamante (de la MONEDA) a la reserva.
     if not cercaCaldero(jugador) then
       avisar(jugador, "Acércate al caldero")
       return
     end
     local que = a == "Diamante" and "Diamante" or "Mora"
-    local nombres = que == "Mora"
-      and { "Mora" }
-      or { "Diamante", "Diamantes", "Diamond", "Diamonds", "Gema" }
-    local t = buscarHerramienta(jugador, nombres)
+    if que == "Diamante" then
+      -- primero una Tool antigua si la llevara; si no, de la moneda
+      local t = buscarHerramienta(jugador, { "Diamante", "Diamantes", "Diamond", "Diamonds", "Gema" })
+      if t then
+        t:Destroy()
+      elseif not gastarDiamanteMoneda(jugador) then
+        avisar(jugador, "No te quedan diamantes: corta árboles de cristal")
+        return
+      end
+      RES.Diamante += 1
+      difundir()
+      avisar(jugador, "Diamante guardado en la reserva")
+      return
+    end
+    local t = buscarHerramienta(jugador, { "Mora" })
     if not t then
-      avisar(jugador, "No llevas " .. (que == "Mora" and "moras" or "diamantes") .. " en la mano")
+      avisar(jugador, "No llevas moras en la mano")
       return
     end
     t:Destroy()
-    if que == "Mora" then
-      RES.Mora += 1
-    else
-      RES.Diamante += 1
-    end
+    RES.Mora += 1
     difundir()
-    avisar(jugador, (que == "Mora" and "Mora" or "Diamante") .. " guardada en la reserva")
+    avisar(jugador, "Mora guardada en la reserva")
 
   elseif accion == "Fabricar" then
     local id = a

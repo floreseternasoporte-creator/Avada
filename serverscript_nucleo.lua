@@ -1653,12 +1653,25 @@ local bfDiamantes = Instance.new("BindableFunction")
 bfDiamantes.Name = "AvadaDiamantes"
 bfDiamantes.Parent = game:GetService("ServerScriptService")
 bfDiamantes.OnInvoke = function(accion, player, cantidad)
-  if accion == "sumar" and player then
+  if not player then
+    return 0
+  end
+  if accion == "sumar" then
     diamantesSaldo[player] = (diamantesSaldo[player] or 0) + (cantidad or 0)
     mandarDiamantes(player)
     return diamantesSaldo[player]
+  elseif accion == "gastar" then
+    -- cobro compartido (mejoras de la maga, reserva del caldero,
+    -- trampa rúnica...): solo descuenta si hay saldo suficiente
+    local coste = cantidad or 0
+    if (diamantesSaldo[player] or 0) >= coste then
+      diamantesSaldo[player] = diamantesSaldo[player] - coste
+      mandarDiamantes(player)
+      return true
+    end
+    return false
   end
-  return (player and diamantesSaldo[player]) or 0
+  return diamantesSaldo[player] or 0 -- "saldo" o cualquier otra acción
 end
 
 --===========================================================

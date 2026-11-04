@@ -75,7 +75,7 @@ local function refrescar()
 	end
 	local nombresHacha = { "de Aprendiz", "Rúnica", "del Archimago" }
 	lblHacha.Text = "🪓 Hacha " .. (nombresHacha[estado.hacha] or "") .. " · Nv " .. estado.hacha
-		.. " · " .. estado.hacha .. " de daño (" .. estado.diamantes .. " 💎 encima)"
+		.. " · " .. estado.hacha .. " de daño (tienes " .. estado.diamantes .. " 💎)"
 	lblSaco.Text = "🎒 Saco · Nv " .. estado.saco .. " · guarda " .. estado.cap .. " cosas"
 	if estado.costeHacha then
 		btnHacha.Text = "Mejorar · " .. estado.costeHacha .. " 💎"
