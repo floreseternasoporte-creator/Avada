@@ -13,9 +13,13 @@
       (en la mano o en la mochila) y lo levanta con 60 de vida.
     * CARGAR: se lo echa a la espalda y, si lo lleva hasta la Llama
       Mágica de su fogata, el caído revive allí con 60 de vida.
-  - Si TODOS los de una partida están caídos a la vez (10 s), ya no
-    hay quien los salve: mueren de verdad y partida cierra la sesión
-    como siempre.
+  - Si TODOS los de una partida están caídos a la vez, corre una
+    CUENTA ATRÁS visible de 30 s en el cartel de cada caído; si nadie
+    se levanta antes, mueren de verdad y partida cierra la sesión
+    como siempre. (v2, dueño 2026-11-03: el caído queda TUMBADO en
+    el suelo boca arriba, nadie cae fuera del bosque —la posición
+    manda, no el relé— y el cartel se limpia siempre al morir o
+    respawnear: nada de teletransportes sorpresa al lobby.)
   - Si la partida termina con alguien caído, se levanta solo en el
     lobby con la vida llena.
 ]]
@@ -34,7 +38,7 @@ end
 local RADIO_BOSQUE = 285 -- radio de una sesión (como las zonas de partida)
 local RADIO_LLAMA = 20 -- distancia a la fogata para revivir cargado
 local VIDA_AL_REVIVIR = 60
-local ESPERA_DERRUMBE = 10 -- s con todos caídos antes de morir de verdad
+local ESPERA_DERRUMBE = 30 -- s con todos caídos (cuenta atrás visible) antes de morir
 
 local enPartida = {} -- relé del cliente (AvadaBosqueUI) por jugador
 local sinSuelo = {} -- en el derrumbe se suelta el suelo: muere de verdad
@@ -91,9 +95,10 @@ local function humDe(player)
 end
 
 local function estaEnPartida(player)
-	if enPartida[player] then
-		return true
-	end
+	-- LA VERDAD ES LA POSICIÓN: dentro del radio de un bosque (molde o
+	-- clon de sesión). El relé del cliente NO decide esto: puede venir
+	-- atrasado y llegó a tumbar a un jugador EN EL LOBBY (foto del
+	-- dueño). El relé solo se usa para levantar al caído al terminar.
 	local hrp = hrpDe(player)
 	return hrp ~= nil and bosqueDe(hrp.Position) ~= nil
 end
@@ -129,6 +134,7 @@ local function revivir(caido, donde, vida)
 	if not datos then
 		return
 	end
+	local yawAlCaer = datos.yaw
 	soltarCarga(caido)
 	limpiarPrompts(datos)
 	caidos[caido] = nil
@@ -140,9 +146,17 @@ local function revivir(caido, donde, vida)
 		hum.JumpPower = 50
 		hum.Health = vida or VIDA_AL_REVIVIR
 	end
-	if donde and hrp then
-		hrp.CFrame = CFrame.new(donde + Vector3.new(0, 3, 0))
+	if hrp then
+		if donde then
+			hrp.CFrame = CFrame.new(donde + Vector3.new(0, 3, 0))
+		else
+			-- se levanta DONDE ESTÁ, de pie y mirando como al caer
+			-- (antes quedaba tumbado en horizontal aunque reviviera)
+			hrp.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2.5, 0))
+				* CFrame.Angles(0, yawAlCaer or 0, 0)
+		end
 		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.zero
 	end
 	pcall(function()
 		RE:FireClient(caido, "Revivido")
@@ -192,6 +206,35 @@ local function empezarCarga(caido, portador)
 end
 
 --// ============ CAER ============
+local function tumbar(player)
+	-- Lo deja TUMBADO boca arriba en el suelo, como el cuerpo de un
+	-- jugador muerto en Roblox: PlatformStand solo no bastaba (el
+	-- avatar se quedaba de pie, foto del dueño); hay que girar la
+	-- raíz a horizontal y matar velocidades. Se reafirma cada segundo
+	-- en la red de seguridad para que la física no lo levante.
+	local hrp = hrpDe(player)
+	local hum = humDe(player)
+	if not hrp or not hum then
+		return
+	end
+	hum.PlatformStand = true
+	hum.WalkSpeed = 0
+	hum.JumpPower = 0
+	local _, yaw = hrp.CFrame:ToOrientation()
+	local datos = caidos[player]
+	if datos and datos.yaw == nil then
+		datos.yaw = yaw
+	end
+	pcall(function()
+		hrp.CFrame = CFrame.new(hrp.Position)
+			* CFrame.Angles(0, (datos and datos.yaw) or yaw, 0)
+			* CFrame.Angles(-math.rad(90), 0, 0)
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.zero
+	end)
+end
+
+
 local function crearPrompt(caido, hrp, accion, texto, espera)
 	local p = Instance.new("ProximityPrompt")
 	p.Name = "Revivir_" .. accion
@@ -247,9 +290,7 @@ local function entrarCaido(player)
 		return
 	end
 	caidos[player] = { portador = nil, prompts = {} }
-	hum.PlatformStand = true -- se desploma en el suelo
-	hum.WalkSpeed = 0
-	hum.JumpPower = 0
+	tumbar(player) -- queda TUMBADO en el suelo, boca arriba
 	table.insert(caidos[player].prompts, crearPrompt(player, hrp, "Revivir", "Revivir (Poción de Vida)", 2.5))
 	table.insert(caidos[player].prompts, crearPrompt(player, hrp, "Cargar", "Cargar hasta la Llama", 0.6))
 	pcall(function()
@@ -288,6 +329,23 @@ local function vigilarVida(player, hum)
 			entrarCaido(player)
 		end
 		-- fuera de partida: muere normal (lobby, duelos...)
+	end)
+	hum.Died:Connect(function()
+		-- murió DE VERDAD (derrumbe o causa externa): limpiar todo y
+		-- APAGAR el cartel en su cliente: sin esto el cartel se quedaba
+		-- pegado en el lobby tras respawnear (foto del dueño)
+		if portando[player] then
+			soltarCarga(portando[player])
+		end
+		local datos = caidos[player]
+		if datos then
+			soltarCarga(player)
+			limpiarPrompts(datos)
+			caidos[player] = nil
+			pcall(function()
+				RE:FireClient(player, "Revivido")
+			end)
+		end
 	end)
 end
 
@@ -347,6 +405,8 @@ task.spawn(function()
 				caidos[caido] = nil -- su personaje ya no existe
 			elseif not bosqueDe(hrp.Position) then
 				revivir(caido, nil, 100)
+			elseif not caidos[caido].portador then
+				tumbar(caido) -- reafirma la pose: TUMBADO, que la física no lo levante
 			end
 		end
 		-- derrumbe: si TODOS los de un bosque están caídos, mueren de verdad
@@ -370,9 +430,19 @@ task.spawn(function()
 				if not derrumbe[b] then
 					derrumbe[b] = os.clock()
 					for _, p in ipairs(g.lista) do
-						avisar(p, "Todos han caído... la noche os reclama")
+						avisar(p, "Todos han caído: la noche os reclama en " .. ESPERA_DERRUMBE .. " s si nadie se levanta")
 					end
-				elseif os.clock() - derrumbe[b] >= ESPERA_DERRUMBE then
+				end
+				-- CUENTA ATRÁS VISIBLE cada segundo en el cartel de cada
+				-- caído: nadie muere «de repente» ni sale teletransportado
+				-- sin saber por qué (queja del dueño)
+				local restan = math.max(0, math.ceil(ESPERA_DERRUMBE - (os.clock() - derrumbe[b])))
+				for _, p in ipairs(g.lista) do
+					pcall(function()
+						RE:FireClient(p, "CuentaAtras", restan)
+					end)
+				end
+				if restan <= 0 then
 					for _, p in ipairs(g.lista) do
 						local hum = humDe(p)
 						-- se suelta el suelo de vida y muere normal:
@@ -383,6 +453,9 @@ task.spawn(function()
 							caidos[p] = nil
 						end
 						sinSuelo[p] = true
+						pcall(function()
+							RE:FireClient(p, "Revivido") -- apaga el cartel ya
+						end)
 						if hum then
 							hum.PlatformStand = false
 							hum.Health = 0
@@ -394,11 +467,19 @@ task.spawn(function()
 					derrumbe[b] = nil
 				end
 			else
+				if derrumbe[b] then
+					-- alguien se levantó: se apaga la cuenta atrás
+					for _, p in ipairs(g.lista) do
+						pcall(function()
+							RE:FireClient(p, "CuentaAtras", 0)
+						end)
+					end
+				end
 				derrumbe[b] = nil
 			end
 		end
 	end
 end)
 
-print("[Avada] REVIVIR listo: nadie se queda fuera de la partida")
+print("[Avada] REVIVIR v2 listo: el caído queda TUMBADO y la muerte lleva cuenta atrás visible")
 -- FIN SERVER REVIVIR

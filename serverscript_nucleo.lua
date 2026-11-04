@@ -1577,86 +1577,88 @@ bfBaja.OnInvoke = function(player)
 end
 
 --===========================================================
--- ESENCIAS (la moneda del juego: cristales de hechizo que se ganan
--- sobreviviendo noches en el Bosque Prohibido; el saldo se guarda
--- igual que las bajas y servira para la tienda del dueno)
+-- DIAMANTES (la moneda del juego: se ganan sobreviviendo noches en
+-- el Bosque Prohibido; el saldo se guarda igual que las bajas.
+-- Antes se llamaban "Esencias": el dueño pidió en 2026-11-03 que la
+-- moneda sean los DIAMANTES y no haya dos nombres. El guardado es
+-- nuevo (AvadaDiamantes_v1): los saldos viejos de esencias no pasan)
 --===========================================================
 local PlayersE = game:GetService("Players")
 local RSE = game:GetService("ReplicatedStorage")
 local DSSE = game:GetService("DataStoreService")
-local EsenciasStore
+local DiamantesStore
 do
   local okE, resE = pcall(function()
-    return DSSE:GetDataStore("AvadaEsencias_v1")
+    return DSSE:GetDataStore("AvadaDiamantes_v1")
   end)
-  EsenciasStore = (okE and resE) or nil
+  DiamantesStore = (okE and resE) or nil
 end
-local esenciasSaldo = {}
-local RE_Esencias = RSE:FindFirstChild("AvadaEsenciasUI")
-if not RE_Esencias then
-  RE_Esencias = Instance.new("RemoteEvent")
-  RE_Esencias.Name = "AvadaEsenciasUI"
-  RE_Esencias.Parent = RSE
+local diamantesSaldo = {}
+local RE_Diamantes = RSE:FindFirstChild("AvadaDiamantesUI")
+if not RE_Diamantes then
+  RE_Diamantes = Instance.new("RemoteEvent")
+  RE_Diamantes.Name = "AvadaDiamantesUI"
+  RE_Diamantes.Parent = RSE
 end
-local function mandarEsencias(player)
+local function mandarDiamantes(player)
   if player and player.Parent then
-    RE_Esencias:FireClient(player, esenciasSaldo[player] or 0)
+    RE_Diamantes:FireClient(player, diamantesSaldo[player] or 0)
   end
 end
-local function cargarEsencias(player)
+local function cargarDiamantes(player)
   local n = 0
-  if EsenciasStore then
+  if DiamantesStore then
     local ok, val = pcall(function()
-      return EsenciasStore:GetAsync("u" .. player.UserId)
+      return DiamantesStore:GetAsync("u" .. player.UserId)
     end)
     if ok and type(val) == "number" then
       n = math.max(0, math.floor(val))
     end
   end
-  esenciasSaldo[player] = n
-  mandarEsencias(player)
+  diamantesSaldo[player] = n
+  mandarDiamantes(player)
 end
-local function guardarEsencias(player)
-  if EsenciasStore and esenciasSaldo[player] ~= nil then
+local function guardarDiamantes(player)
+  if DiamantesStore and diamantesSaldo[player] ~= nil then
     pcall(function()
-      EsenciasStore:SetAsync("u" .. player.UserId, esenciasSaldo[player])
+      DiamantesStore:SetAsync("u" .. player.UserId, diamantesSaldo[player])
     end)
   end
 end
-RE_Esencias.OnServerEvent:Connect(function(player)
-  if esenciasSaldo[player] == nil then
-    cargarEsencias(player)
+RE_Diamantes.OnServerEvent:Connect(function(player)
+  if diamantesSaldo[player] == nil then
+    cargarDiamantes(player)
   else
-    mandarEsencias(player)
+    mandarDiamantes(player)
   end
 end)
 PlayersE.PlayerAdded:Connect(function(player)
   task.delay(1, function()
-    cargarEsencias(player)
+    cargarDiamantes(player)
   end)
 end)
 PlayersE.PlayerRemoving:Connect(function(player)
-  guardarEsencias(player)
-  esenciasSaldo[player] = nil
+  guardarDiamantes(player)
+  diamantesSaldo[player] = nil
 end)
 task.spawn(function()
   while true do
     task.wait(90)
     for _, plr in ipairs(PlayersE:GetPlayers()) do
-      guardarEsencias(plr)
+      guardarDiamantes(plr)
     end
   end
 end)
-local bfEsencias = Instance.new("BindableFunction")
-bfEsencias.Name = "AvadaEsencias"
-bfEsencias.Parent = game:GetService("ServerScriptService")
-bfEsencias.OnInvoke = function(accion, player, cantidad)
+local bfDiamantes = Instance.new("BindableFunction")
+bfDiamantes.Name = "AvadaDiamantes"
+bfDiamantes.Parent = game:GetService("ServerScriptService")
+bfDiamantes.OnInvoke = function(accion, player, cantidad)
   if accion == "sumar" and player then
-    esenciasSaldo[player] = (esenciasSaldo[player] or 0) + (cantidad or 0)
-    mandarEsencias(player)
-    return esenciasSaldo[player]
+    diamantesSaldo[player] = (diamantesSaldo[player] or 0) + (cantidad or 0)
+    mandarDiamantes(player)
+    return diamantesSaldo[player]
   end
-  return (player and esenciasSaldo[player]) or 0
+  return (player and diamantesSaldo[player]) or 0
 end
 
 --===========================================================

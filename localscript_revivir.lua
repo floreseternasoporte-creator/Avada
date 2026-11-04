@@ -73,6 +73,9 @@ local detalle = etiqueta(
 	"Un compañero puede revivirte con una Poción de Vida o cargarte hasta la Llama Mágica de la fogata.",
 	20, 185, 60, Color3.new(1, 1, 1), fondo
 )
+-- cuenta atrás del derrumbe (solo si TODOS están caídos): se ve venir,
+-- nadie muere ni sale de la partida «de repente»
+local cuenta = etiqueta("", 22, 255, 40, Color3.fromRGB(255, 205, 110), fondo)
 
 --// ============ AVISOS FLOTANTES ============
 local function avisar(texto)
@@ -100,12 +103,22 @@ end
 RE.OnClientEvent:Connect(function(accion, dato)
 	if accion == "Caido" then
 		detalle.Text = "Un compañero puede revivirte con una Poción de Vida o cargarte hasta la Llama Mágica de la fogata."
+		cuenta.Text = ""
 		fondo.Visible = true
 	elseif accion == "Cargando" then
 		detalle.Text = "¡" .. tostring(dato) .. " te está cargando hasta la Llama Mágica!"
 		fondo.Visible = true
+	elseif accion == "CuentaAtras" then
+		local n = tonumber(dato) or 0
+		if n > 0 then
+			fondo.Visible = true
+			cuenta.Text = "Todos estáis caídos: la noche os reclama en " .. n .. " s"
+		else
+			cuenta.Text = ""
+		end
 	elseif accion == "Revivido" then
 		fondo.Visible = false
+		cuenta.Text = ""
 		avisar("¡Has vuelto a la partida!")
 	elseif accion == "CompaneroCaido" then
 		avisar("⚠ " .. tostring(dato) .. " ha caído en el bosque: revívele o cárgale hasta la Llama")
@@ -114,5 +127,27 @@ RE.OnClientEvent:Connect(function(accion, dato)
 	end
 end)
 
-print("[Revivir] Cliente listo")
+--// ============ EL CARTEL NUNCA SE QUEDA PEGADO (v2) ============
+-- Si respawneo (muerte real), el cartel se apaga con el personaje nuevo.
+player.CharacterAdded:Connect(function()
+	fondo.Visible = false
+	cuenta.Text = ""
+end)
+-- Vigilante: si el cartel está visible pero mi personaje está de pie y
+-- con vida (estoy bien), el cartel sobra: fuera en medio segundo.
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		if fondo.Visible then
+			local ch = player.Character
+			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health > 1 and not hum.PlatformStand then
+				fondo.Visible = false
+				cuenta.Text = ""
+			end
+		end
+	end
+end)
+
+print("[Revivir] Cliente v2 listo")
 -- FIN LOCAL REVIVIR

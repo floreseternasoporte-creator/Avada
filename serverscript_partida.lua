@@ -1233,8 +1233,8 @@ end)
 -- juego, archivo LOBOS; PARTIDA solo lo invoca al caer la noche y
 -- vigila las reglas del bosque: el fuego quema y el amanecer borra)
 --===========================================================
-local function llamarEsencias(player, cantidad)
-  local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaEsencias")
+local function llamarDiamantes(player, cantidad)
+  local bf = game:GetService("ServerScriptService"):FindFirstChild("AvadaDiamantes")
   if bf then
     pcall(function()
       bf:Invoke("sumar", player, cantidad)
@@ -1593,11 +1593,11 @@ local function cicloPartida()
     if not SE.on then
       break
     end
-    -- recompensa: sobrevivir la noche paga Esencias (la noche 1 paga
+    -- recompensa: sobrevivir la noche paga Diamantes (la noche 1 paga
     -- 1, la 2 paga 2... una partida perfecta paga 28 en total)
     for player, d in pairs(SE.players) do
       if d.vivo then
-        llamarEsencias(player, SE.noche)
+        llamarDiamantes(player, SE.noche)
       end
     end
     -- amanecer: los lobos de la noche desaparecen

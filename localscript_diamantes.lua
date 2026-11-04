@@ -1,8 +1,9 @@
--- LocalScript de las ESENCIAS (pegar en StarterPlayer > StarterPlayerScripts)
--- Contador de la moneda del juego abajo a la izquierda, como los diamantes
--- de la referencia pero con un CRISTAL DE HECHIZO morado disenado con
--- piezas de interfaz (sin imagenes ni assets). El saldo lo manda el
--- servidor (NUCLEO) y se guarda solo; ganar noches en el bosque lo sube.
+-- LocalScript de los DIAMANTES (pegar en StarterPlayer > StarterPlayerScripts)
+-- Contador de la moneda del juego abajo a la izquierda: un DIAMANTE de
+-- hielo disenado con piezas de interfaz (sin imagenes ni assets).
+-- (Antes la moneda se llamaba ESENCIAS; el dueno pidio en 2026-11-03
+-- que sean los diamantes.) El saldo lo manda el servidor (NUCLEO) y se
+-- guarda solo; sobrevivir noches en el bosque lo sube.
 -- NO toca el LocalScript principal ni el del bosque.
 
 local Players = game:GetService("Players")
@@ -10,10 +11,10 @@ local RS = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local RE = RS:WaitForChild("AvadaEsenciasUI")
+local RE = RS:WaitForChild("AvadaDiamantesUI")
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "EsenciasHUD"
+gui.Name = "DiamantesHUD"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 40
 gui.IgnoreGuiInset = true
@@ -31,14 +32,14 @@ pill.BorderSizePixel = 0
 pill.Parent = gui
 Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 22)
 local borde = Instance.new("UIStroke")
-borde.Color = Color3.fromRGB(150, 92, 246)
+borde.Color = Color3.fromRGB(125, 211, 252)
 borde.Transparency = 0.55
 borde.Thickness = 1.2
 borde.Parent = pill
 
--- el cristal de hechizo: rombo morado con brillo y estrella de 4 puntas
+-- el diamante: rombo celeste hielo con brillo y estrella de 4 puntas
 local icono = Instance.new("Frame")
-icono.Name = "Cristal"
+icono.Name = "DiamanteIcono"
 icono.AnchorPoint = Vector2.new(0, 0.5)
 icono.Position = UDim2.new(0, 10, 0.5, 0)
 icono.Size = UDim2.new(0, 30, 0, 30)
@@ -57,8 +58,8 @@ local function rombo(tam, color)
   Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
   return f
 end
-rombo(21, Color3.fromRGB(126, 58, 242))
-rombo(12, Color3.fromRGB(196, 150, 255))
+rombo(21, Color3.fromRGB(56, 169, 235))
+rombo(12, Color3.fromRGB(186, 236, 255))
 
 local estrellaV = Instance.new("Frame")
 estrellaV.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -93,9 +94,9 @@ nombre.BackgroundTransparency = 1
 nombre.Position = UDim2.new(0, 47, 0, 27)
 nombre.Size = UDim2.new(0, 56, 0, 12)
 nombre.Font = Enum.Font.GothamBold
-nombre.Text = "ESENCIAS"
+nombre.Text = "DIAMANTES"
 nombre.TextSize = 8
-nombre.TextColor3 = Color3.fromRGB(196, 150, 255)
+nombre.TextColor3 = Color3.fromRGB(165, 225, 255)
 nombre.TextXAlignment = Enum.TextXAlignment.Left
 nombre.Parent = pill
 
@@ -141,4 +142,4 @@ task.delay(1, function()
   RE:FireServer()
 end)
 
--- FIN LOCAL ESENCIAS
+-- FIN LOCAL DIAMANTES
