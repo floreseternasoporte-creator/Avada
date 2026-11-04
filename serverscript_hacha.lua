@@ -274,6 +274,52 @@ for _, plr in ipairs(Players:GetPlayers()) do
   end
 end
 
+--// ============ NIVELES DEL HACHA (mejoras compradas a la maga) ============
+-- El nombre de la Tool NO cambia nunca ("Hacha": el cliente la busca
+-- así); lo que cambia es el aspecto del filo y la descripción. Un
+-- guardián viste cada hacha con el nivel de su dueño (atributo
+-- NivelHacha), venga del StarterPack o de un clon.
+local ESTILO_NIVEL = {
+  [2] = { color = Color3.fromRGB(110, 180, 255), nombre = "Hacha Rúnica" },
+  [3] = { color = Color3.fromRGB(255, 196, 84), nombre = "Hacha del Archimago" },
+}
+
+local function vestirNivel(tool, nivel)
+  local est = ESTILO_NIVEL[nivel]
+  if est then
+    for _, d in ipairs(tool:GetDescendants()) do
+      if d:IsA("BasePart") and (d.Name:match("^Hoja") or d.Name:match("^Faceta") or d.Name == "Culata" or d.Name == "Ojo") then
+        d.Color = est.color
+      elseif d:IsA("Trail") then
+        d.Color = ColorSequence.new(est.color)
+      end
+    end
+    tool.ToolTip = est.nombre .. " · Nv " .. nivel .. " · " .. nivel .. " de daño por golpe"
+  else
+    tool.ToolTip = "Hacha de Aprendiz · Nv 1 · 1 de daño por golpe"
+  end
+  tool:SetAttribute("NivelAplicado", nivel)
+end
+
+task.spawn(function()
+  while true do
+    task.wait(1.5)
+    for _, plr in ipairs(Players:GetPlayers()) do
+      local nivel = plr:GetAttribute("NivelHacha") or 1
+      if type(nivel) ~= "number" or nivel < 1 or nivel > 3 then
+        nivel = 1
+      end
+      local sitios = { plr.Character, plr:FindFirstChildOfClass("Backpack") }
+      for _, cont in ipairs(sitios) do
+        local t = cont and cont:FindFirstChild("Hacha")
+        if t and t:IsA("Tool") and t:GetAttribute("NivelAplicado") ~= nivel then
+          pcall(vestirNivel, t, nivel)
+        end
+      end
+    end
+  end
+end)
+
 ------------------------------------------------------------------
 -- SISTEMA DE CORTE: árboles de cristal → diamantes
 ------------------------------------------------------------------
@@ -639,7 +685,15 @@ local function aplicarGolpe(player, arbol)
 
   local hp = arbol:GetAttribute("HachaHP")
   if hp == nil then hp = HP_POR_ARBOL end
-  hp -= 1
+  -- daño según el NIVEL del hacha del jugador (mejoras de la maga):
+  -- Nv 1 = 1 (tres golpes), Nv 2 = 2 (dos golpes), Nv 3 = 3 (uno)
+  local dano = player:GetAttribute("NivelHacha") or 1
+  if type(dano) ~= "number" or dano < 1 then
+    dano = 1
+  elseif dano > 3 then
+    dano = 3
+  end
+  hp -= dano
   arbol:SetAttribute("HachaHP", hp)
 
   -- efectos del golpe: la sacudida solo en golpes NO mortales. En el
@@ -725,5 +779,5 @@ RE.OnServerEvent:Connect(function(player, accion, dato)
   end
 end)
 
-print("[Hacha] v3 cargada: gemas como las del árbol + el árbol desaparece al caer")
+print("[Hacha] v4 cargada: niveles de mejora (daño y aspecto por NivelHacha)")
 -- FIN SERVER HACHA

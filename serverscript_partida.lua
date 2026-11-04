@@ -403,6 +403,18 @@ end
 -- y acciones como en 99 Noches: Comer, Desgarrar, Tienda, Desalmacenar
 --===========================================================
 local SACO_MAX = 5
+
+-- Capacidad del saco por jugador: la base es SACO_MAX y las MEJORAS
+-- de la maga (serverscript_mejoras.lua) la suben con el atributo
+-- "SacoMax" del jugador (5 -> 8 -> 12). Sin atributo, todo igual que
+-- siempre. Es el ÚNICO punto de partida que leen las mejoras.
+local function sacoMaxDe(player)
+  local n = player and player:GetAttribute("SacoMax")
+  if type(n) == "number" and n >= SACO_MAX then
+    return math.floor(n)
+  end
+  return SACO_MAX
+end
 local COMIDA = { Mora = 30, Hongo = 40 } -- cuanto de hambre devuelve cada una
 
 local function sincronizaUI(player)
@@ -436,7 +448,7 @@ local function sincronizaUI(player)
       hambre = d and math.floor(d.hambre or 100) or 100,
       mano = (d and d.enMano ~= nil) or false,
       saco = d and #(d.saco or {}) or 0,
-      sacoMax = SACO_MAX,
+      sacoMax = sacoMaxDe(player),
       sacoEnMano = sacoEnLaMano,
       noche = SE.noche,
       fase = SE.fase,
@@ -736,7 +748,7 @@ local function darSacoMago(player)
   end
   local tool = Instance.new("Tool")
   tool.Name = "Saco mágico"
-  tool.ToolTip = "Tu saco de tela: guarda hasta " .. SACO_MAX .. " cosas"
+  tool.ToolTip = "Tu saco de tela: guarda hasta " .. sacoMaxDe(player) .. " cosas"
   tool.CanBeDropped = false
   local piezas = piezasSaco(0.19, 7674 + (player.UserId % 97))
   -- se agarra por una bolita dentro del cuello: sin giro, para que el
@@ -884,7 +896,7 @@ end
 
 local function guardarEnSaco(player) -- boton "Tienda": mete lo de la mano al saco
   local d = SE.players[player]
-  if not d or not d.enMano or #d.saco >= SACO_MAX then
+  if not d or not d.enMano or #d.saco >= sacoMaxDe(player) then
     return
   end
   local tipo = d.enMano.tipo
@@ -985,7 +997,7 @@ entregarComida = function(player, tipo)
     local char = player.Character
     if char and char:FindFirstChild("Saco mágico") then
       -- con el saco puesto: tocar algo lo guarda directo en el saco
-      if #d.saco < SACO_MAX then
+      if #d.saco < sacoMaxDe(player) then
         table.insert(d.saco, tipo)
         sincronizaUI(player)
         return true
@@ -996,7 +1008,7 @@ entregarComida = function(player, tipo)
     sincronizaUI(player)
     return true
   end
-  if #d.saco < SACO_MAX then
+  if #d.saco < sacoMaxDe(player) then
     table.insert(d.saco, tipo)
     sincronizaUI(player)
     return true
