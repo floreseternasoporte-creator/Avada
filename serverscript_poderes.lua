@@ -1116,8 +1116,26 @@ end)
 -- ADENTRO de la partida (en el bosque, jugando), cuando un jugador entra
 -- al bosque y aún no tiene poder, se le abre solo el diálogo de la maga
 -- una vez por visita. No toca PARTIDA: solo mira posiciones y atributos.
-local CENTRO_BOSQUE = Vector3.new(0, 0, 4200) -- mismo centro que el bosque
 local RADIO_PARTIDA = 260
+
+-- «Dentro» de una partida = cerca del pivote de CUALQUIER modelo
+-- BosqueProhibido (el molde O un clon de sesión). Antes se medía a un
+-- centro fijo (0,0,4200) = solo el MOLDE: como partida clona el bosque
+-- a +3000 en X por sesión, la oferta automática NUNCA saltaba dentro
+-- de una partida de verdad (solo funcionaba la maga del lobby).
+local function dentroDeUnBosque(pos)
+	for _, m in ipairs(workspace:GetChildren()) do
+		if m:IsA("Model") and m.Name == "BosqueProhibido" then
+			local ok, piv = pcall(function()
+				return m:GetPivot().Position
+			end)
+			if ok and (pos - piv).Magnitude < RADIO_PARTIDA then
+				return true
+			end
+		end
+	end
+	return false
+end
 
 task.spawn(function()
 	while true do
@@ -1126,7 +1144,7 @@ task.spawn(function()
 			local char = plr.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if hrp then
-				local dentro = (hrp.Position - CENTRO_BOSQUE).Magnitude < RADIO_PARTIDA
+				local dentro = dentroDeUnBosque(hrp.Position)
 				if dentro then
 					local cd = plr:GetAttribute("PoderOfrecidoCD") or 0
 					if not plr:GetAttribute("EquippedPower")
