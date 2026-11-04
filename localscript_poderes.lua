@@ -32,6 +32,36 @@ while not remote do
 end
 local camera = workspace.CurrentCamera
 
+--// ============ SONIDOS DE LOS PODERES (IDs que dio el dueño) ============
+-- 126941244422484 = al ejecutarse un poder (en el que lanza, en 3D)
+-- 117243786893013 = al elegir el poder
+-- 139331945507820 = cuando la maga abre la lista de poderes
+local SoundService = game:GetService("SoundService")
+
+-- sonido suelto: se reproduce y se borra solo al terminar
+local function sonar(id, volumen, padre)
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://" .. id
+	s.Volume = volumen or 0.7
+	s.Parent = padre or SoundService
+	s:Play()
+	s.Ended:Connect(function()
+		s:Destroy()
+	end)
+	task.delay(10, function()
+		if s.Parent then
+			s:Destroy()
+		end
+	end)
+	return s
+end
+
+-- sonido de lanzamiento en el personaje que lanza (se oye en 3D)
+local function sonarPoder(char)
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	sonar(126941244422484, 0.8, hrp or SoundService)
+end
+
 -- recargas (deben coincidir con las del servidor)
 local CD = { Tierra = 8, Fuego = 3, Agua = 6, Viento = 10, Rayo = 12 }
 local cdEnd = { Tierra = 0, Fuego = 0, Agua = 0, Viento = 0, Rayo = 0 }
@@ -424,6 +454,7 @@ end
 
 local function pickPower(power)
 	equippedPower = power
+	sonar(117243786893013, 0.8) -- sonido al elegir el poder
 	remote:FireServer("Equip", power)
 	refreshCards()
 	closePanel("equip", power)
@@ -497,6 +528,7 @@ end
 
 
 local function openPanel()
+	sonar(139331945507820, 0.7) -- la maga abre la lista de poderes
 	updateScale()
 	refreshChips()
 	refreshCards()
@@ -1106,6 +1138,7 @@ local function playCast(plr, power, dir, delay)
 			end
 			if not released and t >= delay then
 				released = true
+				sonarPoder(char) -- sonido al ejecutarse el poder
 				if orb then
 					orb:Destroy()
 				end
@@ -1152,6 +1185,7 @@ local function playCast(plr, power, dir, delay)
 				end
 				if not released and t >= delay then
 					released = true
+					sonarPoder(char) -- sonido al ejecutarse el poder (Tierra)
 					shake(0.9, 0.5)
 				end
 			end
